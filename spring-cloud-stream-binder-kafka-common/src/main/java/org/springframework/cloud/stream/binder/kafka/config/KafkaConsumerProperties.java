@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.springframework.cloud.stream.binder.kafka;
+package org.springframework.cloud.stream.binder.kafka.config;
 
 /**
  * @author Marius Bogoevici
@@ -27,7 +27,7 @@ public class KafkaConsumerProperties {
 
 	private boolean resetOffsets;
 
-	private KafkaMessageChannelBinder.StartOffset startOffset;
+	private StartOffset startOffset;
 
 	private boolean enableDlq;
 
@@ -49,11 +49,11 @@ public class KafkaConsumerProperties {
 		this.resetOffsets = resetOffsets;
 	}
 
-	public KafkaMessageChannelBinder.StartOffset getStartOffset() {
+	public StartOffset getStartOffset() {
 		return startOffset;
 	}
 
-	public void setStartOffset(KafkaMessageChannelBinder.StartOffset startOffset) {
+	public void setStartOffset(StartOffset startOffset) {
 		this.startOffset = startOffset;
 	}
 
@@ -79,5 +79,19 @@ public class KafkaConsumerProperties {
 
 	public void setRecoveryInterval(int recoveryInterval) {
 		this.recoveryInterval = recoveryInterval;
+	}
+
+	public enum StartOffset {
+		earliest(-2L), latest(-1L);
+
+		private final long referencePoint;
+
+		StartOffset(long referencePoint) {
+			this.referencePoint = referencePoint;
+		}
+
+		public long getReferencePoint() {
+			return referencePoint;
+		}
 	}
 }

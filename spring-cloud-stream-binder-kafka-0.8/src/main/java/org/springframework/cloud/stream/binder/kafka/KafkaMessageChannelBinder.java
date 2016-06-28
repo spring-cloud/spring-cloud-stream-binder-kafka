@@ -65,6 +65,9 @@ import org.springframework.cloud.stream.binder.HeaderMode;
 import org.springframework.cloud.stream.binder.MessageValues;
 import org.springframework.cloud.stream.binder.PartitionHandler;
 import org.springframework.cloud.stream.binder.kafka.config.KafkaBinderConfigurationProperties;
+import org.springframework.cloud.stream.binder.kafka.config.KafkaConsumerProperties;
+import org.springframework.cloud.stream.binder.kafka.config.KafkaExtendedBindingProperties;
+import org.springframework.cloud.stream.binder.kafka.config.KafkaProducerProperties;
 import org.springframework.http.MediaType;
 import org.springframework.integration.channel.FixedSubscriberChannel;
 import org.springframework.integration.endpoint.EventDrivenConsumer;
@@ -308,7 +311,7 @@ public class KafkaMessageChannelBinder extends
 		ProducerMetadata<byte[], byte[]> producerMetadata = new ProducerMetadata<>(name, byte[].class, byte[].class,
 				BYTE_ARRAY_SERIALIZER, BYTE_ARRAY_SERIALIZER);
 		producerMetadata.setSync(properties.getExtension().isSync());
-		producerMetadata.setCompressionType(properties.getExtension().getCompressionType());
+		producerMetadata.setCompressionType(ProducerMetadata.CompressionType.valueOf(properties.getExtension().getCompressionType().toString()));
 		producerMetadata.setBatchBytes(properties.getExtension().getBufferSize());
 		Properties additionalProps = new Properties();
 		additionalProps.put(ProducerConfig.ACKS_CONFIG, String.valueOf(configurationProperties.getRequiredAcks()));
@@ -783,18 +786,18 @@ public class KafkaMessageChannelBinder extends
 
 	}
 
-	public enum StartOffset {
-		earliest(OffsetRequest.EarliestTime()), latest(OffsetRequest.LatestTime());
-
-		private final long referencePoint;
-
-		StartOffset(long referencePoint) {
-			this.referencePoint = referencePoint;
-		}
-
-		public long getReferencePoint() {
-			return referencePoint;
-		}
-	}
+//	public enum StartOffset {
+//		earliest(OffsetRequest.EarliestTime()), latest(OffsetRequest.LatestTime());
+//
+//		private final long referencePoint;
+//
+//		StartOffset(long referencePoint) {
+//			this.referencePoint = referencePoint;
+//		}
+//
+//		public long getReferencePoint() {
+//			return referencePoint;
+//		}
+//	}
 
 }

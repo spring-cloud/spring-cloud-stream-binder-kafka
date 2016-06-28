@@ -34,12 +34,17 @@ import org.junit.Test;
 import org.springframework.beans.DirectFieldAccessor;
 import org.springframework.cloud.stream.binder.BinderException;
 import org.springframework.cloud.stream.binder.Binding;
+import org.springframework.cloud.stream.binder.ConsumerProperties;
 import org.springframework.cloud.stream.binder.ExtendedConsumerProperties;
 import org.springframework.cloud.stream.binder.ExtendedProducerProperties;
 import org.springframework.cloud.stream.binder.PartitionCapableBinderTests;
+import org.springframework.cloud.stream.binder.ProducerProperties;
 import org.springframework.cloud.stream.binder.Spy;
 import org.springframework.cloud.stream.binder.TestUtils;
 import org.springframework.cloud.stream.binder.kafka.config.KafkaBinderConfigurationProperties;
+import org.springframework.cloud.stream.binder.kafka.config.KafkaProducerProperties;
+import org.springframework.cloud.stream.binder.kafka.config.KafkaConsumerProperties;
+import org.springframework.cloud.stream.binder.kafka.config.KafkaExtendedBindingProperties;
 import org.springframework.cloud.stream.binder.test.junit.kafka.KafkaTestSupport;
 import org.springframework.context.support.GenericApplicationContext;
 import org.springframework.integration.channel.DirectChannel;
@@ -296,7 +301,7 @@ public class KafkaBinderTests extends
 			DirectChannel moduleOutputChannel = new DirectChannel();
 			QueueChannel moduleInputChannel = new QueueChannel();
 			ExtendedProducerProperties<KafkaProducerProperties> producerProperties = createProducerProperties();
-			producerProperties.getExtension().setCompressionType(codec);
+			producerProperties.getExtension().setCompressionType(KafkaProducerProperties.CompressionType.valueOf(codec.toString()));
 			Binding<MessageChannel> producerBinding = binder.bindProducer("foo.0", moduleOutputChannel,
 					producerProperties);
 			Binding<MessageChannel> consumerBinding = binder.bindConsumer("foo.0", "test", moduleInputChannel,
@@ -455,7 +460,7 @@ public class KafkaBinderTests extends
 		String testPayload1 = "foo-" + UUID.randomUUID().toString();
 		output.send(new GenericMessage<>(testPayload1.getBytes()));
 		ExtendedConsumerProperties<KafkaConsumerProperties> properties = createConsumerProperties();
-		properties.getExtension().setStartOffset(KafkaMessageChannelBinder.StartOffset.earliest);
+		properties.getExtension().setStartOffset(KafkaConsumerProperties.StartOffset.earliest);
 		binder.bindConsumer(testTopicName, "startOffsets", input1, properties);
 		Message<byte[]> receivedMessage1 = (Message<byte[]>) receive(input1);
 		assertThat(receivedMessage1).isNotNull();
@@ -481,7 +486,7 @@ public class KafkaBinderTests extends
 		output.send(new GenericMessage<>(testPayload1.getBytes()));
 		ExtendedConsumerProperties<KafkaConsumerProperties> properties = createConsumerProperties();
 		properties.getExtension().setResetOffsets(true);
-		properties.getExtension().setStartOffset(KafkaMessageChannelBinder.StartOffset.earliest);
+		properties.getExtension().setStartOffset(KafkaConsumerProperties.StartOffset.earliest);
 		Binding<MessageChannel> consumerBinding = binder.bindConsumer(testTopicName, "startOffsets", input1,
 				properties);
 		Message<byte[]> receivedMessage1 = (Message<byte[]>) receive(input1);
@@ -498,7 +503,7 @@ public class KafkaBinderTests extends
 
 		ExtendedConsumerProperties<KafkaConsumerProperties> properties2 = createConsumerProperties();
 		properties2.getExtension().setResetOffsets(true);
-		properties2.getExtension().setStartOffset(KafkaMessageChannelBinder.StartOffset.earliest);
+		properties2.getExtension().setStartOffset(KafkaConsumerProperties.StartOffset.earliest);
 		consumerBinding = binder.bindConsumer(testTopicName, "startOffsets", input1, properties2);
 		Message<byte[]> receivedMessage4 = (Message<byte[]>) receive(input1);
 		assertThat(receivedMessage4).isNotNull();
