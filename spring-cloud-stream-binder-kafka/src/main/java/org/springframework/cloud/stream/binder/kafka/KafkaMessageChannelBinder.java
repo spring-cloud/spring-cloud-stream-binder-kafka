@@ -17,87 +17,71 @@
 package org.springframework.cloud.stream.binder.kafka;
 
 import java.io.UnsupportedEncodingException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Map;
 import java.util.Properties;
-import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import kafka.admin.AdminUtils;
-import kafka.api.OffsetRequest;
-import kafka.api.TopicMetadata;
-import kafka.common.ErrorMapping;
-import kafka.serializer.Decoder;
-import kafka.serializer.DefaultDecoder;
-import kafka.utils.ZKStringSerializer$;
-import kafka.utils.ZkUtils;
 import org.I0Itec.zkclient.ZkClient;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
+import org.apache.kafka.common.PartitionInfo;
+import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
+import org.apache.kafka.common.serialization.Deserializer;
 import org.apache.kafka.common.utils.Utils;
-import scala.collection.Seq;
 
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
-import org.springframework.cloud.stream.binder.AbstractBinder;
+import org.springframework.cloud.stream.binder.AbstractMessageChannelBinder;
 import org.springframework.cloud.stream.binder.Binder;
 import org.springframework.cloud.stream.binder.BinderException;
 import org.springframework.cloud.stream.binder.BinderHeaders;
-import org.springframework.cloud.stream.binder.Binding;
-import org.springframework.cloud.stream.binder.DefaultBinding;
 import org.springframework.cloud.stream.binder.ExtendedConsumerProperties;
 import org.springframework.cloud.stream.binder.ExtendedProducerProperties;
 import org.springframework.cloud.stream.binder.ExtendedPropertiesBinder;
-import org.springframework.cloud.stream.binder.HeaderMode;
-import org.springframework.cloud.stream.binder.MessageValues;
 import org.springframework.cloud.stream.binder.PartitionHandler;
 import org.springframework.cloud.stream.binder.kafka.config.KafkaBinderConfigurationProperties;
 import org.springframework.cloud.stream.binder.kafka.config.KafkaConsumerProperties;
 import org.springframework.cloud.stream.binder.kafka.config.KafkaExtendedBindingProperties;
 import org.springframework.cloud.stream.binder.kafka.config.KafkaProducerProperties;
-import org.springframework.http.MediaType;
-import org.springframework.integration.channel.FixedSubscriberChannel;
-import org.springframework.integration.endpoint.EventDrivenConsumer;
+import org.springframework.context.Lifecycle;
+import org.springframework.integration.endpoint.AbstractEndpoint;
 import org.springframework.integration.handler.AbstractMessageHandler;
-import org.springframework.integration.handler.AbstractReplyProducingMessageHandler;
-import org.springframework.integration.kafka.core.ConnectionFactory;
-import org.springframework.integration.kafka.core.DefaultConnectionFactory;
-import org.springframework.integration.kafka.core.KafkaMessage;
-import org.springframework.integration.kafka.core.Partition;
-import org.springframework.integration.kafka.core.ZookeeperConfiguration;
 import org.springframework.integration.kafka.inbound.KafkaMessageDrivenChannelAdapter;
-import org.springframework.integration.kafka.listener.AcknowledgingMessageListener;
-import org.springframework.integration.kafka.listener.Acknowledgment;
-import org.springframework.integration.kafka.listener.ErrorHandler;
-import org.springframework.integration.kafka.listener.KafkaMessageListenerContainer;
-import org.springframework.integration.kafka.listener.KafkaNativeOffsetManager;
-import org.springframework.integration.kafka.listener.MessageListener;
-import org.springframework.integration.kafka.listener.OffsetManager;
-import org.springframework.integration.kafka.support.KafkaHeaders;
-import org.springframework.integration.kafka.support.ProducerConfiguration;
-import org.springframework.integration.kafka.support.ProducerFactoryBean;
-import org.springframework.integration.kafka.support.ProducerListener;
-import org.springframework.integration.kafka.support.ProducerMetadata;
-import org.springframework.integration.kafka.support.ZookeeperConnect;
+import org.springframework.kafka.core.ConsumerFactory;
+import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
+import org.springframework.kafka.core.DefaultKafkaProducerFactory;
+import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.core.ProducerFactory;
+import org.springframework.kafka.listener.AcknowledgingMessageListener;
+import org.springframework.kafka.listener.ConcurrentMessageListenerContainer;
+import org.springframework.kafka.listener.ErrorHandler;
+import org.springframework.kafka.listener.MessageListener;
+import org.springframework.kafka.listener.config.ContainerProperties;
+import org.springframework.kafka.support.Acknowledgment;
+import org.springframework.kafka.support.KafkaHeaders;
+import org.springframework.kafka.support.ProducerListener;
+import org.springframework.kafka.support.TopicPartitionInitialOffset;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.MessageHandler;
 import org.springframework.messaging.MessageHeaders;
-import org.springframework.messaging.SubscribableChannel;
-import org.springframework.messaging.support.MessageBuilder;
+import org.springframework.messaging.MessagingException;
 import org.springframework.retry.RetryCallback;
 import org.springframework.retry.RetryContext;
 import org.springframework.retry.RetryOperations;
@@ -110,9 +94,15 @@ import org.springframework.util.CollectionUtils;
 import org.springframework.util.ObjectUtils;
 import org.springframework.util.StringUtils;
 
+import kafka.admin.AdminUtils;
+import kafka.api.TopicMetadata;
+import kafka.common.ErrorMapping;
+import kafka.utils.ZKStringSerializer$;
+import kafka.utils.ZkUtils;
+import scala.collection.Seq;
+
 /**
  * A {@link Binder} that uses Kafka as the underlying middleware.
- *
  * @author Eric Bottard
  * @author Marius Bogoevici
  * @author Ilayaperumal Gopinathan
@@ -122,13 +112,14 @@ import org.springframework.util.StringUtils;
  * @author Soby Chacko
  */
 public class KafkaMessageChannelBinder extends
-		AbstractBinder<MessageChannel, ExtendedConsumerProperties<KafkaConsumerProperties>, ExtendedProducerProperties<KafkaProducerProperties>>
+		AbstractMessageChannelBinder<ExtendedConsumerProperties<KafkaConsumerProperties>,
+				ExtendedProducerProperties<KafkaProducerProperties>>
 		implements ExtendedPropertiesBinder<MessageChannel, KafkaConsumerProperties, KafkaProducerProperties>,
 		DisposableBean {
 
-	public static final ByteArraySerializer BYTE_ARRAY_SERIALIZER = new ByteArraySerializer();
+	private static final ByteArraySerializer BYTE_ARRAY_SERIALIZER = new ByteArraySerializer();
 
-	public static final ThreadFactory DAEMON_THREAD_FACTORY;
+	private static final ThreadFactory DAEMON_THREAD_FACTORY;
 
 	static {
 		CustomizableThreadFactory threadFactory = new CustomizableThreadFactory("kafka-binder-");
@@ -138,15 +129,13 @@ public class KafkaMessageChannelBinder extends
 
 	private final KafkaBinderConfigurationProperties configurationProperties;
 
-	private final String[] headersToMap;
-
 	private RetryOperations metadataRetryOperations;
 
-	private final Map<String, Collection<Partition>> topicsInUse = new HashMap<>();
+	private final Map<String, Collection<PartitionInfo>> topicsInUse = new HashMap<>();
 
 	// -------- Default values for properties -------
 
-	private ConnectionFactory connectionFactory;
+	private ConsumerFactory<byte[], byte[]> consumerFactory;
 
 	private ProducerListener producerListener;
 
@@ -155,30 +144,24 @@ public class KafkaMessageChannelBinder extends
 	private KafkaExtendedBindingProperties extendedBindingProperties = new KafkaExtendedBindingProperties();
 
 	public KafkaMessageChannelBinder(KafkaBinderConfigurationProperties configurationProperties) {
+		super(false, headersToMap(configurationProperties));
 		this.configurationProperties = configurationProperties;
-		String[] configuredHeaders = configurationProperties.getHeaders();
-		if (ObjectUtils.isEmpty(configuredHeaders)) {
-			this.headersToMap = BinderHeaders.STANDARD_HEADERS;
+	}
+
+	private static String[] headersToMap(KafkaBinderConfigurationProperties configurationProperties) {
+		String[] headersToMap;
+		if (ObjectUtils.isEmpty(configurationProperties.getHeaders())) {
+			headersToMap = BinderHeaders.STANDARD_HEADERS;
 		}
 		else {
 			String[] combinedHeadersToMap = Arrays.copyOfRange(BinderHeaders.STANDARD_HEADERS, 0,
-					BinderHeaders.STANDARD_HEADERS.length + configuredHeaders.length);
-			System.arraycopy(configuredHeaders, 0, combinedHeadersToMap, BinderHeaders.STANDARD_HEADERS.length,
-					configuredHeaders.length);
-			this.headersToMap = combinedHeadersToMap;
+					BinderHeaders.STANDARD_HEADERS.length + configurationProperties.getHeaders().length);
+			System.arraycopy(configurationProperties.getHeaders(), 0, combinedHeadersToMap,
+					BinderHeaders.STANDARD_HEADERS.length,
+					configurationProperties.getHeaders().length);
+			headersToMap = combinedHeadersToMap;
 		}
-	}
-
-	String getZkAddress() {
-		return this.configurationProperties.getZkConnectionString();
-	}
-
-	public ConnectionFactory getConnectionFactory() {
-		return connectionFactory;
-	}
-
-	public void setProducerListener(ProducerListener producerListener) {
-		this.producerListener = producerListener;
+		return headersToMap;
 	}
 
 	/**
@@ -195,13 +178,17 @@ public class KafkaMessageChannelBinder extends
 
 	@Override
 	public void onInit() throws Exception {
-		ZookeeperConfiguration configuration = new ZookeeperConfiguration(
-				new ZookeeperConnect(configurationProperties.getZkConnectionString()));
-		configuration.setBufferSize(configurationProperties.getSocketBufferSize());
-		configuration.setMaxWait(configurationProperties.getMaxWait());
-		DefaultConnectionFactory defaultConnectionFactory = new DefaultConnectionFactory(configuration);
-		defaultConnectionFactory.afterPropertiesSet();
-		this.connectionFactory = defaultConnectionFactory;
+		Map<String, Object> props = new HashMap<>();
+		props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, configurationProperties.getKafkaConnectionString());
+		props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, true);
+		props.put(ConsumerConfig.GROUP_ID_CONFIG, configurationProperties.getConsumerGroup());
+		props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG,
+				"earliest");
+		Deserializer<byte[]> valueDecoder = new ByteArrayDeserializer();
+		Deserializer<byte[]> keyDecoder = new ByteArrayDeserializer();
+
+		consumerFactory = new DefaultKafkaConsumerFactory<>(props, keyDecoder, valueDecoder);
+
 		if (metadataRetryOperations == null) {
 			RetryTemplate retryTemplate = new RetryTemplate();
 
@@ -220,16 +207,20 @@ public class KafkaMessageChannelBinder extends
 
 	@Override
 	public void destroy() throws Exception {
-		if (dlqProducer != null) {
-			dlqProducer.close();
-			dlqProducer = null;
+		if (this.dlqProducer != null) {
+			this.dlqProducer.close();
+			this.dlqProducer = null;
 		}
+	}
+
+	public void setProducerListener(ProducerListener producerListener) {
+		this.producerListener = producerListener;
 	}
 
 	/**
 	 * Allowed chars are ASCII alphanumerics, '.', '_' and '-'.
 	 */
-	public static void validateTopicName(String topicName) {
+	static void validateTopicName(String topicName) {
 		try {
 			byte[] utf8 = topicName.getBytes("UTF-8");
 			for (byte b : utf8) {
@@ -247,259 +238,89 @@ public class KafkaMessageChannelBinder extends
 
 	@Override
 	public KafkaConsumerProperties getExtendedConsumerProperties(String channelName) {
-		return extendedBindingProperties.getExtendedConsumerProperties(channelName);
+		return this.extendedBindingProperties.getExtendedConsumerProperties(channelName);
 	}
 
 	@Override
 	public KafkaProducerProperties getExtendedProducerProperties(String channelName) {
-		return extendedBindingProperties.getExtendedProducerProperties(channelName);
+		return this.extendedBindingProperties.getExtendedProducerProperties(channelName);
 	}
 
-	Map<String, Collection<Partition>> getTopicsInUse() {
+	Map<String, Collection<PartitionInfo>> getTopicsInUse() {
 		return this.topicsInUse;
 	}
 
 	@Override
-	protected Binding<MessageChannel> doBindConsumer(String name, String group, MessageChannel inputChannel,
-			ExtendedConsumerProperties<KafkaConsumerProperties> properties) {
-		// If the caller provides a consumer group, use it; otherwise an anonymous
-		// consumer group
-		// is generated each time, such that each anonymous binding will receive all
-		// messages.
-		// Consumers reset offsets at the latest time by default, which allows them to
-		// receive only
-		// messages sent after they've been bound. That behavior can be changed with the
-		// "resetOffsets" and "startOffset" properties.
-		boolean anonymous = !StringUtils.hasText(group);
-		Assert.isTrue(!anonymous || !properties.getExtension().isEnableDlq(),
-				"DLQ support is not available for anonymous subscriptions");
-		String consumerGroup = anonymous ? "anonymous." + UUID.randomUUID().toString() : group;
-		// The reference point, if not set explicitly is the latest time for anonymous
-		// subscriptions and the
-		// earliest time for group subscriptions. This allows the latter to receive
-		// messages published before the group
-		// has been created.
-		long referencePoint = properties.getExtension().getStartOffset() != null
-				? properties.getExtension().getStartOffset().getReferencePoint()
-				: (anonymous ? OffsetRequest.LatestTime() : OffsetRequest.EarliestTime());
-		return createKafkaConsumer(name, inputChannel, properties, consumerGroup, referencePoint);
-	}
-
-	@Override
-	public Binding<MessageChannel> doBindProducer(String name, MessageChannel moduleOutputChannel,
-			ExtendedProducerProperties<KafkaProducerProperties> properties) {
-
-		Assert.isInstanceOf(SubscribableChannel.class, moduleOutputChannel);
-		if (logger.isInfoEnabled()) {
-			logger.info("Using kafka topic for outbound: " + name);
-		}
-
-		validateTopicName(name);
-
-		Collection<Partition> partitions = ensureTopicCreated(name, properties.getPartitionCount());
-
-		if (properties.getPartitionCount() < partitions.size()) {
-			if (logger.isInfoEnabled()) {
-				logger.info("The `partitionCount` of the producer for topic " + name + " is "
-						+ properties.getPartitionCount() + ", smaller than the actual partition count of "
-						+ partitions.size() + " of the topic. The larger number will be used instead.");
-			}
-		}
-
-		topicsInUse.put(name, partitions);
-
-		ProducerMetadata<byte[], byte[]> producerMetadata = new ProducerMetadata<>(name, byte[].class, byte[].class,
-				BYTE_ARRAY_SERIALIZER, BYTE_ARRAY_SERIALIZER);
-		producerMetadata.setSync(properties.getExtension().isSync());
-		producerMetadata.setCompressionType(ProducerMetadata.CompressionType.valueOf(properties.getExtension().getCompressionType().toString()));
-		producerMetadata.setBatchBytes(properties.getExtension().getBufferSize());
-		Properties additionalProps = new Properties();
-		additionalProps.put(ProducerConfig.ACKS_CONFIG, String.valueOf(configurationProperties.getRequiredAcks()));
-		additionalProps.put(ProducerConfig.LINGER_MS_CONFIG,
-				String.valueOf(properties.getExtension().getBatchTimeout()));
-		ProducerFactoryBean<byte[], byte[]> producerFB = new ProducerFactoryBean<>(producerMetadata,
-				configurationProperties.getKafkaConnectionString(), additionalProps);
-
-		try {
-			final ProducerConfiguration<byte[], byte[]> producerConfiguration = new ProducerConfiguration<>(
-					producerMetadata, producerFB.getObject());
-			producerConfiguration.setProducerListener(producerListener);
-
-			MessageHandler handler = new SendingHandler(name, properties, partitions.size(), producerConfiguration);
-			EventDrivenConsumer consumer = new EventDrivenConsumer((SubscribableChannel) moduleOutputChannel, handler) {
-
-				@Override
-				protected void doStop() {
-					super.doStop();
-					producerConfiguration.stop();
-				}
-			};
-			consumer.setBeanFactory(this.getBeanFactory());
-			consumer.setBeanName("outbound." + name);
-			consumer.afterPropertiesSet();
-			DefaultBinding<MessageChannel> producerBinding = new DefaultBinding<>(name, null, moduleOutputChannel,
-					consumer);
-			consumer.start();
-			return producerBinding;
-		}
-		catch (Exception e) {
-			throw new RuntimeException(e);
-		}
-	}
-
-	/**
-	 * Creates a Kafka topic if needed, or try to increase its partition count to the
-	 * desired number.
-	 */
-	private Collection<Partition> ensureTopicCreated(final String topicName, final int partitionCount) {
-
-		final ZkClient zkClient = new ZkClient(configurationProperties.getZkConnectionString(),
-				configurationProperties.getZkSessionTimeout(), configurationProperties.getZkConnectionTimeout(),
-				ZKStringSerializer$.MODULE$);
-		try {
-			final Properties topicConfig = new Properties();
-			TopicMetadata topicMetadata = AdminUtils.fetchTopicMetadataFromZk(topicName, zkClient);
-			if (topicMetadata.errorCode() == ErrorMapping.NoError()) {
-				// only consider minPartitionCount for resizing if autoAddPartitions is
-				// true
-				int effectivePartitionCount = configurationProperties.isAutoAddPartitions()
-						? Math.max(configurationProperties.getMinPartitionCount(), partitionCount) : partitionCount;
-				if (topicMetadata.partitionsMetadata().size() < effectivePartitionCount) {
-					if (configurationProperties.isAutoAddPartitions()) {
-						AdminUtils.addPartitions(zkClient, topicName, effectivePartitionCount, null, false,
-								new Properties());
-					}
-					else {
-						int topicSize = topicMetadata.partitionsMetadata().size();
-						throw new BinderException("The number of expected partitions was: " + partitionCount + ", but "
-								+ topicSize + (topicSize > 1 ? " have " : " has ") + "been found instead."
-								+ "Consider either increasing the partition count of the topic or enabling `autoAddPartitions`");
-					}
-				}
-			}
-			else if (topicMetadata.errorCode() == ErrorMapping.UnknownTopicOrPartitionCode()) {
-				if (configurationProperties.isAutoCreateTopics()) {
-					Seq<Object> brokerList = ZkUtils.getSortedBrokerList(zkClient);
-					// always consider minPartitionCount for topic creation
-					int effectivePartitionCount = Math.max(configurationProperties.getMinPartitionCount(),
-							partitionCount);
-					final scala.collection.Map<Object, Seq<Object>> replicaAssignment = AdminUtils
-							.assignReplicasToBrokers(brokerList, effectivePartitionCount,
-									configurationProperties.getReplicationFactor(), -1, -1);
-					metadataRetryOperations.execute(new RetryCallback<Object, RuntimeException>() {
-						@Override
-						public Object doWithRetry(RetryContext context) throws RuntimeException {
-							AdminUtils.createOrUpdateTopicPartitionAssignmentPathInZK(zkClient, topicName,
-									replicaAssignment, topicConfig, true);
-							return null;
-						}
-					});
-				}
-				else {
-					throw new BinderException("Topic " + topicName + " does not exist");
-				}
-			}
-			else {
-				throw new BinderException("Error fetching Kafka topic metadata: ",
-						ErrorMapping.exceptionFor(topicMetadata.errorCode()));
-			}
-			try {
-				Collection<Partition> partitions = metadataRetryOperations
-						.execute(new RetryCallback<Collection<Partition>, Exception>() {
-
-							@Override
-							public Collection<Partition> doWithRetry(RetryContext context) throws Exception {
-								connectionFactory.refreshMetadata(Collections.singleton(topicName));
-								Collection<Partition> partitions = connectionFactory.getPartitions(topicName);
-								// do a sanity check on the partition set
-								if (partitions.size() < partitionCount) {
-									throw new IllegalStateException("The number of expected partitions was: "
-											+ partitionCount + ", but " + partitions.size()
-											+ (partitions.size() > 1 ? " have " : " has ") + "been found instead");
-								}
-								connectionFactory.getLeaders(partitions);
-								return partitions;
-							}
-						});
-				return partitions;
-			}
-			catch (Exception e) {
-				logger.error("Cannot initialize Binder", e);
-				throw new BinderException("Cannot initialize binder:", e);
-			}
-
-		}
-		finally {
-			zkClient.close();
-		}
-	}
-
-	private Binding<MessageChannel> createKafkaConsumer(String name, final MessageChannel moduleInputChannel,
-			ExtendedConsumerProperties<KafkaConsumerProperties> properties, String group, long referencePoint) {
-
+	protected Object createConsumerDestinationIfNecessary(String name, String group,
+														  ExtendedConsumerProperties<KafkaConsumerProperties> properties) {
 		validateTopicName(name);
 		if (properties.getInstanceCount() == 0) {
 			throw new IllegalArgumentException("Instance count cannot be zero");
 		}
-		Collection<Partition> allPartitions = ensureTopicCreated(name,
+		Collection<PartitionInfo> allPartitions = ensureTopicCreated(name,
 				properties.getInstanceCount() * properties.getConcurrency());
 
-		Decoder<byte[]> valueDecoder = new DefaultDecoder(null);
-		Decoder<byte[]> keyDecoder = new DefaultDecoder(null);
-
-		Collection<Partition> listenedPartitions;
+		Collection<PartitionInfo> listenedPartitions;
 
 		if (properties.getInstanceCount() == 1) {
 			listenedPartitions = allPartitions;
 		}
 		else {
 			listenedPartitions = new ArrayList<>();
-			for (Partition partition : allPartitions) {
+			for (PartitionInfo partition : allPartitions) {
 				// divide partitions across modules
-				if ((partition.getId() % properties.getInstanceCount()) == properties.getInstanceIndex()) {
+				if ((partition.partition() % properties.getInstanceCount()) == properties.getInstanceIndex()) {
 					listenedPartitions.add(partition);
 				}
 			}
 		}
-		topicsInUse.put(name, listenedPartitions);
-		ReceivingHandler rh = new ReceivingHandler(properties);
-		rh.setOutputChannel(moduleInputChannel);
+		this.topicsInUse.put(name, listenedPartitions);
+		return listenedPartitions;
+	}
 
-		final FixedSubscriberChannel bridge = new FixedSubscriberChannel(rh);
-		bridge.setBeanName("bridge." + name);
 
+	@Override
+	@SuppressWarnings("unchecked")
+	protected AbstractEndpoint createConsumerEndpoint(String name, String group, Object queue,
+													  MessageChannel inputChannel, ExtendedConsumerProperties<KafkaConsumerProperties> properties) {
+
+		Collection<PartitionInfo> listenedPartitions = (Collection<PartitionInfo>) queue;
 		Assert.isTrue(!CollectionUtils.isEmpty(listenedPartitions), "A list of partitions must be provided");
-		final KafkaMessageListenerContainer messageListenerContainer = new KafkaMessageListenerContainer(
-				connectionFactory, listenedPartitions.toArray(new Partition[listenedPartitions.size()]));
+
+		final TopicPartitionInitialOffset[] topicPartitionInitialOffsets =
+				new TopicPartitionInitialOffset[listenedPartitions.size()];
+		int i = 0;
+		for (PartitionInfo partition : listenedPartitions){
+			topicPartitionInitialOffsets[i++] = new TopicPartitionInitialOffset(partition.topic(),
+					partition.partition());
+		}
+
+
+		int concurrency = Math.min(properties.getConcurrency(), listenedPartitions.size());
+
+		final ExecutorService dispatcherTaskExecutor =
+				Executors.newFixedThreadPool(concurrency, DAEMON_THREAD_FACTORY);
+
+		final ContainerProperties containerProperties = new ContainerProperties(topicPartitionInitialOffsets);
+		//final ContainerProperties containerProperties = new ContainerProperties(name);
+		final ConcurrentMessageListenerContainer<byte[], byte[]> messageListenerContainer = new ConcurrentMessageListenerContainer<>(
+				consumerFactory, containerProperties);
+		messageListenerContainer.setConcurrency(concurrency);
 
 		if (logger.isDebugEnabled()) {
 			logger.debug("Listened partitions: " + StringUtils.collectionToCommaDelimitedString(listenedPartitions));
 		}
 
-		OffsetManager offsetManager = createOffsetManager(group, referencePoint);
-		if (properties.getExtension().isResetOffsets()) {
-			offsetManager.resetOffsets(listenedPartitions);
+		if (this.logger.isDebugEnabled()) {
+			this.logger.debug(
+					"Listened partitions: " + StringUtils.collectionToCommaDelimitedString(listenedPartitions));
 		}
-		messageListenerContainer.setOffsetManager(offsetManager);
-		messageListenerContainer.setQueueSize(configurationProperties.getQueueSize());
-		messageListenerContainer.setMaxFetch(configurationProperties.getFetchSize());
-		boolean autoCommitOnError = properties.getExtension().getAutoCommitOnError() != null
-				? properties.getExtension().getAutoCommitOnError()
-				: properties.getExtension().isAutoCommitOffset() && properties.getExtension().isEnableDlq();
-		messageListenerContainer.setAutoCommitOnError(autoCommitOnError);
-		messageListenerContainer.setRecoveryInterval(properties.getExtension().getRecoveryInterval());
 
-		int concurrency = Math.min(properties.getConcurrency(), listenedPartitions.size());
-		messageListenerContainer.setConcurrency(concurrency);
-		final ExecutorService dispatcherTaskExecutor = Executors.newFixedThreadPool(concurrency, DAEMON_THREAD_FACTORY);
-		messageListenerContainer.setDispatcherTaskExecutor(dispatcherTaskExecutor);
-		final KafkaMessageDrivenChannelAdapter kafkaMessageDrivenChannelAdapter = new KafkaMessageDrivenChannelAdapter(
+		final KafkaMessageDrivenChannelAdapter<byte[], byte[]> kafkaMessageDrivenChannelAdapter = new KafkaMessageDrivenChannelAdapter<>(
 				messageListenerContainer);
+
 		kafkaMessageDrivenChannelAdapter.setBeanFactory(this.getBeanFactory());
-		kafkaMessageDrivenChannelAdapter.setKeyDecoder(keyDecoder);
-		kafkaMessageDrivenChannelAdapter.setPayloadDecoder(valueDecoder);
-		kafkaMessageDrivenChannelAdapter.setOutputChannel(bridge);
-		kafkaMessageDrivenChannelAdapter.setAutoCommitOffset(properties.getExtension().isAutoCommitOffset());
+		kafkaMessageDrivenChannelAdapter.setOutputChannel(inputChannel);
 		kafkaMessageDrivenChannelAdapter.afterPropertiesSet();
 
 		// we need to wrap the adapter listener into a retrying listener so that the retry
@@ -508,10 +329,10 @@ public class KafkaMessageChannelBinder extends
 		if (retryTemplate != null) {
 			if (properties.getExtension().isAutoCommitOffset()) {
 				final MessageListener originalMessageListener = (MessageListener) messageListenerContainer
-						.getMessageListener();
-				messageListenerContainer.setMessageListener(new MessageListener() {
+						.getContainerProperties().getMessageListener();
+				messageListenerContainer.getContainerProperties().setMessageListener(new MessageListener() {
 					@Override
-					public void onMessage(final KafkaMessage message) {
+					public void onMessage(final ConsumerRecord message) {
 						try {
 							retryTemplate.execute(new RetryCallback<Object, Throwable>() {
 								@Override
@@ -533,12 +354,12 @@ public class KafkaMessageChannelBinder extends
 				});
 			}
 			else {
-				messageListenerContainer.setMessageListener(new AcknowledgingMessageListener() {
+				messageListenerContainer.getContainerProperties().setMessageListener(new AcknowledgingMessageListener() {
 					final AcknowledgingMessageListener originalMessageListener = (AcknowledgingMessageListener) messageListenerContainer
-							.getMessageListener();
+							.getContainerProperties().getMessageListener();
 
 					@Override
-					public void onMessage(final KafkaMessage message, final Acknowledgment acknowledgment) {
+					public void onMessage(final ConsumerRecord message, final Acknowledgment acknowledgment) {
 						retryTemplate.execute(new RetryCallback<Object, RuntimeException>() {
 							@Override
 							public Object doWithRetry(RetryContext context) {
@@ -554,13 +375,13 @@ public class KafkaMessageChannelBinder extends
 		if (properties.getExtension().isEnableDlq()) {
 			final String dlqTopic = "error." + name + "." + group;
 			initDlqProducer();
-			messageListenerContainer.setErrorHandler(new ErrorHandler() {
+			messageListenerContainer.getContainerProperties().setErrorHandler(new ErrorHandler() {
 				@Override
-				public void handle(Exception thrownException, final KafkaMessage message) {
-					final byte[] key = message.getMessage().key() != null ? Utils.toArray(message.getMessage().key())
+				public void handle(Exception thrownException, final ConsumerRecord message) {
+					final byte[] key = message.key() != null ? Utils.toArray(ByteBuffer.wrap((byte[])message.key()))
 							: null;
-					final byte[] payload = message.getMessage().payload() != null
-							? Utils.toArray(message.getMessage().payload()) : null;
+					final byte[] payload = message.value() != null
+							? Utils.toArray(ByteBuffer.wrap((byte[])message.value())) : null;
 					dlqProducer.send(new ProducerRecord<>(dlqTopic, key, payload), new Callback() {
 						@Override
 						public void onCompletion(RecordMetadata metadata, Exception exception) {
@@ -569,7 +390,7 @@ public class KafkaMessageChannelBinder extends
 									+ toDisplayString(ObjectUtils.nullSafeToString(key), 50) + "'");
 							messageLog.append(" and payload='"
 									+ toDisplayString(ObjectUtils.nullSafeToString(payload), 50) + "'");
-							messageLog.append(" received from " + message.getMetadata().getPartition());
+							messageLog.append(" received from " + message.partition());
 							if (exception != null) {
 								logger.error("Error sending to DLQ" + messageLog.toString(), exception);
 							}
@@ -583,38 +404,158 @@ public class KafkaMessageChannelBinder extends
 				}
 			});
 		}
+
+
 		kafkaMessageDrivenChannelAdapter.start();
+		return kafkaMessageDrivenChannelAdapter;
+	}
 
-		EventDrivenConsumer edc = new EventDrivenConsumer(bridge, rh) {
+	@Override
+	protected MessageHandler createProducerMessageHandler(final String name,
+														  ExtendedProducerProperties<KafkaProducerProperties> producerProperties) throws Exception {
 
-			@Override
-			protected void doStop() {
-				// stop the offset manager and the channel adapter before unbinding
-				// this means that the upstream channel adapter has a chance to stop
-				kafkaMessageDrivenChannelAdapter.stop();
-				if (messageListenerContainer.getOffsetManager() instanceof DisposableBean) {
-					try {
-						((DisposableBean) messageListenerContainer.getOffsetManager()).destroy();
+		validateTopicName(name);
+
+		Collection<PartitionInfo> partitions = ensureTopicCreated(name, producerProperties.getPartitionCount());
+
+		if (producerProperties.getPartitionCount() < partitions.size()) {
+			if (logger.isInfoEnabled()) {
+				logger.info("The `partitionCount` of the producer for topic " + name + " is "
+						+ producerProperties.getPartitionCount() + ", smaller than the actual partition count of "
+						+ partitions.size() + " of the topic. The larger number will be used instead.");
+			}
+		}
+
+		topicsInUse.put(name, partitions);
+
+		Map<String, Object> props = new HashMap<>();
+		props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, configurationProperties.getKafkaConnectionString());
+		props.put(ProducerConfig.RETRIES_CONFIG, 0);
+		props.put(ProducerConfig.BATCH_SIZE_CONFIG, 16384);
+		props.put(ProducerConfig.LINGER_MS_CONFIG, 1);
+		props.put(ProducerConfig.BUFFER_MEMORY_CONFIG, 33554432);
+		props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, ByteArraySerializer.class);
+		props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, ByteArraySerializer.class);
+		props.put(ProducerConfig.ACKS_CONFIG, String.valueOf(configurationProperties.getRequiredAcks()));
+		props.put(ProducerConfig.LINGER_MS_CONFIG,
+				String.valueOf(producerProperties.getExtension().getBatchTimeout()));
+		props.put(ProducerConfig.COMPRESSION_TYPE_CONFIG, producerProperties.getExtension().getCompressionType().toString());
+
+		ProducerFactory<byte[], byte[]> producerFB = new DefaultKafkaProducerFactory<>(props);
+
+//		final ProducerConfiguration<byte[], byte[]> producerConfiguration = new ProducerConfiguration<>(
+//				producerMetadata, producerFB.getObject());
+//		producerConfiguration.setProducerListener(this.producerListener);
+//		KafkaProducerContext kafkaProducerContext = new KafkaProducerContext();
+//		kafkaProducerContext.setProducerConfigurations(
+//				Collections.<String, ProducerConfiguration<?, ?>>singletonMap(name, producerConfiguration));
+//		return new ProducerConfigurationMessageHandler(producerConfiguration, name);
+//
+		return new SendingHandler(producerFB, name, producerProperties, partitions.size());
+	}
+
+	@Override
+	protected void createProducerDestinationIfNecessary(String name,
+														ExtendedProducerProperties<KafkaProducerProperties> properties) {
+		if (this.logger.isInfoEnabled()) {
+			this.logger.info("Using kafka topic for outbound: " + name);
+		}
+		validateTopicName(name);
+		Collection<PartitionInfo> partitions = ensureTopicCreated(name, properties.getPartitionCount());
+		if (properties.getPartitionCount() < partitions.size()) {
+			if (this.logger.isInfoEnabled()) {
+				this.logger.info("The `partitionCount` of the producer for topic " + name + " is "
+						+ properties.getPartitionCount() + ", smaller than the actual partition count of "
+						+ partitions.size() + " of the topic. The larger number will be used instead.");
+			}
+		}
+		this.topicsInUse.put(name, partitions);
+	}
+
+	/**
+	 * Creates a Kafka topic if needed, or try to increase its partition count to the
+	 * desired number.
+	 */
+	private Collection<PartitionInfo> ensureTopicCreated(final String topicName, final int partitionCount) {
+
+		final ZkClient zkClient = new ZkClient(configurationProperties.getZkConnectionString(),
+				configurationProperties.getZkSessionTimeout(), configurationProperties.getZkConnectionTimeout(),
+				ZKStringSerializer$.MODULE$);
+
+		final ZkUtils zkUtils = new ZkUtils(zkClient, null, false);
+		try {
+			final Properties topicConfig = new Properties();
+			TopicMetadata topicMetadata = AdminUtils.fetchTopicMetadataFromZk(topicName, zkUtils);
+			if (topicMetadata.errorCode() == ErrorMapping.NoError()) {
+				// only consider minPartitionCount for resizing if autoAddPartitions is
+				// true
+				int effectivePartitionCount = configurationProperties.isAutoAddPartitions()
+						? Math.max(configurationProperties.getMinPartitionCount(), partitionCount) : partitionCount;
+				if (topicMetadata.partitionsMetadata().size() < effectivePartitionCount) {
+					if (configurationProperties.isAutoAddPartitions()) {
+						AdminUtils.addPartitions(zkUtils, topicName, effectivePartitionCount, null, false);
 					}
-					catch (Exception e) {
-						logger.error("Error while closing the offset manager", e);
+					else {
+						int topicSize = topicMetadata.partitionsMetadata().size();
+						throw new BinderException("The number of expected partitions was: " + partitionCount + ", but "
+								+ topicSize + (topicSize > 1 ? " have " : " has ") + "been found instead."
+								+ "Consider either increasing the partition count of the topic or enabling `autoAddPartitions`");
 					}
 				}
-				super.doStop();
 			}
-		};
-		String groupedName = groupedName(name, group);
-		edc.setBeanName("inbound." + groupedName);
+			else if (topicMetadata.errorCode() == ErrorMapping.UnknownTopicOrPartitionCode()) {
+				if (configurationProperties.isAutoCreateTopics()) {
+					Seq<Object> brokerList = zkUtils.getSortedBrokerList();
+					// always consider minPartitionCount for topic creation
+					int effectivePartitionCount = Math.max(configurationProperties.getMinPartitionCount(),
+							partitionCount);
+					final scala.collection.Map<Object, Seq<Object>> replicaAssignment = AdminUtils
+							.assignReplicasToBrokers(brokerList, effectivePartitionCount,
+									configurationProperties.getReplicationFactor(), -1, -1);
+					metadataRetryOperations.execute(new RetryCallback<Object, RuntimeException>() {
+						@Override
+						public Object doWithRetry(RetryContext context) throws RuntimeException {
+							AdminUtils.createOrUpdateTopicPartitionAssignmentPathInZK(zkUtils, topicName,
+									replicaAssignment, topicConfig, true);
+							return null;
+						}
+					});
+				}
+				else {
+					throw new BinderException("Topic " + topicName + " does not exist");
+				}
+			}
+			else {
+				throw new BinderException("Error fetching Kafka topic metadata: ",
+						ErrorMapping.exceptionFor(topicMetadata.errorCode()));
+			}
+			try {
+				Collection<PartitionInfo> partitions = metadataRetryOperations
+						.execute(new RetryCallback<Collection<PartitionInfo>, Exception>() {
 
-		DefaultBinding<MessageChannel> consumerBinding = new DefaultBinding<MessageChannel>(name, group,
-				moduleInputChannel, edc) {
-			@Override
-			protected void afterUnbind() {
-				dispatcherTaskExecutor.shutdown();
+							@Override
+							public Collection<PartitionInfo> doWithRetry(RetryContext context) throws Exception {
+								Collection<PartitionInfo> partitions = consumerFactory.createConsumer().partitionsFor(topicName);
+								// do a sanity check on the partition set
+								if (partitions.size() < partitionCount) {
+									throw new IllegalStateException("The number of expected partitions was: "
+											+ partitionCount + ", but " + partitions.size()
+											+ (partitions.size() > 1 ? " have " : " has ") + "been found instead");
+								}
+								return partitions;
+							}
+						});
+				return partitions;
 			}
-		};
-		edc.start();
-		return consumerBinding;
+			catch (Exception e) {
+				logger.error("Cannot initialize Binder", e);
+				throw new BinderException("Cannot initialize binder:", e);
+			}
+
+		}
+		finally {
+			zkClient.close();
+		}
 	}
 
 	private synchronized void initDlqProducer() {
@@ -624,47 +565,22 @@ public class KafkaMessageChannelBinder extends
 					if (dlqProducer == null) {
 						// we can use the producer defaults as we do not need to tune
 						// performance
-						ProducerMetadata<byte[], byte[]> producerMetadata = new ProducerMetadata<>("dlqKafkaProducer",
-								byte[].class, byte[].class, BYTE_ARRAY_SERIALIZER, BYTE_ARRAY_SERIALIZER);
-						producerMetadata.setSync(false);
-						producerMetadata.setCompressionType(ProducerMetadata.CompressionType.none);
-						producerMetadata.setBatchBytes(16384);
-						Properties additionalProps = new Properties();
-						additionalProps.put(ProducerConfig.ACKS_CONFIG,
-								String.valueOf(configurationProperties.getRequiredAcks()));
-						additionalProps.put(ProducerConfig.LINGER_MS_CONFIG, String.valueOf(0));
-						ProducerFactoryBean<byte[], byte[]> producerFactoryBean = new ProducerFactoryBean<>(
-								producerMetadata, configurationProperties.getKafkaConnectionString(), additionalProps);
-						dlqProducer = producerFactoryBean.getObject();
+						Map<String, Object> props = new HashMap<>();
+						props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, configurationProperties.getKafkaConnectionString());
+						props.put(ProducerConfig.RETRIES_CONFIG, 0);
+						props.put(ProducerConfig.BATCH_SIZE_CONFIG, 16384);
+						props.put(ProducerConfig.LINGER_MS_CONFIG, 1);
+						props.put(ProducerConfig.BUFFER_MEMORY_CONFIG, 33554432);
+						props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, ByteArraySerializer.class);
+						props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, ByteArraySerializer.class);
+						DefaultKafkaProducerFactory<byte[], byte[]> defaultKafkaProducerFactory = new DefaultKafkaProducerFactory<>(props);
+						dlqProducer = defaultKafkaProducerFactory.createProducer();
 					}
 				}
 			}
 		}
 		catch (Exception e) {
 			throw new RuntimeException("Cannot initialize DLQ producer:", e);
-		}
-	}
-
-	private OffsetManager createOffsetManager(String group, long referencePoint) {
-		try {
-
-			KafkaNativeOffsetManager kafkaOffsetManager = new KafkaNativeOffsetManager(connectionFactory,
-					new ZookeeperConnect(configurationProperties.getZkConnectionString()),
-					Collections.<Partition, Long>emptyMap());
-			kafkaOffsetManager.setConsumerId(group);
-			kafkaOffsetManager.setReferenceTimestamp(referencePoint);
-			kafkaOffsetManager.afterPropertiesSet();
-
-			WindowingOffsetManager windowingOffsetManager = new WindowingOffsetManager(kafkaOffsetManager);
-			windowingOffsetManager.setTimespan(configurationProperties.getOffsetUpdateTimeWindow());
-			windowingOffsetManager.setCount(configurationProperties.getOffsetUpdateCount());
-			windowingOffsetManager.setShutdownTimeout(configurationProperties.getOffsetUpdateShutdownTimeout());
-
-			windowingOffsetManager.afterPropertiesSet();
-			return windowingOffsetManager;
-		}
-		catch (Exception e) {
-			throw new RuntimeException(e);
 		}
 	}
 
@@ -687,66 +603,37 @@ public class KafkaMessageChannelBinder extends
 		}
 	}
 
-	private final class ReceivingHandler extends AbstractReplyProducingMessageHandler {
-
-		private final ExtendedConsumerProperties<KafkaConsumerProperties> consumerProperties;
-
-		private ReceivingHandler(ExtendedConsumerProperties<KafkaConsumerProperties> consumerProperties) {
-			this.consumerProperties = consumerProperties;
-		}
-
-		@Override
-		protected Object handleRequestMessage(Message<?> requestMessage) {
-			if (HeaderMode.embeddedHeaders.equals(consumerProperties.getHeaderMode())) {
-				MessageValues messageValues = extractMessageValues(requestMessage);
-				return MessageBuilder.createMessage(messageValues.getPayload(), new KafkaBinderHeaders(messageValues));
-			}
-			else {
-				return requestMessage;
-			}
-		}
-
-		@Override
-		protected boolean shouldCopyRequestHeaders() {
-			// prevent the message from being copied again in superclass
-			return false;
-		}
-
-		@SuppressWarnings("serial")
-		private final class KafkaBinderHeaders extends MessageHeaders {
-			KafkaBinderHeaders(Map<String, Object> headers) {
-				super(headers, MessageHeaders.ID_VALUE_NONE, -1L);
-			}
-		}
-	}
-
-	private final class SendingHandler extends AbstractMessageHandler {
+	private final class SendingHandler extends AbstractMessageHandler implements Lifecycle {
 
 		private final AtomicInteger roundRobinCount = new AtomicInteger();
 
-		private final String topicName;
+		private ProducerFactory<byte[], byte[]> delegate;
 
+		private String targetTopic;
 		private final ExtendedProducerProperties<KafkaProducerProperties> producerProperties;
-
+		private final PartitionHandler partitionHandler;
+		private final KafkaTemplate<byte[], byte[]> kafkaTemplate;
 		private final int numberOfKafkaPartitions;
 
-		private final ProducerConfiguration<byte[], byte[]> producerConfiguration;
-
-		private final PartitionHandler partitionHandler;
-
-		private SendingHandler(String topicName, ExtendedProducerProperties<KafkaProducerProperties> properties,
-				int numberOfPartitions, ProducerConfiguration<byte[], byte[]> producerConfiguration) {
-			this.topicName = topicName;
-			producerProperties = properties;
-			this.numberOfKafkaPartitions = numberOfPartitions;
+		private SendingHandler(
+				ProducerFactory<byte[], byte[]> delegate, String targetTopic,
+				ExtendedProducerProperties<KafkaProducerProperties> producerProperties,
+				int numberOfPartitions) {
+			Assert.notNull(delegate, "Delegate cannot be null");
+			Assert.hasText(targetTopic, "Target topic cannot be null");
+			this.delegate = delegate;
+			this.targetTopic = targetTopic;
+			this.producerProperties = producerProperties;
 			ConfigurableListableBeanFactory beanFactory = KafkaMessageChannelBinder.this.getBeanFactory();
 			this.setBeanFactory(beanFactory);
-			this.producerConfiguration = producerConfiguration;
-			this.partitionHandler = new PartitionHandler(beanFactory, evaluationContext, partitionSelector, properties);
+			this.numberOfKafkaPartitions = numberOfPartitions;
+			this.kafkaTemplate = new KafkaTemplate<>(delegate);
+
+			this.partitionHandler = new PartitionHandler(beanFactory, evaluationContext, partitionSelector, producerProperties);
 		}
 
 		@Override
-		protected void handleMessageInternal(Message<?> message) throws Exception {
+		public void handleMessageInternal(Message<?> message) throws MessagingException {
 			int targetPartition;
 			if (producerProperties.isPartitioned()) {
 				targetPartition = this.partitionHandler.determinePartition(message);
@@ -754,26 +641,11 @@ public class KafkaMessageChannelBinder extends
 			else {
 				targetPartition = roundRobin() % numberOfKafkaPartitions;
 			}
-			if (HeaderMode.embeddedHeaders.equals(producerProperties.getHeaderMode())) {
-				MessageValues transformed = serializePayloadIfNecessary(message);
-				byte[] messageToSend = embeddedHeadersMessageConverter.embedHeaders(transformed,
-						KafkaMessageChannelBinder.this.headersToMap);
-				producerConfiguration.send(topicName, targetPartition, null, messageToSend);
-			}
-			else if (HeaderMode.raw.equals(producerProperties.getHeaderMode())) {
-				Object contentType = message.getHeaders().get(MessageHeaders.CONTENT_TYPE);
-				if (contentType != null && !contentType.equals(MediaType.APPLICATION_OCTET_STREAM_VALUE)) {
-					logger.error("Raw mode supports only " + MediaType.APPLICATION_OCTET_STREAM_VALUE + " content type"
-							+ message.getPayload().getClass());
-				}
-				if (message.getPayload() instanceof byte[]) {
-					producerConfiguration.send(topicName, targetPartition, null, (byte[]) message.getPayload());
-				}
-				else {
-					logger.error("Raw mode supports only byte[] payloads but value sent was of type "
-							+ message.getPayload().getClass());
-				}
-			}
+//			this.delegate.send(this.targetTopic,
+//					message.getHeaders().get(BinderHeaders.PARTITION_HEADER, Integer.class), null,
+//					(byte[]) message.getPayload());
+
+			kafkaTemplate.send(this.targetTopic, targetPartition, (byte[]) message.getPayload());
 		}
 
 		private int roundRobin() {
@@ -784,20 +656,20 @@ public class KafkaMessageChannelBinder extends
 			return result;
 		}
 
+
+		@Override
+		public void start() {
+
+		}
+
+		@Override
+		public void stop() {
+
+		}
+
+		@Override
+		public boolean isRunning() {
+			return false;
+		}
 	}
-
-//	public enum StartOffset {
-//		earliest(OffsetRequest.EarliestTime()), latest(OffsetRequest.LatestTime());
-//
-//		private final long referencePoint;
-//
-//		StartOffset(long referencePoint) {
-//			this.referencePoint = referencePoint;
-//		}
-//
-//		public long getReferencePoint() {
-//			return referencePoint;
-//		}
-//	}
-
 }

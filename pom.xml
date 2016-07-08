@@ -31,6 +31,7 @@
 		<module>spring-cloud-stream-binder-kafka-0.8</module>
 		<module>spring-cloud-starter-stream-kafka-0.8</module>
 		<module>spring-cloud-stream-binder-kafka-test-support</module>
+		<module>foo-test</module>
 	</modules>
 	<profiles>
 		<profile>

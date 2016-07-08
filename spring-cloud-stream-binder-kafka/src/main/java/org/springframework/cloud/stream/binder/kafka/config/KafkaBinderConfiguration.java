@@ -21,16 +21,14 @@ import org.springframework.boot.autoconfigure.PropertyPlaceholderAutoConfigurati
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.cloud.stream.binder.Binder;
-import org.springframework.cloud.stream.binder.kafka.KafkaBinderHealthIndicator;
-import org.springframework.cloud.stream.binder.kafka.config.KafkaExtendedBindingProperties;
 import org.springframework.cloud.stream.binder.kafka.KafkaMessageChannelBinder;
 import org.springframework.cloud.stream.config.codec.kryo.KryoCodecAutoConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 import org.springframework.integration.codec.Codec;
-import org.springframework.integration.kafka.support.LoggingProducerListener;
-import org.springframework.integration.kafka.support.ProducerListener;
+import org.springframework.kafka.support.LoggingProducerListener;
+import org.springframework.kafka.support.ProducerListener;
 
 /**
  * @author David Turanski
@@ -61,7 +59,7 @@ public class KafkaBinderConfiguration {
 	KafkaMessageChannelBinder kafkaMessageChannelBinder() {
 		KafkaMessageChannelBinder kafkaMessageChannelBinder = new KafkaMessageChannelBinder(configurationProperties);
 		kafkaMessageChannelBinder.setCodec(codec);
-		kafkaMessageChannelBinder.setProducerListener(producerListener);
+		//kafkaMessageChannelBinder.setProducerListener(producerListener);
 		kafkaMessageChannelBinder.setExtendedBindingProperties(kafkaExtendedBindingProperties);
 		return kafkaMessageChannelBinder;
 	}
@@ -72,8 +70,8 @@ public class KafkaBinderConfiguration {
 		return new LoggingProducerListener();
 	}
 
-	@Bean
-	KafkaBinderHealthIndicator healthIndicator(KafkaMessageChannelBinder kafkaMessageChannelBinder) {
-		return new KafkaBinderHealthIndicator(kafkaMessageChannelBinder, configurationProperties);
-	}
+//	@Bean
+//	KafkaBinderHealthIndicator healthIndicator(KafkaMessageChannelBinder kafkaMessageChannelBinder) {
+//		return new KafkaBinderHealthIndicator(kafkaMessageChannelBinder, configurationProperties);
+//	}
 }

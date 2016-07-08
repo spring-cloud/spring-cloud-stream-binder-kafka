@@ -34,17 +34,14 @@ import org.junit.Test;
 import org.springframework.beans.DirectFieldAccessor;
 import org.springframework.cloud.stream.binder.BinderException;
 import org.springframework.cloud.stream.binder.Binding;
-import org.springframework.cloud.stream.binder.ConsumerProperties;
 import org.springframework.cloud.stream.binder.ExtendedConsumerProperties;
 import org.springframework.cloud.stream.binder.ExtendedProducerProperties;
 import org.springframework.cloud.stream.binder.PartitionCapableBinderTests;
-import org.springframework.cloud.stream.binder.ProducerProperties;
 import org.springframework.cloud.stream.binder.Spy;
 import org.springframework.cloud.stream.binder.TestUtils;
 import org.springframework.cloud.stream.binder.kafka.config.KafkaBinderConfigurationProperties;
-import org.springframework.cloud.stream.binder.kafka.config.KafkaProducerProperties;
 import org.springframework.cloud.stream.binder.kafka.config.KafkaConsumerProperties;
-import org.springframework.cloud.stream.binder.kafka.config.KafkaExtendedBindingProperties;
+import org.springframework.cloud.stream.binder.kafka.config.KafkaProducerProperties;
 import org.springframework.cloud.stream.binder.test.junit.kafka.KafkaTestSupport;
 import org.springframework.context.support.GenericApplicationContext;
 import org.springframework.integration.channel.DirectChannel;
@@ -301,7 +298,7 @@ public class KafkaBinderTests extends
 			DirectChannel moduleOutputChannel = new DirectChannel();
 			QueueChannel moduleInputChannel = new QueueChannel();
 			ExtendedProducerProperties<KafkaProducerProperties> producerProperties = createProducerProperties();
-			producerProperties.getExtension().setCompressionType(KafkaProducerProperties.CompressionType.valueOf(codec.toString()));
+			producerProperties.getExtension().setCompressionType(fromProducerMetadataCompressionType(codec));
 			Binding<MessageChannel> producerBinding = binder.bindProducer("foo.0", moduleOutputChannel,
 					producerProperties);
 			Binding<MessageChannel> consumerBinding = binder.bindConsumer("foo.0", "test", moduleInputChannel,
@@ -768,6 +765,15 @@ public class KafkaBinderTests extends
 		TopicMetadata topicMetadata = AdminUtils.fetchTopicMetadataFromZk(testTopicName,
 				kafkaTestSupport.getZkClient());
 		assertThat(topicMetadata.partitionsMetadata().size()).isEqualTo(6);
+	}
+
+	KafkaProducerProperties.CompressionType fromProducerMetadataCompressionType(
+			ProducerMetadata.CompressionType compressionType) {
+		switch  (compressionType) {
+			case snappy : return KafkaProducerProperties.CompressionType.snappy;
+			case gzip	: return KafkaProducerProperties.CompressionType.gzip;
+			default: return KafkaProducerProperties.CompressionType.none;
+		}
 	}
 
 	private static final class FailingInvocationCountingMessageHandler implements MessageHandler {

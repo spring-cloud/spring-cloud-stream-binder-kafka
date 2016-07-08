@@ -4,7 +4,7 @@
 
 	<artifactId>spring-cloud-stream-binder-kafka-0.8</artifactId>
 	<packaging>jar</packaging>
-	<name>spring-cloud-stream-binder-kafka</name>
+	<name>spring-cloud-stream-binder-kafka-0.8</name>
 	<description>Kafka binder implementation</description>
 
 	<parent>

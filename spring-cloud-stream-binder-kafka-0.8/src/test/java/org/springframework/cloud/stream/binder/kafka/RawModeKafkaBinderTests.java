@@ -16,6 +16,8 @@
 
 package org.springframework.cloud.stream.binder.kafka;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import java.util.Arrays;
 
 import org.junit.Ignore;
@@ -24,11 +26,9 @@ import org.junit.Test;
 import org.springframework.cloud.stream.binder.Binding;
 import org.springframework.cloud.stream.binder.ExtendedConsumerProperties;
 import org.springframework.cloud.stream.binder.ExtendedProducerProperties;
-import org.springframework.cloud.stream.binder.kafka.config.KafkaBinderConfigurationProperties;
-import org.springframework.cloud.stream.binder.kafka.config.KafkaProducerProperties;
-import org.springframework.cloud.stream.binder.kafka.config.KafkaConsumerProperties;
-import org.springframework.cloud.stream.binder.kafka.config.KafkaExtendedBindingProperties;
 import org.springframework.cloud.stream.binder.HeaderMode;
+import org.springframework.cloud.stream.binder.kafka.config.KafkaConsumerProperties;
+import org.springframework.cloud.stream.binder.kafka.config.KafkaProducerProperties;
 import org.springframework.integration.IntegrationMessageHeaderAccessor;
 import org.springframework.integration.channel.DirectChannel;
 import org.springframework.integration.channel.QueueChannel;
@@ -37,8 +37,6 @@ import org.springframework.integration.support.MessageBuilder;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.support.GenericMessage;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * @author Marius Bogoevici
@@ -114,7 +112,7 @@ public class RawModeKafkaBinderTests extends KafkaBinderTests {
 		output.setBeanName("test.output");
 		Binding<MessageChannel> outputBinding = binder.bindProducer("part.0", output, properties);
 		try {
-			AbstractEndpoint endpoint = extractEndpoint(outputBinding);
+			AbstractEndpoint endpoint = (AbstractEndpoint)extractEndpoint(outputBinding);
 			assertThat(getEndpointRouting(endpoint)).contains("part.0-' + headers['partition']");
 		}
 		catch (UnsupportedOperationException ignored) {

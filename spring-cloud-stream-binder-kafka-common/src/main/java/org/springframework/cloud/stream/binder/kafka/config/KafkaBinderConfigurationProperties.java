@@ -23,6 +23,7 @@ import org.springframework.util.StringUtils;
  * @author David Turanski
  * @author Ilayaperumal Gopinathan
  * @author Marius Bogoevici
+ * @author Soby Chacko
  */
 @ConfigurationProperties(prefix = "spring.cloud.stream.kafka.binder")
 public class KafkaBinderConfigurationProperties {
@@ -70,6 +71,12 @@ public class KafkaBinderConfigurationProperties {
 	private int minPartitionCount = 1;
 
 	private int queueSize = 8192;
+
+	private String consumerGroup;
+
+	public String getConsumerGroup() {
+		return consumerGroup;
+	}
 
 	public String getZkConnectionString() {
 		return toConnectionString(this.zkNodes, this.defaultZkPort);
@@ -240,4 +247,9 @@ public class KafkaBinderConfigurationProperties {
 	public void setSocketBufferSize(int socketBufferSize) {
 		this.socketBufferSize = socketBufferSize;
 	}
+
+	public void setConsumerGroup(String consumerGroup) {
+		this.consumerGroup = consumerGroup;
+	}
+
 }
