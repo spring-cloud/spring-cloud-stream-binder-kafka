@@ -123,7 +123,7 @@ public class KafkaBinderTests extends
 		String[] foo = new String[bAddresses.size()];
 		binderConfiguration.setBrokers(bAddresses.toArray(foo));
 		binderConfiguration.setZkNodes(embeddedKafka.getZookeeperConnectionString());
-		binderConfiguration.setConsumerGroup("testGroup");
+		//binderConfiguration.setConsumerGroup("testGroup");
 		return binderConfiguration;
 	}
 

@@ -26,8 +26,7 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Map;
 import java.util.Properties;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.UUID;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -103,6 +102,7 @@ import scala.collection.Seq;
 
 /**
  * A {@link Binder} that uses Kafka as the underlying middleware.
+ *
  * @author Eric Bottard
  * @author Marius Bogoevici
  * @author Ilayaperumal Gopinathan
@@ -135,8 +135,6 @@ public class KafkaMessageChannelBinder extends
 
 	// -------- Default values for properties -------
 
-	private ConsumerFactory<byte[], byte[]> consumerFactory;
-
 	private ProducerListener producerListener;
 
 	private volatile Producer<byte[], byte[]> dlqProducer;
@@ -166,6 +164,7 @@ public class KafkaMessageChannelBinder extends
 
 	/**
 	 * Retry configuration for operations such as validating topic creation
+	 *
 	 * @param metadataRetryOperations the retry configuration
 	 */
 	public void setMetadataRetryOperations(RetryOperations metadataRetryOperations) {
@@ -178,16 +177,6 @@ public class KafkaMessageChannelBinder extends
 
 	@Override
 	public void onInit() throws Exception {
-		Map<String, Object> props = new HashMap<>();
-		props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, configurationProperties.getKafkaConnectionString());
-		props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, true);
-		props.put(ConsumerConfig.GROUP_ID_CONFIG, configurationProperties.getConsumerGroup());
-		props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG,
-				"earliest");
-		Deserializer<byte[]> valueDecoder = new ByteArrayDeserializer();
-		Deserializer<byte[]> keyDecoder = new ByteArrayDeserializer();
-
-		consumerFactory = new DefaultKafkaConsumerFactory<>(props, keyDecoder, valueDecoder);
 
 		if (metadataRetryOperations == null) {
 			RetryTemplate retryTemplate = new RetryTemplate();
@@ -283,6 +272,22 @@ public class KafkaMessageChannelBinder extends
 	@SuppressWarnings("unchecked")
 	protected AbstractEndpoint createConsumerEndpoint(String name, String group, Object queue,
 													  MessageChannel inputChannel, ExtendedConsumerProperties<KafkaConsumerProperties> properties) {
+		boolean anonymous = !StringUtils.hasText(group);
+		Assert.isTrue(!anonymous || !properties.getExtension().isEnableDlq(),
+				"DLQ support is not available for anonymous subscriptions");
+		String consumerGroup = anonymous ? "anonymous." + UUID.randomUUID().toString() : group;
+
+		Map<String, Object> props = new HashMap<>();
+		props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, configurationProperties.getKafkaConnectionString());
+		props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, true);
+		props.put(ConsumerConfig.GROUP_ID_CONFIG, consumerGroup);
+		props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG,
+				anonymous ? "latest" : "earliest");
+		props.put(ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG, 100);
+		Deserializer<byte[]> valueDecoder = new ByteArrayDeserializer();
+		Deserializer<byte[]> keyDecoder = new ByteArrayDeserializer();
+
+		ConsumerFactory<byte[], byte[]> consumerFactory = new DefaultKafkaConsumerFactory<>(props, keyDecoder, valueDecoder);
 
 		Collection<PartitionInfo> listenedPartitions = (Collection<PartitionInfo>) queue;
 		Assert.isTrue(!CollectionUtils.isEmpty(listenedPartitions), "A list of partitions must be provided");
@@ -290,19 +295,16 @@ public class KafkaMessageChannelBinder extends
 		final TopicPartitionInitialOffset[] topicPartitionInitialOffsets =
 				new TopicPartitionInitialOffset[listenedPartitions.size()];
 		int i = 0;
-		for (PartitionInfo partition : listenedPartitions){
+		for (PartitionInfo partition : listenedPartitions) {
+
 			topicPartitionInitialOffsets[i++] = new TopicPartitionInitialOffset(partition.topic(),
 					partition.partition());
 		}
 
-
 		int concurrency = Math.min(properties.getConcurrency(), listenedPartitions.size());
 
-		final ExecutorService dispatcherTaskExecutor =
-				Executors.newFixedThreadPool(concurrency, DAEMON_THREAD_FACTORY);
-
 		final ContainerProperties containerProperties = new ContainerProperties(topicPartitionInitialOffsets);
-		//final ContainerProperties containerProperties = new ContainerProperties(name);
+
 		final ConcurrentMessageListenerContainer<byte[], byte[]> messageListenerContainer = new ConcurrentMessageListenerContainer<>(
 				consumerFactory, containerProperties);
 		messageListenerContainer.setConcurrency(concurrency);
@@ -378,10 +380,10 @@ public class KafkaMessageChannelBinder extends
 			messageListenerContainer.getContainerProperties().setErrorHandler(new ErrorHandler() {
 				@Override
 				public void handle(Exception thrownException, final ConsumerRecord message) {
-					final byte[] key = message.key() != null ? Utils.toArray(ByteBuffer.wrap((byte[])message.key()))
+					final byte[] key = message.key() != null ? Utils.toArray(ByteBuffer.wrap((byte[]) message.key()))
 							: null;
 					final byte[] payload = message.value() != null
-							? Utils.toArray(ByteBuffer.wrap((byte[])message.value())) : null;
+							? Utils.toArray(ByteBuffer.wrap((byte[]) message.value())) : null;
 					dlqProducer.send(new ProducerRecord<>(dlqTopic, key, payload), new Callback() {
 						@Override
 						public void onCompletion(RecordMetadata metadata, Exception exception) {
@@ -404,8 +406,6 @@ public class KafkaMessageChannelBinder extends
 				}
 			});
 		}
-
-
 		kafkaMessageDrivenChannelAdapter.start();
 		return kafkaMessageDrivenChannelAdapter;
 	}
@@ -428,6 +428,12 @@ public class KafkaMessageChannelBinder extends
 
 		topicsInUse.put(name, partitions);
 
+		ProducerFactory<byte[], byte[]> producerFB = getProducerFactory(producerProperties);
+
+		return new SendingHandler(producerFB, name, producerProperties, partitions.size());
+	}
+
+	private ProducerFactory<byte[], byte[]> getProducerFactory(ExtendedProducerProperties<KafkaProducerProperties> producerProperties) {
 		Map<String, Object> props = new HashMap<>();
 		props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, configurationProperties.getKafkaConnectionString());
 		props.put(ProducerConfig.RETRIES_CONFIG, 0);
@@ -441,17 +447,7 @@ public class KafkaMessageChannelBinder extends
 				String.valueOf(producerProperties.getExtension().getBatchTimeout()));
 		props.put(ProducerConfig.COMPRESSION_TYPE_CONFIG, producerProperties.getExtension().getCompressionType().toString());
 
-		ProducerFactory<byte[], byte[]> producerFB = new DefaultKafkaProducerFactory<>(props);
-
-//		final ProducerConfiguration<byte[], byte[]> producerConfiguration = new ProducerConfiguration<>(
-//				producerMetadata, producerFB.getObject());
-//		producerConfiguration.setProducerListener(this.producerListener);
-//		KafkaProducerContext kafkaProducerContext = new KafkaProducerContext();
-//		kafkaProducerContext.setProducerConfigurations(
-//				Collections.<String, ProducerConfiguration<?, ?>>singletonMap(name, producerConfiguration));
-//		return new ProducerConfigurationMessageHandler(producerConfiguration, name);
-//
-		return new SendingHandler(producerFB, name, producerProperties, partitions.size());
+		return new DefaultKafkaProducerFactory<>(props);
 	}
 
 	@Override
@@ -535,7 +531,13 @@ public class KafkaMessageChannelBinder extends
 
 							@Override
 							public Collection<PartitionInfo> doWithRetry(RetryContext context) throws Exception {
-								Collection<PartitionInfo> partitions = consumerFactory.createConsumer().partitionsFor(topicName);
+								//ConsumerFactory<byte[], byte[]> consumerFactory = getConsumerFactory(null);
+								//Collection<PartitionInfo> partitions = consumerFactory.createConsumer().partitionsFor(topicName);
+
+								Collection<PartitionInfo> partitions =
+										getProducerFactory(new ExtendedProducerProperties<>(new KafkaProducerProperties()))
+												.createProducer().partitionsFor(topicName);
+
 								// do a sanity check on the partition set
 								if (partitions.size() < partitionCount) {
 									throw new IllegalStateException("The number of expected partitions was: "
@@ -641,10 +643,6 @@ public class KafkaMessageChannelBinder extends
 			else {
 				targetPartition = roundRobin() % numberOfKafkaPartitions;
 			}
-//			this.delegate.send(this.targetTopic,
-//					message.getHeaders().get(BinderHeaders.PARTITION_HEADER, Integer.class), null,
-//					(byte[]) message.getPayload());
-
 			kafkaTemplate.send(this.targetTopic, targetPartition, (byte[]) message.getPayload());
 		}
 
