@@ -89,7 +89,7 @@ System.out.println("Unbound done!!!!!");
 			System.out.println("foox:  " + received);
 			received = fromKafka.receive(1000);
 		}
-		System.out.println("ice-cream");
+		System.out.println("done!!");
 		context.close();
 		System.exit(0);
 	}
