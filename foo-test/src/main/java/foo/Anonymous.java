@@ -1,4 +1,4 @@
-package org.springframework.integration.samples.kafka;
+package foo;
 
 import java.util.Properties;
 
@@ -32,12 +32,11 @@ import kafka.common.TopicExistsException;
 import kafka.utils.ZKStringSerializer$;
 import kafka.utils.ZkUtils;
 
-
 /**
  * @author Soby Chacko
  */
 @SpringBootApplication
-public class ApplicationFoo {
+public class Anonymous {
 
 	@Value("${kafka.topic}")
 	private String topic;
@@ -60,21 +59,37 @@ public class ApplicationFoo {
 	public static void main(String[] args) throws Exception {
 		System.out.println("hello world!!!");
 		ConfigurableApplicationContext context
-				= new SpringApplicationBuilder(ApplicationFoo.class)
+				= new SpringApplicationBuilder(Anonymous.class)
 				.web(false)
 				.run(args);
 		MessageChannel toKafka = context.getBean("toKafka", MessageChannel.class);
-		for (int i = 0; i < 100 ; i++) {
+		for (int i = 0; i < 10 ; i++) {
 			toKafka.send(new GenericMessage<>("foo-sobychacko" + i));
 		}
 		PollableChannel fromKafka = context.getBean("received", PollableChannel.class);
-		Message<?> received = fromKafka.receive(10000);
+		Message<?> received = fromKafka.receive(1000);
 		while (received != null) {
 			System.out.println("foox:  " + received);
-			received = fromKafka.receive(10000);
+			received = fromKafka.receive(1000);
 		}
 
 		bindingConsumer.unbind();
+
+System.out.println("Unbound done!!!!!");
+		ExtendedConsumerProperties<KafkaConsumerProperties> properties = new ExtendedConsumerProperties<>(new KafkaConsumerProperties());
+		bindingConsumer = binder.bindConsumer("foobarxyz", null, fromKafka,
+				properties);
+
+
+		for (int i = 0; i < 10 ; i++) {
+			toKafka.send(new GenericMessage<>("foo-sobychacko" + i));
+		}
+		received = fromKafka.receive(1000);
+		while (received != null) {
+			System.out.println("foox:  " + received);
+			received = fromKafka.receive(1000);
+		}
+		System.out.println("ice-cream");
 		context.close();
 		System.exit(0);
 	}
@@ -84,7 +99,7 @@ public class ApplicationFoo {
 		KafkaBinderConfigurationProperties binderConfiguration = new KafkaBinderConfigurationProperties();
 		binderConfiguration.setBrokers(this.brokerAddress);
 		binderConfiguration.setZkNodes(this.zookeeperConnect);
-		binderConfiguration.setConsumerGroup("foo-group");
+		//binderConfiguration.setConsumerGroup("foo-group");
 		return binderConfiguration;
 	}
 
@@ -102,7 +117,7 @@ public class ApplicationFoo {
 		//properties.setHeaderMode(HeaderMode.raw);
 
 		binder.bindProducer("foobarxyz", toKafka(), createProducerProperties());
-		bindingConsumer = binder.bindConsumer("foobarxyz", "foo-group", received(),
+		bindingConsumer = binder.bindConsumer("foobarxyz", null, received(),
 				properties);
 
 		return binder;
@@ -176,5 +191,4 @@ public class ApplicationFoo {
 		}
 
 	}
-
 }
