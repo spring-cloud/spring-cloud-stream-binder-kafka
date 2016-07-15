@@ -22,8 +22,6 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.Map;
 import java.util.Properties;
 import java.util.UUID;
@@ -53,7 +51,7 @@ import org.springframework.cloud.stream.binder.kafka.config.KafkaConsumerPropert
 import org.springframework.cloud.stream.binder.kafka.config.KafkaExtendedBindingProperties;
 import org.springframework.cloud.stream.binder.kafka.config.KafkaProducerProperties;
 import org.springframework.context.Lifecycle;
-import org.springframework.integration.endpoint.AbstractEndpoint;
+import org.springframework.integration.core.MessageProducer;
 import org.springframework.integration.kafka.core.ConnectionFactory;
 import org.springframework.integration.kafka.core.DefaultConnectionFactory;
 import org.springframework.integration.kafka.core.KafkaMessage;
@@ -67,7 +65,6 @@ import org.springframework.integration.kafka.listener.KafkaMessageListenerContai
 import org.springframework.integration.kafka.listener.KafkaNativeOffsetManager;
 import org.springframework.integration.kafka.listener.MessageListener;
 import org.springframework.integration.kafka.listener.OffsetManager;
-import org.springframework.integration.kafka.support.KafkaHeaders;
 import org.springframework.integration.kafka.support.KafkaProducerContext;
 import org.springframework.integration.kafka.support.ProducerConfiguration;
 import org.springframework.integration.kafka.support.ProducerFactoryBean;
@@ -77,7 +74,6 @@ import org.springframework.integration.kafka.support.ZookeeperConnect;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.MessageHandler;
-import org.springframework.messaging.MessageHeaders;
 import org.springframework.messaging.MessagingException;
 import org.springframework.retry.RetryCallback;
 import org.springframework.retry.RetryContext;
@@ -280,8 +276,8 @@ public class KafkaMessageChannelBinder extends
 
 	@Override
 	@SuppressWarnings("unchecked")
-	protected AbstractEndpoint createConsumerEndpoint(String name, String group, Object queue,
-													  MessageChannel inputChannel, ExtendedConsumerProperties<KafkaConsumerProperties> properties) {
+	protected MessageProducer createConsumerEndpoint(String name, String group, Object queue,
+													 ExtendedConsumerProperties<KafkaConsumerProperties> properties) {
 
 		Collection<Partition> listenedPartitions = (Collection<Partition>) queue;
 		Assert.isTrue(!CollectionUtils.isEmpty(listenedPartitions), "A list of partitions must be provided");
@@ -340,7 +336,6 @@ public class KafkaMessageChannelBinder extends
 		kafkaMessageDrivenChannelAdapter.setBeanFactory(this.getBeanFactory());
 		kafkaMessageDrivenChannelAdapter.setKeyDecoder(new DefaultDecoder(null));
 		kafkaMessageDrivenChannelAdapter.setPayloadDecoder(new DefaultDecoder(null));
-		kafkaMessageDrivenChannelAdapter.setOutputChannel(inputChannel);
 		kafkaMessageDrivenChannelAdapter.setAutoCommitOffset(properties.getExtension().isAutoCommitOffset());
 		kafkaMessageDrivenChannelAdapter.afterPropertiesSet();
 
@@ -435,20 +430,26 @@ public class KafkaMessageChannelBinder extends
 				}
 			});
 		}
-
-		kafkaMessageDrivenChannelAdapter.start();
 		return kafkaMessageDrivenChannelAdapter;
 	}
 
+	ProducerMetadata.CompressionType fromKafkaProducerPropertiesCompressionType(
+			KafkaProducerProperties.CompressionType compressionType) {
+		switch  (compressionType) {
+			case snappy : return ProducerMetadata.CompressionType.snappy;
+			case gzip	: return ProducerMetadata.CompressionType.gzip;
+			default: return ProducerMetadata.CompressionType.none;
+		}
+	}
+
 	@Override
-	protected MessageHandler createProducerMessageHandler(final String name,
+	protected MessageHandler createProducerMessageHandler(final String destination,
 														  ExtendedProducerProperties<KafkaProducerProperties> producerProperties) throws Exception {
-		ProducerMetadata<byte[], byte[]> producerMetadata = new ProducerMetadata<>(name, byte[].class, byte[].class,
+		ProducerMetadata<byte[], byte[]> producerMetadata = new ProducerMetadata<>(destination, byte[].class,
+				byte[].class,
 				BYTE_ARRAY_SERIALIZER, BYTE_ARRAY_SERIALIZER);
 		producerMetadata.setSync(producerProperties.getExtension().isSync());
-
 		KafkaProducerProperties.CompressionType compressionType = producerProperties.getExtension().getCompressionType();
-
 		producerMetadata.setCompressionType(fromKafkaProducerPropertiesCompressionType(compressionType));
 		producerMetadata.setBatchBytes(producerProperties.getExtension().getBufferSize());
 		Properties additional = new Properties();
@@ -462,17 +463,8 @@ public class KafkaMessageChannelBinder extends
 		producerConfiguration.setProducerListener(this.producerListener);
 		KafkaProducerContext kafkaProducerContext = new KafkaProducerContext();
 		kafkaProducerContext.setProducerConfigurations(
-				Collections.<String, ProducerConfiguration<?, ?>>singletonMap(name, producerConfiguration));
-		return new ProducerConfigurationMessageHandler(producerConfiguration, name);
-	}
-
-	ProducerMetadata.CompressionType fromKafkaProducerPropertiesCompressionType(
-			KafkaProducerProperties.CompressionType compressionType) {
-		switch  (compressionType) {
-			case snappy : return ProducerMetadata.CompressionType.snappy;
-			case gzip	: return ProducerMetadata.CompressionType.gzip;
-			default: return ProducerMetadata.CompressionType.none;
-		}
+				Collections.<String, ProducerConfiguration<?, ?>>singletonMap(destination, producerConfiguration));
+		return new ProducerConfigurationMessageHandler(producerConfiguration, destination);
 	}
 
 	@Override
@@ -643,18 +635,6 @@ public class KafkaMessageChannelBinder extends
 			return original;
 		}
 		return original.substring(0, maxCharacters) + "...";
-	}
-
-	@Override
-	public void doManualAck(LinkedList<MessageHeaders> messageHeadersList) {
-		Iterator<MessageHeaders> iterator = messageHeadersList.iterator();
-		while (iterator.hasNext()) {
-			MessageHeaders headers = iterator.next();
-			Acknowledgment acknowledgment = (Acknowledgment) headers.get(KafkaHeaders.ACKNOWLEDGMENT);
-			Assert.notNull(acknowledgment,
-					"Acknowledgement shouldn't be null when acknowledging kafka message " + "manually.");
-			acknowledgment.acknowledge();
-		}
 	}
 
 	public enum StartOffset {

@@ -80,6 +80,8 @@ System.out.println("Unbound done!!!!!");
 		bindingConsumer = binder.bindConsumer("foobarxyz", null, fromKafka,
 				properties);
 
+		Thread.sleep(5000L);
+
 
 		for (int i = 0; i < 10 ; i++) {
 			toKafka.send(new GenericMessage<>("foo-sobychacko" + i));
