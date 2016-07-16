@@ -32,7 +32,6 @@ import org.springframework.cloud.stream.binder.kafka.config.KafkaProducerPropert
 import org.springframework.integration.IntegrationMessageHeaderAccessor;
 import org.springframework.integration.channel.DirectChannel;
 import org.springframework.integration.channel.QueueChannel;
-import org.springframework.integration.endpoint.AbstractEndpoint;
 import org.springframework.integration.support.MessageBuilder;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
@@ -56,7 +55,7 @@ public class RawModeKafkaBinderTests extends KafkaBinderTests {
 		properties.setPartitionSelectorClass(RawKafkaPartitionTestSupport.class);
 		properties.setPartitionCount(6);
 
-		DirectChannel output = new DirectChannel();
+		DirectChannel output = createBindableChannel("output", createProducerBindingProperties(properties));
 		output.setBeanName("test.output");
 		Binding<MessageChannel> outputBinding = binder.bindProducer("partJ.0", output, properties);
 
@@ -108,16 +107,17 @@ public class RawModeKafkaBinderTests extends KafkaBinderTests {
 		properties.setPartitionCount(6);
 		properties.setHeaderMode(HeaderMode.raw);
 
-		DirectChannel output = new DirectChannel();
+		DirectChannel output = createBindableChannel("output", createProducerBindingProperties(properties));
 		output.setBeanName("test.output");
 		Binding<MessageChannel> outputBinding = binder.bindProducer("part.0", output, properties);
 		try {
-			AbstractEndpoint endpoint = (AbstractEndpoint)extractEndpoint(outputBinding);
-			assertThat(getEndpointRouting(endpoint)).contains("part.0-' + headers['partition']");
+			Object endpoint = extractEndpoint(outputBinding);
+			assertThat(getEndpointRouting(endpoint))
+					.contains(getExpectedRoutingBaseDestination("part.0", "test") + "-' + headers['partition']");
 		}
 		catch (UnsupportedOperationException ignored) {
-
 		}
+
 
 		ExtendedConsumerProperties<KafkaConsumerProperties> consumerProperties = createConsumerProperties();
 		consumerProperties.setConcurrency(2);

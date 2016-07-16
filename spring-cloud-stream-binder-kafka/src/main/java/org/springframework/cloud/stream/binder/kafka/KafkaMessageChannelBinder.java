@@ -288,8 +288,8 @@ public class KafkaMessageChannelBinder extends
 
 		int concurrency = Math.min(properties.getConcurrency(), listenedPartitions.size());
 
-		final ContainerProperties containerProperties = anonymous ? new ContainerProperties(topicPartitionInitialOffsets)
-				: new ContainerProperties(name);
+		final ContainerProperties containerProperties = anonymous ? new ContainerProperties(name)
+				: new ContainerProperties(topicPartitionInitialOffsets);
 
 		final ConcurrentMessageListenerContainer<byte[], byte[]> messageListenerContainer = new ConcurrentMessageListenerContainer(
 				consumerFactory, containerProperties) {

@@ -15,7 +15,7 @@
 
 	<properties>
 		<kafka.version>0.9.0.1</kafka.version>
-		<spring-kafka.version>1.0.0.BUILD-SNAPSHOT</spring-kafka.version>
+		<spring-kafka.version>1.0.3.BUILD-SNAPSHOT</spring-kafka.version>
 		<spring-integration-kafka.version>2.0.1.BUILD-SNAPSHOT</spring-integration-kafka.version>
 		<rxjava-math.version>1.0.0</rxjava-math.version>
 	</properties>
