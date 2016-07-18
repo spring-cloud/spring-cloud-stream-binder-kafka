@@ -296,7 +296,8 @@ public class KafkaBinderTests extends
 			ExtendedProducerProperties<KafkaProducerProperties> producerProperties = createProducerProperties();
 			producerProperties.getExtension().setCompressionType(codec);
 
-			DirectChannel moduleOutputChannel = createBindableChannel("input", createProducerBindingProperties(producerProperties));
+			DirectChannel moduleOutputChannel = createBindableChannel("output",
+					createProducerBindingProperties(producerProperties));
 			QueueChannel moduleInputChannel = new QueueChannel();
 			Binding<MessageChannel> producerBinding = binder.bindProducer("foo.0", moduleOutputChannel,
 					producerProperties);

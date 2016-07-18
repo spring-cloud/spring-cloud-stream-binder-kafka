@@ -459,9 +459,11 @@ public class KafkaMessageChannelBinder extends
 		}
 		validateTopicName(name);
 		Collection<Partition> partitions = ensureTopicCreated(name, properties.getPartitionCount());
+		// If the topic already exists, and it has a larger number of partitions than the one set in `partitionCount`,
+		// we will use the existing partition count of the topic instead of the user setting.
 		if (properties.getPartitionCount() < partitions.size()) {
 			if (this.logger.isInfoEnabled()) {
-				this.logger.info("The `partitionCount` of the producer for topic " + name + " is "
+				this.logger.info("The `partitionCount` setting of the producer for topic " + name + " is "
 						+ properties.getPartitionCount() + ", smaller than the actual partition count of "
 						+ partitions.size() + " of the topic. The larger number will be used instead.");
 			}
@@ -471,7 +473,8 @@ public class KafkaMessageChannelBinder extends
 
 	/**
 	 * Creates a Kafka topic if needed, or try to increase its partition count to the
-	 * desired number.
+	 * desired number. If a topic with a larger number of partitions already exists,
+	 * the partition count remains unchanged.
 	 */
 	private Collection<Partition> ensureTopicCreated(final String topicName, final int partitionCount) {
 
@@ -641,7 +644,7 @@ public class KafkaMessageChannelBinder extends
 
 		private String targetTopic;
 
-		private boolean running = true;
+		private boolean running;
 
 		private ProducerConfigurationMessageHandler(
 				ProducerConfiguration<byte[], byte[]> delegate, String targetTopic) {
@@ -654,6 +657,7 @@ public class KafkaMessageChannelBinder extends
 
 		@Override
 		public void start() {
+			this.running = true;
 		}
 
 		@Override
