@@ -104,7 +104,7 @@ import org.springframework.util.StringUtils;
  */
 public class KafkaMessageChannelBinder extends
 		AbstractMessageChannelBinder<ExtendedConsumerProperties<KafkaConsumerProperties>,
-				ExtendedProducerProperties<KafkaProducerProperties>>
+				ExtendedProducerProperties<KafkaProducerProperties>, Collection<Partition>>
 		implements ExtendedPropertiesBinder<MessageChannel, KafkaConsumerProperties, KafkaProducerProperties>,
 		DisposableBean {
 
@@ -242,7 +242,7 @@ public class KafkaMessageChannelBinder extends
 	}
 
 	@Override
-	protected Object createConsumerDestinationIfNecessary(String name, String group,
+	protected Collection<Partition> createConsumerDestinationIfNecessary(String name, String group,
 			ExtendedConsumerProperties<KafkaConsumerProperties> properties) {
 		validateTopicName(name);
 		if (properties.getInstanceCount() == 0) {
@@ -272,18 +272,17 @@ public class KafkaMessageChannelBinder extends
 
 	@Override
 	@SuppressWarnings("unchecked")
-	protected MessageProducer createConsumerEndpoint(String name, String group, Object queue,
+	protected MessageProducer createConsumerEndpoint(String name, String group, Collection<Partition> destination,
 			ExtendedConsumerProperties<KafkaConsumerProperties> properties) {
 
-		Collection<Partition> listenedPartitions = (Collection<Partition>) queue;
-		Assert.isTrue(!CollectionUtils.isEmpty(listenedPartitions), "A list of partitions must be provided");
+		Assert.isTrue(!CollectionUtils.isEmpty(destination), "A list of partitions must be provided");
 
-		int concurrency = Math.min(properties.getConcurrency(), listenedPartitions.size());
+		int concurrency = Math.min(properties.getConcurrency(), destination.size());
 
 		final ExecutorService dispatcherTaskExecutor =
 				Executors.newFixedThreadPool(concurrency, DAEMON_THREAD_FACTORY);
 		final KafkaMessageListenerContainer messageListenerContainer = new KafkaMessageListenerContainer(
-				this.connectionFactory, listenedPartitions.toArray(new Partition[listenedPartitions.size()])) {
+				this.connectionFactory, destination.toArray(new Partition[destination.size()])) {
 
 			@Override
 			public void stop(Runnable callback) {
@@ -302,7 +301,7 @@ public class KafkaMessageChannelBinder extends
 
 		if (this.logger.isDebugEnabled()) {
 			this.logger.debug(
-					"Listened partitions: " + StringUtils.collectionToCommaDelimitedString(listenedPartitions));
+					"Listened partitions: " + StringUtils.collectionToCommaDelimitedString(destination));
 		}
 
 		boolean anonymous = !StringUtils.hasText(group);
@@ -315,7 +314,7 @@ public class KafkaMessageChannelBinder extends
 				: (anonymous ? OffsetRequest.LatestTime() : OffsetRequest.EarliestTime());
 		OffsetManager offsetManager = createOffsetManager(consumerGroup, referencePoint);
 		if (properties.getExtension().isResetOffsets()) {
-			offsetManager.resetOffsets(listenedPartitions);
+			offsetManager.resetOffsets(destination);
 		}
 		messageListenerContainer.setOffsetManager(offsetManager);
 		messageListenerContainer.setQueueSize(this.configurationProperties.getQueueSize());
@@ -334,11 +333,10 @@ public class KafkaMessageChannelBinder extends
 		kafkaMessageDrivenChannelAdapter.setPayloadDecoder(new DefaultDecoder(null));
 		kafkaMessageDrivenChannelAdapter.setAutoCommitOffset(properties.getExtension().isAutoCommitOffset());
 		kafkaMessageDrivenChannelAdapter.afterPropertiesSet();
-
-		// we need to wrap the adapter listener into a retrying listener so that the retry
-		// logic is applied before the ErrorHandler is executed
-		final RetryTemplate retryTemplate = buildRetryTemplateIfRetryEnabled(properties);
-		if (retryTemplate != null) {
+		if (properties.getMaxAttempts() > 1) {
+			// we need to wrap the adapter listener into a retrying listener so that the retry
+			// logic is applied before the ErrorHandler is executed
+			final RetryTemplate retryTemplate = buildRetryTemplate(properties);
 			if (properties.getExtension().isAutoCommitOffset()) {
 				final MessageListener originalMessageListener = (MessageListener) messageListenerContainer
 						.getMessageListener();
