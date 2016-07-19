@@ -21,6 +21,8 @@ package org.springframework.cloud.stream.binder.kafka.config;
  */
 public class KafkaConsumerProperties {
 
+	private boolean autoRebalanceEnabled = true;
+
 	private boolean autoCommitOffset = true;
 
 	private Boolean autoCommitOnError;
@@ -79,6 +81,14 @@ public class KafkaConsumerProperties {
 
 	public void setRecoveryInterval(int recoveryInterval) {
 		this.recoveryInterval = recoveryInterval;
+	}
+
+	public boolean isAutoRebalanceEnabled() {
+		return autoRebalanceEnabled;
+	}
+
+	public void setAutoRebalanceEnabled(boolean autoRebalanceEnabled) {
+		this.autoRebalanceEnabled = autoRebalanceEnabled;
 	}
 
 	public enum StartOffset {

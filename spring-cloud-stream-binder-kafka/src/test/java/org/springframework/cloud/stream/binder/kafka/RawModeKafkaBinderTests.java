@@ -20,7 +20,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Arrays;
 
-import org.junit.Ignore;
 import org.junit.Test;
 
 import org.springframework.cloud.stream.binder.Binding;
@@ -65,6 +64,7 @@ public class RawModeKafkaBinderTests extends KafkaBinderTests {
 		consumerProperties.setInstanceIndex(0);
 		consumerProperties.setPartitioned(true);
 		consumerProperties.setHeaderMode(HeaderMode.raw);
+		consumerProperties.getExtension().setAutoRebalanceEnabled(false);
 		QueueChannel input0 = new QueueChannel();
 		input0.setBeanName("test.input0J");
 		Binding<MessageChannel> input0Binding = binder.bindConsumer("partJ.0", "test", input0, consumerProperties);
@@ -125,6 +125,7 @@ public class RawModeKafkaBinderTests extends KafkaBinderTests {
 		consumerProperties.setInstanceCount(3);
 		consumerProperties.setPartitioned(true);
 		consumerProperties.setHeaderMode(HeaderMode.raw);
+		consumerProperties.getExtension().setAutoRebalanceEnabled(false);
 		QueueChannel input0 = new QueueChannel();
 		input0.setBeanName("test.input0S");
 		Binding<MessageChannel> input0Binding = binder.bindConsumer("part.0", "test", input0, consumerProperties);
@@ -182,14 +183,6 @@ public class RawModeKafkaBinderTests extends KafkaBinderTests {
 		consumerBinding.unbind();
 	}
 
-	// Ignored, since raw mode does not support headers
-	@Test
-	@Override
-	@Ignore
-	public void testSendAndReceiveNoOriginalContentType() throws Exception {
-
-	}
-
 	@Test
 	public void testSendAndReceiveWithExplicitConsumerGroup() {
 		KafkaTestBinder binder = getBinder();
@@ -203,6 +196,7 @@ public class RawModeKafkaBinderTests extends KafkaBinderTests {
 		Binding<MessageChannel> producerBinding = binder.bindProducer("baz.0", moduleOutputChannel, producerProperties);
 		ExtendedConsumerProperties<KafkaConsumerProperties> consumerProperties = createConsumerProperties();
 		consumerProperties.setHeaderMode(HeaderMode.raw);
+		consumerProperties.getExtension().setAutoRebalanceEnabled(false);
 		Binding<MessageChannel> input1Binding = binder.bindConsumer("baz.0", "test", module1InputChannel,
 				consumerProperties);
 		// A new module is using the tap as an input channel

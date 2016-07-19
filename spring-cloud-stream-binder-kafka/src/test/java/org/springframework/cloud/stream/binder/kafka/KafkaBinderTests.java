@@ -36,23 +36,28 @@ import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 import org.apache.kafka.common.serialization.Deserializer;
+import org.assertj.core.api.Condition;
 import org.junit.Before;
 import org.junit.ClassRule;
 import org.junit.Ignore;
 import org.junit.Test;
 
 import org.springframework.beans.DirectFieldAccessor;
+import org.springframework.cloud.stream.binder.Binder;
 import org.springframework.cloud.stream.binder.BinderException;
 import org.springframework.cloud.stream.binder.Binding;
 import org.springframework.cloud.stream.binder.ExtendedConsumerProperties;
 import org.springframework.cloud.stream.binder.ExtendedProducerProperties;
 import org.springframework.cloud.stream.binder.PartitionCapableBinderTests;
+import org.springframework.cloud.stream.binder.PartitionTestSupport;
 import org.springframework.cloud.stream.binder.Spy;
 import org.springframework.cloud.stream.binder.TestUtils;
 import org.springframework.cloud.stream.binder.kafka.config.KafkaBinderConfigurationProperties;
 import org.springframework.cloud.stream.binder.kafka.config.KafkaConsumerProperties;
 import org.springframework.cloud.stream.binder.kafka.config.KafkaProducerProperties;
+import org.springframework.cloud.stream.config.BindingProperties;
 import org.springframework.context.support.GenericApplicationContext;
+import org.springframework.integration.IntegrationMessageHeaderAccessor;
 import org.springframework.integration.channel.DirectChannel;
 import org.springframework.integration.channel.QueueChannel;
 import org.springframework.kafka.core.ConsumerFactory;
@@ -120,7 +125,6 @@ public class KafkaBinderTests
 		return binderConfiguration;
 	}
 
-
 	@Override
 	protected ExtendedConsumerProperties<KafkaConsumerProperties> createConsumerProperties() {
 		return new ExtendedConsumerProperties<>(new KafkaConsumerProperties());
@@ -177,12 +181,13 @@ public class KafkaBinderTests
 		FailingInvocationCountingMessageHandler handler = new FailingInvocationCountingMessageHandler();
 		moduleInputChannel.subscribe(handler);
 		ExtendedProducerProperties<KafkaProducerProperties> producerProperties = createProducerProperties();
-		producerProperties.setPartitionCount(10);
+		producerProperties.setPartitionCount(2);
 		ExtendedConsumerProperties<KafkaConsumerProperties> consumerProperties = createConsumerProperties();
 		consumerProperties.setMaxAttempts(3);
 		consumerProperties.setBackOffInitialInterval(100);
 		consumerProperties.setBackOffMaxInterval(150);
 		consumerProperties.getExtension().setEnableDlq(true);
+		consumerProperties.getExtension().setAutoRebalanceEnabled(false);
 		long uniqueBindingId = System.currentTimeMillis();
 
 		Binding<MessageChannel> producerBinding = binder.bindProducer("retryTest." + uniqueBindingId + ".0",
@@ -223,6 +228,7 @@ public class KafkaBinderTests
 		consumerProperties.setMaxAttempts(1);
 		consumerProperties.setBackOffInitialInterval(100);
 		consumerProperties.setBackOffMaxInterval(150);
+		consumerProperties.getExtension().setAutoRebalanceEnabled(false);
 		long uniqueBindingId = System.currentTimeMillis();
 		Binding<MessageChannel> producerBinding = binder.bindProducer("retryTest." + uniqueBindingId + ".0",
 				moduleOutputChannel, producerProperties);
@@ -273,6 +279,7 @@ public class KafkaBinderTests
 		consumerProperties.setBackOffInitialInterval(100);
 		consumerProperties.setBackOffMaxInterval(150);
 		consumerProperties.getExtension().setEnableDlq(true);
+		consumerProperties.getExtension().setAutoRebalanceEnabled(false);
 		long uniqueBindingId = System.currentTimeMillis();
 		Binding<MessageChannel> producerBinding = binder.bindProducer("retryTest." + uniqueBindingId + ".0",
 				moduleOutputChannel, producerProperties);
@@ -338,8 +345,10 @@ public class KafkaBinderTests
 			producerProperties.getExtension().setCompressionType(KafkaProducerProperties.CompressionType.valueOf(codec.toString()));
 			Binding<MessageChannel> producerBinding = binder.bindProducer("foo.0", moduleOutputChannel,
 					producerProperties);
+			ExtendedConsumerProperties<KafkaConsumerProperties> consumerProperties = createConsumerProperties();
+			consumerProperties.getExtension().setAutoRebalanceEnabled(false);
 			Binding<MessageChannel> consumerBinding = binder.bindConsumer("foo.0", "test", moduleInputChannel,
-					createConsumerProperties());
+					consumerProperties);
 			Message<?> message = org.springframework.integration.support.MessageBuilder.withPayload(testPayload)
 					.build();
 			// Let the consumer actually bind to the producer before sending a msg
@@ -476,7 +485,9 @@ public class KafkaBinderTests
 		Binding<MessageChannel> producerBinding = binder.bindProducer(testTopicName, output, createProducerProperties());
 		String testPayload1 = "foo-" + UUID.randomUUID().toString();
 		output.send(new GenericMessage<>(testPayload1.getBytes()));
-		Binding<MessageChannel> consumerBinding = binder.bindConsumer(testTopicName, "startOffsets", input1, createConsumerProperties());
+		ExtendedConsumerProperties<KafkaConsumerProperties> consumerProperties = createConsumerProperties();
+		consumerProperties.getExtension().setAutoRebalanceEnabled(false);
+		Binding<MessageChannel> consumerBinding = binder.bindConsumer(testTopicName, "startOffsets", input1, consumerProperties);
 		Message<byte[]> receivedMessage1 = (Message<byte[]>) receive(input1);
 		assertThat(receivedMessage1).isNotNull();
 		assertThat(new String(receivedMessage1.getPayload())).isEqualTo(testPayload1);
@@ -506,6 +517,7 @@ public class KafkaBinderTests
 			String testPayload1 = "foo-" + UUID.randomUUID().toString();
 			output.send(new GenericMessage<>(testPayload1.getBytes()));
 			ExtendedConsumerProperties<KafkaConsumerProperties> properties = createConsumerProperties();
+			properties.getExtension().setAutoRebalanceEnabled(false);
 			properties.getExtension().setStartOffset(KafkaConsumerProperties.StartOffset.earliest);
 			consumerBinding = binder.bindConsumer(testTopicName, "startOffsets", input1, properties);
 			Message<byte[]> receivedMessage1 = (Message<byte[]>) receive(input1);
@@ -600,6 +612,7 @@ public class KafkaBinderTests
 			String testPayload1 = "foo1-" + UUID.randomUUID().toString();
 			output.send(new GenericMessage<>(testPayload1.getBytes()));
 			ExtendedConsumerProperties<KafkaConsumerProperties> firstConsumerProperties = createConsumerProperties();
+			firstConsumerProperties.getExtension().setAutoRebalanceEnabled(false);
 			consumerBinding = binder.bindConsumer(testTopicName, "startOffsets", input1,
 					firstConsumerProperties);
 			Message<byte[]> receivedMessage1 = (Message<byte[]>) receive(input1);
@@ -616,6 +629,7 @@ public class KafkaBinderTests
 
 			ExtendedConsumerProperties<KafkaConsumerProperties> consumerProperties = createConsumerProperties();
 			consumerBinding = binder.bindConsumer(testTopicName, "startOffsets", input1, consumerProperties);
+			consumerProperties.getExtension().setAutoRebalanceEnabled(false);
 			Message<byte[]> receivedMessage3 = (Message<byte[]>) receive(input1);
 			assertThat(receivedMessage3).isNotNull();
 			assertThat(new String(receivedMessage3.getPayload())).isEqualTo(testPayload3);
@@ -783,6 +797,7 @@ public class KafkaBinderTests
 	// this consumer must consume from partition 2
 	consumerProperties.setInstanceCount(3);
 	consumerProperties.setInstanceIndex(2);
+	consumerProperties.getExtension().setAutoRebalanceEnabled(false);
 
 	binding = binder.doBindConsumer(testTopicName, "test-x", output, consumerProperties);
 
@@ -887,6 +902,308 @@ public class KafkaBinderTests
 		TopicMetadata topicMetadata = AdminUtils.fetchTopicMetadataFromZk(testTopicName,
 				zkUtils);
 		assertThat(topicMetadata.partitionsMetadata().size()).isEqualTo(6);
+	}
+
+	@Test
+	@Override
+	@SuppressWarnings("unchecked")
+	public void testSendAndReceiveMultipleTopics() throws Exception {
+		Binder binder = getBinder();
+
+		DirectChannel moduleOutputChannel1 = createBindableChannel("output1",
+				createProducerBindingProperties(createProducerProperties()));
+		DirectChannel moduleOutputChannel2 = createBindableChannel("output2",
+				createProducerBindingProperties(createProducerProperties()));
+
+		QueueChannel moduleInputChannel = new QueueChannel();
+
+		Binding<MessageChannel> producerBinding1 = binder.bindProducer("foo.x", moduleOutputChannel1,
+				createProducerProperties());
+		Binding<MessageChannel> producerBinding2 = binder.bindProducer("foo.y", moduleOutputChannel2,
+				createProducerProperties());
+
+		ExtendedConsumerProperties<KafkaConsumerProperties> consumerProperties = createConsumerProperties();
+		consumerProperties.getExtension().setAutoRebalanceEnabled(false);
+		Binding<MessageChannel> consumerBinding1 = binder.bindConsumer("foo.x", "test", moduleInputChannel,
+				consumerProperties);
+		Binding<MessageChannel> consumerBinding2 = binder.bindConsumer("foo.y", "test", moduleInputChannel,
+				consumerProperties);
+
+		String testPayload1 = "foo" + UUID.randomUUID().toString();
+		Message<?> message1 = org.springframework.integration.support.MessageBuilder.withPayload(testPayload1.getBytes()).build();
+		String testPayload2 = "foo" + UUID.randomUUID().toString();
+		Message<?> message2 = org.springframework.integration.support.MessageBuilder.withPayload(testPayload2.getBytes()).build();
+
+		// Let the consumer actually bind to the producer before sending a msg
+		binderBindUnbindLatency();
+		moduleOutputChannel1.send(message1);
+		moduleOutputChannel2.send(message2);
+
+
+		Message<?>[] messages = new Message[2];
+		messages[0] = receive(moduleInputChannel);
+		messages[1] = receive(moduleInputChannel);
+
+		assertThat(messages[0]).isNotNull();
+		assertThat(messages[1]).isNotNull();
+		assertThat(messages).extracting("payload").containsExactlyInAnyOrder(testPayload1.getBytes(),
+				testPayload2.getBytes());
+
+		producerBinding1.unbind();
+		producerBinding2.unbind();
+
+		consumerBinding1.unbind();
+		consumerBinding2.unbind();
+	}
+
+	@Test
+	@Override
+	@SuppressWarnings("unchecked")
+	public void testTwoRequiredGroups() throws Exception {
+		Binder binder = getBinder();
+		ExtendedProducerProperties<KafkaProducerProperties> producerProperties = createProducerProperties();
+
+		DirectChannel output = createBindableChannel("output", createProducerBindingProperties(producerProperties));
+
+		String testDestination = "testDestination" + UUID.randomUUID().toString().replace("-", "");
+
+		producerProperties.setRequiredGroups("test1", "test2");
+		Binding<MessageChannel> producerBinding = binder.bindProducer(testDestination, output, producerProperties);
+
+		String testPayload = "foo-" + UUID.randomUUID().toString();
+		output.send(new GenericMessage<>(testPayload.getBytes()));
+
+		QueueChannel inbound1 = new QueueChannel();
+		ExtendedConsumerProperties<KafkaConsumerProperties> consumerProperties = createConsumerProperties();
+		consumerProperties.getExtension().setAutoRebalanceEnabled(false);
+		Binding<MessageChannel> consumerBinding1 = binder.bindConsumer(testDestination, "test1", inbound1,
+				consumerProperties);
+		QueueChannel inbound2 = new QueueChannel();
+		Binding<MessageChannel> consumerBinding2 = binder.bindConsumer(testDestination, "test2", inbound2,
+				consumerProperties);
+
+		Message<?> receivedMessage1 = receive(inbound1);
+		assertThat(receivedMessage1).isNotNull();
+		assertThat(new String((byte[]) receivedMessage1.getPayload())).isEqualTo(testPayload);
+		Message<?> receivedMessage2 = receive(inbound2);
+		assertThat(receivedMessage2).isNotNull();
+		assertThat(new String((byte[]) receivedMessage2.getPayload())).isEqualTo(testPayload);
+
+		consumerBinding1.unbind();
+		consumerBinding2.unbind();
+		producerBinding.unbind();
+	}
+
+	@Test
+	@Override
+	@SuppressWarnings("unchecked")
+	public void testPartitionedModuleSpEL() throws Exception {
+		Binder binder = getBinder();
+
+		ExtendedConsumerProperties<KafkaConsumerProperties> consumerProperties = createConsumerProperties();
+		consumerProperties.setConcurrency(2);
+		consumerProperties.setInstanceIndex(0);
+		consumerProperties.setInstanceCount(3);
+		consumerProperties.setPartitioned(true);
+		consumerProperties.getExtension().setAutoRebalanceEnabled(false);
+		QueueChannel input0 = new QueueChannel();
+		input0.setBeanName("test.input0S");
+		Binding<MessageChannel> input0Binding = binder.bindConsumer("part.0", "test", input0, consumerProperties);
+		consumerProperties.setInstanceIndex(1);
+		QueueChannel input1 = new QueueChannel();
+		input1.setBeanName("test.input1S");
+		Binding<MessageChannel> input1Binding = binder.bindConsumer("part.0", "test", input1, consumerProperties);
+		consumerProperties.setInstanceIndex(2);
+		QueueChannel input2 = new QueueChannel();
+		input2.setBeanName("test.input2S");
+		Binding<MessageChannel> input2Binding = binder.bindConsumer("part.0", "test", input2, consumerProperties);
+
+		ExtendedProducerProperties<KafkaProducerProperties> producerProperties = createProducerProperties();
+		producerProperties.setPartitionKeyExpression(spelExpressionParser.parseExpression("payload"));
+		producerProperties.setPartitionSelectorExpression(spelExpressionParser.parseExpression("hashCode()"));
+		producerProperties.setPartitionCount(3);
+
+		DirectChannel output = createBindableChannel("output", createProducerBindingProperties(producerProperties));
+		output.setBeanName("test.output");
+		Binding<MessageChannel> outputBinding = binder.bindProducer("part.0", output, producerProperties);
+		try {
+			Object endpoint = extractEndpoint(outputBinding);
+			assertThat(getEndpointRouting(endpoint))
+					.contains(getExpectedRoutingBaseDestination("part.0", "test") + "-' + headers['partition']");
+		}
+		catch (UnsupportedOperationException ignored) {
+		}
+
+		Message<Integer> message2 = org.springframework.integration.support.MessageBuilder.withPayload(2)
+				.setHeader(IntegrationMessageHeaderAccessor.CORRELATION_ID, "foo")
+				.setHeader(IntegrationMessageHeaderAccessor.SEQUENCE_NUMBER, 42)
+				.setHeader(IntegrationMessageHeaderAccessor.SEQUENCE_SIZE, 43).build();
+		output.send(message2);
+		output.send(new GenericMessage<>(1));
+		output.send(new GenericMessage<>(0));
+
+		Message<?> receive0 = receive(input0);
+		assertThat(receive0).isNotNull();
+		Message<?> receive1 = receive(input1);
+		assertThat(receive1).isNotNull();
+		Message<?> receive2 = receive(input2);
+		assertThat(receive2).isNotNull();
+
+		Condition<Message<?>> correlationHeadersForPayload2 = new Condition<Message<?>>() {
+			@Override
+			public boolean matches(Message<?> value) {
+				IntegrationMessageHeaderAccessor accessor = new IntegrationMessageHeaderAccessor(value);
+				return "foo".equals(accessor.getCorrelationId()) && 42 == accessor.getSequenceNumber()
+						&& 43 == accessor.getSequenceSize();
+			}
+		};
+
+		if (usesExplicitRouting()) {
+			assertThat(receive0.getPayload()).isEqualTo(0);
+			assertThat(receive1.getPayload()).isEqualTo(1);
+			assertThat(receive2.getPayload()).isEqualTo(2);
+			assertThat(receive2).has(correlationHeadersForPayload2);
+		}
+		else {
+			List<Message<?>> receivedMessages = Arrays.asList(receive0, receive1, receive2);
+			assertThat(receivedMessages).extracting("payload").containsExactlyInAnyOrder(0, 1, 2);
+			Condition<Message<?>> payloadIs2 = new Condition<Message<?>>() {
+
+				@Override
+				public boolean matches(Message<?> value) {
+					return value.getPayload().equals(2);
+				}
+			};
+			assertThat(receivedMessages).filteredOn(payloadIs2).areExactly(1, correlationHeadersForPayload2);
+
+		}
+		input0Binding.unbind();
+		input1Binding.unbind();
+		input2Binding.unbind();
+		outputBinding.unbind();
+	}
+
+	@Test
+	@Override
+	@SuppressWarnings("unchecked")
+	public void testPartitionedModuleJava() throws Exception {
+		Binder binder = getBinder();
+
+		ExtendedConsumerProperties<KafkaConsumerProperties> consumerProperties = createConsumerProperties();
+		consumerProperties.setConcurrency(2);
+		consumerProperties.setInstanceCount(3);
+		consumerProperties.setInstanceIndex(0);
+		consumerProperties.setPartitioned(true);
+		consumerProperties.getExtension().setAutoRebalanceEnabled(false);
+		QueueChannel input0 = new QueueChannel();
+		input0.setBeanName("test.input0J");
+		Binding<MessageChannel> input0Binding = binder.bindConsumer("partJ.0", "test", input0, consumerProperties);
+		consumerProperties.setInstanceIndex(1);
+		QueueChannel input1 = new QueueChannel();
+		input1.setBeanName("test.input1J");
+		Binding<MessageChannel> input1Binding = binder.bindConsumer("partJ.0", "test", input1, consumerProperties);
+		consumerProperties.setInstanceIndex(2);
+		QueueChannel input2 = new QueueChannel();
+		input2.setBeanName("test.input2J");
+		Binding<MessageChannel> input2Binding = binder.bindConsumer("partJ.0", "test", input2, consumerProperties);
+
+		ExtendedProducerProperties<KafkaProducerProperties> producerProperties = createProducerProperties();
+		producerProperties.setPartitionKeyExtractorClass(PartitionTestSupport.class);
+		producerProperties.setPartitionSelectorClass(PartitionTestSupport.class);
+		producerProperties.setPartitionCount(3);
+		DirectChannel output = createBindableChannel("output", createProducerBindingProperties(producerProperties));
+		output.setBeanName("test.output");
+		Binding<MessageChannel> outputBinding = binder.bindProducer("partJ.0", output, producerProperties);
+		if (usesExplicitRouting()) {
+			Object endpoint = extractEndpoint(outputBinding);
+			assertThat(getEndpointRouting(endpoint)).
+					contains(getExpectedRoutingBaseDestination("partJ.0", "test") + "-' + headers['partition']");
+		}
+
+		output.send(new GenericMessage<>(2));
+		output.send(new GenericMessage<>(1));
+		output.send(new GenericMessage<>(0));
+
+		Message<?> receive0 = receive(input0);
+		assertThat(receive0).isNotNull();
+		Message<?> receive1 = receive(input1);
+		assertThat(receive1).isNotNull();
+		Message<?> receive2 = receive(input2);
+		assertThat(receive2).isNotNull();
+
+		if (usesExplicitRouting()) {
+			assertThat(receive0.getPayload()).isEqualTo(0);
+			assertThat(receive1.getPayload()).isEqualTo(1);
+			assertThat(receive2.getPayload()).isEqualTo(2);
+		}
+		else {
+			List<Message<?>> receivedMessages = Arrays.asList(receive0, receive1, receive2);
+			assertThat(receivedMessages).extracting("payload").containsExactlyInAnyOrder(0, 1, 2);
+		}
+
+		input0Binding.unbind();
+		input1Binding.unbind();
+		input2Binding.unbind();
+		outputBinding.unbind();
+	}
+
+	@Test
+	@Override
+	@SuppressWarnings("unchecked")
+	public void testAnonymousGroup() throws Exception {
+		Binder binder = getBinder();
+		BindingProperties producerBindingProperties = createProducerBindingProperties(createProducerProperties());
+		DirectChannel output = createBindableChannel("output", producerBindingProperties);
+		Binding<MessageChannel> producerBinding = binder.bindProducer("defaultGroup.0", output,
+				 producerBindingProperties.getProducer());
+
+		QueueChannel input1 = new QueueChannel();
+		ExtendedConsumerProperties<KafkaConsumerProperties> consumerProperties = createConsumerProperties();
+		//consumerProperties.getExtension().setAutoRebalanceEnabled(false);
+		Binding<MessageChannel> binding1 = binder.bindConsumer("defaultGroup.0", null, input1,
+				consumerProperties);
+
+		QueueChannel input2 = new QueueChannel();
+		Binding<MessageChannel> binding2 = binder.bindConsumer("defaultGroup.0", null, input2,
+				consumerProperties);
+		//Since we don't provide any topic info, let Kafka bind the consumer successfully
+		Thread.sleep(1000);
+		String testPayload1 = "foo-" + UUID.randomUUID().toString();
+		output.send(new GenericMessage<>(testPayload1.getBytes()));
+
+		Message<byte[]> receivedMessage1 = (Message<byte[]>) receive(input1);
+		assertThat(receivedMessage1).isNotNull();
+		assertThat(new String(receivedMessage1.getPayload())).isEqualTo(testPayload1);
+
+		Message<byte[]> receivedMessage2 = (Message<byte[]>) receive(input2);
+		assertThat(receivedMessage2).isNotNull();
+		assertThat(new String(receivedMessage2.getPayload())).isEqualTo(testPayload1);
+
+		binding2.unbind();
+
+		String testPayload2 = "foo-" + UUID.randomUUID().toString();
+		output.send(new GenericMessage<>(testPayload2.getBytes()));
+
+		binding2 = binder.bindConsumer("defaultGroup.0", null, input2, consumerProperties);
+		//Since we don't provide any topic info, let Kafka bind the consumer successfully
+		Thread.sleep(1000);
+		String testPayload3 = "foo-" + UUID.randomUUID().toString();
+		output.send(new GenericMessage<>(testPayload3.getBytes()));
+
+		receivedMessage1 = (Message<byte[]>) receive(input1);
+		assertThat(receivedMessage1).isNotNull();
+		assertThat(new String(receivedMessage1.getPayload())).isEqualTo(testPayload2);
+		receivedMessage1 = (Message<byte[]>) receive(input1);
+		assertThat(receivedMessage1).isNotNull();
+		assertThat(new String(receivedMessage1.getPayload())).isNotNull();
+
+		receivedMessage2 = (Message<byte[]>) receive(input2);
+		assertThat(receivedMessage2).isNotNull();
+		assertThat(new String(receivedMessage2.getPayload())).isEqualTo(testPayload3);
+
+		producerBinding.unbind();
+		binding1.unbind();
+		binding2.unbind();
 	}
 
 	private static final class FailingInvocationCountingMessageHandler implements MessageHandler {
