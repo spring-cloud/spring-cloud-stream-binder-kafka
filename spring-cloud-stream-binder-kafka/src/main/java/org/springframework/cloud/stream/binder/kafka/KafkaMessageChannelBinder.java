@@ -107,14 +107,11 @@ public class KafkaMessageChannelBinder extends
 		implements ExtendedPropertiesBinder<MessageChannel, KafkaConsumerProperties, KafkaProducerProperties>,
 		DisposableBean {
 
-
 	private final KafkaBinderConfigurationProperties configurationProperties;
 
 	private RetryOperations metadataRetryOperations;
 
 	private final Map<String, Collection<PartitionInfo>> topicsInUse = new HashMap<>();
-
-	// -------- Default values for properties -------
 
 	private ProducerListener producerListener;
 
