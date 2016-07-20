@@ -198,6 +198,63 @@ public class KafkaMessageChannelBinder extends
 	}
 
 	@Override
+	protected MessageHandler createProducerMessageHandler(final String name,
+														  ExtendedProducerProperties<KafkaProducerProperties> producerProperties) throws Exception {
+
+		KafkaTopicUtils.validateTopicName(name);
+
+		Collection<PartitionInfo> partitions = ensureTopicCreated(name, producerProperties.getPartitionCount());
+
+		if (producerProperties.getPartitionCount() < partitions.size()) {
+			if (logger.isInfoEnabled()) {
+				logger.info("The `partitionCount` of the producer for topic " + name + " is "
+						+ producerProperties.getPartitionCount() + ", smaller than the actual partition count of "
+						+ partitions.size() + " of the topic. The larger number will be used instead.");
+			}
+		}
+
+		topicsInUse.put(name, partitions);
+
+		ProducerFactory<byte[], byte[]> producerFB = getProducerFactory(producerProperties);
+		return new ProducerConfigurationMessageHandler(producerFB, name, producerListener);
+	}
+
+	@Override
+	protected void createProducerDestinationIfNecessary(String name,
+														ExtendedProducerProperties<KafkaProducerProperties> properties) {
+		if (this.logger.isInfoEnabled()) {
+			this.logger.info("Using kafka topic for outbound: " + name);
+		}
+		KafkaTopicUtils.validateTopicName(name);
+		Collection<PartitionInfo> partitions = ensureTopicCreated(name, properties.getPartitionCount());
+		if (properties.getPartitionCount() < partitions.size()) {
+			if (this.logger.isInfoEnabled()) {
+				this.logger.info("The `partitionCount` of the producer for topic " + name + " is "
+						+ properties.getPartitionCount() + ", smaller than the actual partition count of "
+						+ partitions.size() + " of the topic. The larger number will be used instead.");
+			}
+		}
+		this.topicsInUse.put(name, partitions);
+	}
+
+	private ProducerFactory<byte[], byte[]> getProducerFactory(ExtendedProducerProperties<KafkaProducerProperties> producerProperties) {
+		Map<String, Object> props = new HashMap<>();
+		props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, configurationProperties.getKafkaConnectionString());
+		props.put(ProducerConfig.RETRIES_CONFIG, 0);
+		props.put(ProducerConfig.BATCH_SIZE_CONFIG, 16384);
+		props.put(ProducerConfig.LINGER_MS_CONFIG, 1);
+		props.put(ProducerConfig.BUFFER_MEMORY_CONFIG, 33554432);
+		props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, ByteArraySerializer.class);
+		props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, ByteArraySerializer.class);
+		props.put(ProducerConfig.ACKS_CONFIG, String.valueOf(configurationProperties.getRequiredAcks()));
+		props.put(ProducerConfig.LINGER_MS_CONFIG,
+				String.valueOf(producerProperties.getExtension().getBatchTimeout()));
+		props.put(ProducerConfig.COMPRESSION_TYPE_CONFIG, producerProperties.getExtension().getCompressionType().toString());
+
+		return new DefaultKafkaProducerFactory<>(props);
+	}
+
+	@Override
 	protected Collection<PartitionInfo> createConsumerDestinationIfNecessary(String name, String group,
 														  ExtendedConsumerProperties<KafkaConsumerProperties> properties) {
 		KafkaTopicUtils.validateTopicName(name);
@@ -384,63 +441,6 @@ public class KafkaMessageChannelBinder extends
 					partition.partition());
 		}
 		return topicPartitionInitialOffsets;
-	}
-
-	@Override
-	protected MessageHandler createProducerMessageHandler(final String name,
-														  ExtendedProducerProperties<KafkaProducerProperties> producerProperties) throws Exception {
-
-		KafkaTopicUtils.validateTopicName(name);
-
-		Collection<PartitionInfo> partitions = ensureTopicCreated(name, producerProperties.getPartitionCount());
-
-		if (producerProperties.getPartitionCount() < partitions.size()) {
-			if (logger.isInfoEnabled()) {
-				logger.info("The `partitionCount` of the producer for topic " + name + " is "
-						+ producerProperties.getPartitionCount() + ", smaller than the actual partition count of "
-						+ partitions.size() + " of the topic. The larger number will be used instead.");
-			}
-		}
-
-		topicsInUse.put(name, partitions);
-
-		ProducerFactory<byte[], byte[]> producerFB = getProducerFactory(producerProperties);
-		return new ProducerConfigurationMessageHandler(producerFB, name, producerListener);
-	}
-
-	private ProducerFactory<byte[], byte[]> getProducerFactory(ExtendedProducerProperties<KafkaProducerProperties> producerProperties) {
-		Map<String, Object> props = new HashMap<>();
-		props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, configurationProperties.getKafkaConnectionString());
-		props.put(ProducerConfig.RETRIES_CONFIG, 0);
-		props.put(ProducerConfig.BATCH_SIZE_CONFIG, 16384);
-		props.put(ProducerConfig.LINGER_MS_CONFIG, 1);
-		props.put(ProducerConfig.BUFFER_MEMORY_CONFIG, 33554432);
-		props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, ByteArraySerializer.class);
-		props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, ByteArraySerializer.class);
-		props.put(ProducerConfig.ACKS_CONFIG, String.valueOf(configurationProperties.getRequiredAcks()));
-		props.put(ProducerConfig.LINGER_MS_CONFIG,
-				String.valueOf(producerProperties.getExtension().getBatchTimeout()));
-		props.put(ProducerConfig.COMPRESSION_TYPE_CONFIG, producerProperties.getExtension().getCompressionType().toString());
-
-		return new DefaultKafkaProducerFactory<>(props);
-	}
-
-	@Override
-	protected void createProducerDestinationIfNecessary(String name,
-														ExtendedProducerProperties<KafkaProducerProperties> properties) {
-		if (this.logger.isInfoEnabled()) {
-			this.logger.info("Using kafka topic for outbound: " + name);
-		}
-		KafkaTopicUtils.validateTopicName(name);
-		Collection<PartitionInfo> partitions = ensureTopicCreated(name, properties.getPartitionCount());
-		if (properties.getPartitionCount() < partitions.size()) {
-			if (this.logger.isInfoEnabled()) {
-				this.logger.info("The `partitionCount` of the producer for topic " + name + " is "
-						+ properties.getPartitionCount() + ", smaller than the actual partition count of "
-						+ partitions.size() + " of the topic. The larger number will be used instead.");
-			}
-		}
-		this.topicsInUse.put(name, partitions);
 	}
 
 	/**
