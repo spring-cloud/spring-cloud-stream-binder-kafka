@@ -370,11 +370,12 @@ public class KafkaBinderTests
 		KafkaBinderConfigurationProperties binderConfiguration = createConfigurationProperties();
 		binderConfiguration.setMinPartitionCount(10);
 		KafkaTestBinder binder = new KafkaTestBinder(binderConfiguration);
-
-		DirectChannel moduleOutputChannel = new DirectChannel();
 		QueueChannel moduleInputChannel = new QueueChannel();
 		ExtendedProducerProperties<KafkaProducerProperties> producerProperties = createProducerProperties();
 		producerProperties.setPartitionCount(10);
+
+		DirectChannel moduleOutputChannel = createBindableChannel("output", createProducerBindingProperties(producerProperties));
+
 		ExtendedConsumerProperties<KafkaConsumerProperties> consumerProperties = createConsumerProperties();
 		long uniqueBindingId = System.currentTimeMillis();
 		Binding<MessageChannel> producerBinding = binder.bindProducer("foo" + uniqueBindingId + ".0",
@@ -407,13 +408,13 @@ public class KafkaBinderTests
 		KafkaBinderConfigurationProperties binderConfiguration = createConfigurationProperties();
 		binderConfiguration.setMinPartitionCount(6);
 		KafkaTestBinder binder = new KafkaTestBinder(binderConfiguration);
-		DirectChannel moduleOutputChannel = new DirectChannel();
 		QueueChannel moduleInputChannel = new QueueChannel();
 		ExtendedProducerProperties<KafkaProducerProperties> producerProperties = createProducerProperties();
 		producerProperties.setPartitionCount(5);
 		producerProperties.setPartitionKeyExpression(spelExpressionParser.parseExpression("payload"));
 		ExtendedConsumerProperties<KafkaConsumerProperties> consumerProperties = createConsumerProperties();
 		long uniqueBindingId = System.currentTimeMillis();
+		DirectChannel moduleOutputChannel = createBindableChannel("output", createProducerBindingProperties(producerProperties));
 		Binding<MessageChannel> producerBinding = binder.bindProducer("foo" + uniqueBindingId + ".0",
 				moduleOutputChannel, producerProperties);
 		Binding<MessageChannel> consumerBinding = binder.bindConsumer("foo" + uniqueBindingId + ".0", null,
@@ -444,11 +445,11 @@ public class KafkaBinderTests
 		binderConfiguration.setMinPartitionCount(4);
 		KafkaTestBinder binder = new KafkaTestBinder(binderConfiguration);
 
-		DirectChannel moduleOutputChannel = new DirectChannel();
 		QueueChannel moduleInputChannel = new QueueChannel();
 		ExtendedProducerProperties<KafkaProducerProperties> producerProperties = createProducerProperties();
 		producerProperties.setPartitionCount(5);
 		producerProperties.setPartitionKeyExpression(spelExpressionParser.parseExpression("payload"));
+		DirectChannel moduleOutputChannel = createBindableChannel("output", createProducerBindingProperties(producerProperties));
 		ExtendedConsumerProperties<KafkaConsumerProperties> consumerProperties = createConsumerProperties();
 		long uniqueBindingId = System.currentTimeMillis();
 		Binding<MessageChannel> producerBinding = binder.bindProducer("foo" + uniqueBindingId + ".0",

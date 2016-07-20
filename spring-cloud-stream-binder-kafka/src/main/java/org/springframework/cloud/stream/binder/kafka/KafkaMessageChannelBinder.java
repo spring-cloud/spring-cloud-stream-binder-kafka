@@ -52,8 +52,11 @@ import org.springframework.cloud.stream.binder.kafka.config.KafkaConsumerPropert
 import org.springframework.cloud.stream.binder.kafka.config.KafkaExtendedBindingProperties;
 import org.springframework.cloud.stream.binder.kafka.config.KafkaProducerProperties;
 import org.springframework.context.Lifecycle;
+import org.springframework.expression.common.LiteralExpression;
+import org.springframework.expression.spel.standard.SpelExpressionParser;
 import org.springframework.integration.core.MessageProducer;
 import org.springframework.integration.kafka.inbound.KafkaMessageDrivenChannelAdapter;
+import org.springframework.integration.kafka.outbound.KafkaProducerMessageHandler;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
@@ -67,10 +70,8 @@ import org.springframework.kafka.listener.config.ContainerProperties;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.ProducerListener;
 import org.springframework.kafka.support.TopicPartitionInitialOffset;
-import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.MessageHandler;
-import org.springframework.messaging.MessagingException;
 import org.springframework.retry.RetryCallback;
 import org.springframework.retry.RetryContext;
 import org.springframework.retry.RetryOperations;
@@ -179,7 +180,7 @@ public class KafkaMessageChannelBinder extends
 		}
 	}
 
-	public void setProducerListener(ProducerListener producerListener) {
+	public void setProducerListener(ProducerListener<byte[], byte[]> producerListener) {
 		this.producerListener = producerListener;
 	}
 
@@ -216,7 +217,11 @@ public class KafkaMessageChannelBinder extends
 		topicsInUse.put(name, partitions);
 
 		ProducerFactory<byte[], byte[]> producerFB = getProducerFactory(producerProperties);
-		return new ProducerConfigurationMessageHandler(producerFB, name, producerListener);
+		KafkaTemplate<byte[], byte[]> kafkaTemplate = new KafkaTemplate<>(producerFB);
+		if (producerListener != null) {
+			kafkaTemplate.setProducerListener(producerListener);
+		}
+		return new ProducerConfigurationMessageHandler(kafkaTemplate, name, producerProperties.isPartitioned());
 	}
 
 	@Override
@@ -564,27 +569,30 @@ public class KafkaMessageChannelBinder extends
 		return original.substring(0, maxCharacters) + "...";
 	}
 
-	private final static class ProducerConfigurationMessageHandler implements MessageHandler, Lifecycle {
-
-		private String targetTopic;
-		private final KafkaTemplate<byte[], byte[]> kafkaTemplate;
+	private final class ProducerConfigurationMessageHandler extends KafkaProducerMessageHandler<byte[], byte[]> implements Lifecycle {
 
 		private boolean running = true;
 
-		private ProducerConfigurationMessageHandler(
-				ProducerFactory<byte[], byte[]> delegate, String targetTopic,
-				ProducerListener<byte[], byte[]> producerListener) {
-			Assert.notNull(delegate, "Delegate cannot be null");
-			Assert.hasText(targetTopic, "Target topic cannot be null");
-			this.targetTopic = targetTopic;
-			this.kafkaTemplate = new KafkaTemplate<>(delegate);
-			if (producerListener != null) {
-				this.kafkaTemplate.setProducerListener(producerListener);
+		private ProducerConfigurationMessageHandler(KafkaTemplate<byte[], byte[]> kafkaTemplate, String topic,
+													boolean partitioned) {
+			super(kafkaTemplate);
+			setTopicExpression(new LiteralExpression(topic));
+			setBeanFactory(KafkaMessageChannelBinder.this.getBeanFactory());
+			if (partitioned) {
+				SpelExpressionParser parser = new SpelExpressionParser();
+				setPartitionIdExpression(parser.parseExpression("headers.partition"));
 			}
 		}
 
 		@Override
 		public void start() {
+			try {
+				super.onInit();
+			}
+			catch (Exception e) {
+				logger.error("Initialization errors: ", e);
+				throw new RuntimeException(e);
+			}
 		}
 
 		@Override
@@ -596,21 +604,5 @@ public class KafkaMessageChannelBinder extends
 		public boolean isRunning() {
 			return this.running;
 		}
-
-		@Override
-		public void handleMessage(Message<?> message) throws MessagingException {
-			Integer partition = message.getHeaders().get(BinderHeaders.PARTITION_HEADER, Integer.class);
-			byte[] payload = (byte[]) message.getPayload();
-
-			if (partition != null) {
-				kafkaTemplate.send(this.targetTopic,
-						partition, null,
-						payload);
-			}
-			else {
-				kafkaTemplate.send(this.targetTopic, payload);
-			}
-		}
 	}
-
 }
