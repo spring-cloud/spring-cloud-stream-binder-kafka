@@ -284,7 +284,7 @@ public class KafkaBinderTests extends
 
 	@Test(expected = IllegalArgumentException.class)
 	public void testValidateKafkaTopicName() {
-		KafkaMessageChannelBinder.validateTopicName("foo:bar");
+		KafkaTopicUtils.validateTopicName("foo:bar");
 	}
 
 	@Test

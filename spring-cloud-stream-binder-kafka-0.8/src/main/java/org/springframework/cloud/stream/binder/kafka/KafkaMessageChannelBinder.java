@@ -16,7 +16,6 @@
 
 package org.springframework.cloud.stream.binder.kafka;
 
-import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -212,25 +211,6 @@ public class KafkaMessageChannelBinder extends
 		}
 	}
 
-	/**
-	 * Allowed chars are ASCII alphanumerics, '.', '_' and '-'.
-	 */
-	static void validateTopicName(String topicName) {
-		try {
-			byte[] utf8 = topicName.getBytes("UTF-8");
-			for (byte b : utf8) {
-				if (!((b >= 'a') && (b <= 'z') || (b >= 'A') && (b <= 'Z') || (b >= '0') && (b <= '9') || (b == '.')
-						|| (b == '-') || (b == '_'))) {
-					throw new IllegalArgumentException(
-							"Topic name can only have ASCII alphanumerics, '.', '_' and '-'");
-				}
-			}
-		}
-		catch (UnsupportedEncodingException e) {
-			throw new AssertionError(e); // Can't happen
-		}
-	}
-
 	@Override
 	public KafkaConsumerProperties getExtendedConsumerProperties(String channelName) {
 		return this.extendedBindingProperties.getExtendedConsumerProperties(channelName);
@@ -248,7 +228,7 @@ public class KafkaMessageChannelBinder extends
 	@Override
 	protected Collection<Partition> createConsumerDestinationIfNecessary(String name, String group,
 																		 ExtendedConsumerProperties<KafkaConsumerProperties> properties) {
-		validateTopicName(name);
+		KafkaTopicUtils.validateTopicName(name);
 		if (properties.getInstanceCount() == 0) {
 			throw new IllegalArgumentException("Instance count cannot be zero");
 		}
@@ -470,7 +450,7 @@ public class KafkaMessageChannelBinder extends
 		if (this.logger.isInfoEnabled()) {
 			this.logger.info("Using kafka topic for outbound: " + name);
 		}
-		validateTopicName(name);
+		KafkaTopicUtils.validateTopicName(name);
 		Collection<Partition> partitions = ensureTopicCreated(name, properties.getPartitionCount());
 		if (properties.getPartitionCount() < partitions.size()) {
 			if (this.logger.isInfoEnabled()) {

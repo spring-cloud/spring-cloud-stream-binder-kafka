@@ -16,7 +16,6 @@
 
 package org.springframework.cloud.stream.binder.kafka;
 
-import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -113,7 +112,7 @@ public class KafkaMessageChannelBinder extends
 
 	private final Map<String, Collection<PartitionInfo>> topicsInUse = new HashMap<>();
 
-	private ProducerListener producerListener;
+	private ProducerListener<byte[], byte[]> producerListener;
 
 	private volatile Producer<byte[], byte[]> dlqProducer;
 
@@ -184,25 +183,6 @@ public class KafkaMessageChannelBinder extends
 		this.producerListener = producerListener;
 	}
 
-	/**
-	 * Allowed chars are ASCII alphanumerics, '.', '_' and '-'.
-	 */
-	static void validateTopicName(String topicName) {
-		try {
-			byte[] utf8 = topicName.getBytes("UTF-8");
-			for (byte b : utf8) {
-				if (!((b >= 'a') && (b <= 'z') || (b >= 'A') && (b <= 'Z') || (b >= '0') && (b <= '9') || (b == '.')
-						|| (b == '-') || (b == '_'))) {
-					throw new IllegalArgumentException(
-							"Topic name can only have ASCII alphanumerics, '.', '_' and '-'");
-				}
-			}
-		}
-		catch (UnsupportedEncodingException e) {
-			throw new AssertionError(e); // Can't happen
-		}
-	}
-
 	Map<String, Collection<PartitionInfo>> getTopicsInUse() {
 		return this.topicsInUse;
 	}
@@ -220,7 +200,7 @@ public class KafkaMessageChannelBinder extends
 	@Override
 	protected Collection<PartitionInfo> createConsumerDestinationIfNecessary(String name, String group,
 														  ExtendedConsumerProperties<KafkaConsumerProperties> properties) {
-		validateTopicName(name);
+		KafkaTopicUtils.validateTopicName(name);
 		if (properties.getInstanceCount() == 0) {
 			throw new IllegalArgumentException("Instance count cannot be zero");
 		}
@@ -291,7 +271,6 @@ public class KafkaMessageChannelBinder extends
 				messageListenerContainer);
 
 		kafkaMessageDrivenChannelAdapter.setBeanFactory(this.getBeanFactory());
-		//kafkaMessageDrivenChannelAdapter.setOutputChannel(inputChannel);
 		kafkaMessageDrivenChannelAdapter.afterPropertiesSet();
 		// we need to wrap the adapter listener into a retrying listener so that the retry
 		// logic is applied before the ErrorHandler is executed
@@ -411,7 +390,7 @@ public class KafkaMessageChannelBinder extends
 	protected MessageHandler createProducerMessageHandler(final String name,
 														  ExtendedProducerProperties<KafkaProducerProperties> producerProperties) throws Exception {
 
-		validateTopicName(name);
+		KafkaTopicUtils.validateTopicName(name);
 
 		Collection<PartitionInfo> partitions = ensureTopicCreated(name, producerProperties.getPartitionCount());
 
@@ -426,7 +405,6 @@ public class KafkaMessageChannelBinder extends
 		topicsInUse.put(name, partitions);
 
 		ProducerFactory<byte[], byte[]> producerFB = getProducerFactory(producerProperties);
-
 		return new ProducerConfigurationMessageHandler(producerFB, name, producerListener);
 	}
 
@@ -453,7 +431,7 @@ public class KafkaMessageChannelBinder extends
 		if (this.logger.isInfoEnabled()) {
 			this.logger.info("Using kafka topic for outbound: " + name);
 		}
-		validateTopicName(name);
+		KafkaTopicUtils.validateTopicName(name);
 		Collection<PartitionInfo> partitions = ensureTopicCreated(name, properties.getPartitionCount());
 		if (properties.getPartitionCount() < partitions.size()) {
 			if (this.logger.isInfoEnabled()) {
@@ -528,9 +506,6 @@ public class KafkaMessageChannelBinder extends
 
 							@Override
 							public Collection<PartitionInfo> doWithRetry(RetryContext context) throws Exception {
-								//ConsumerFactory<byte[], byte[]> consumerFactory = getConsumerFactory(null);
-								//Collection<PartitionInfo> partitions = consumerFactory.createConsumer().partitionsFor(topicName);
-
 								Collection<PartitionInfo> partitions =
 										getProducerFactory(new ExtendedProducerProperties<>(new KafkaProducerProperties()))
 												.createProducer().partitionsFor(topicName);
