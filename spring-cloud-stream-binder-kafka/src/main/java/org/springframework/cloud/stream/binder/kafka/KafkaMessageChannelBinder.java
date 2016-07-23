@@ -62,12 +62,9 @@ import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
-import org.springframework.kafka.listener.AcknowledgingMessageListener;
 import org.springframework.kafka.listener.ConcurrentMessageListenerContainer;
 import org.springframework.kafka.listener.ErrorHandler;
-import org.springframework.kafka.listener.MessageListener;
 import org.springframework.kafka.listener.config.ContainerProperties;
-import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.ProducerListener;
 import org.springframework.kafka.support.TopicPartitionInitialOffset;
 import org.springframework.messaging.MessageChannel;
@@ -221,7 +218,7 @@ public class KafkaMessageChannelBinder extends
 		if (producerListener != null) {
 			kafkaTemplate.setProducerListener(producerListener);
 		}
-		return new ProducerConfigurationMessageHandler(kafkaTemplate, name, producerProperties.isPartitioned());
+		return new ProducerConfigurationMessageHandler(kafkaTemplate, name, producerProperties);
 	}
 
 	@Override
@@ -289,7 +286,8 @@ public class KafkaMessageChannelBinder extends
 
 	@Override
 	@SuppressWarnings("unchecked")
-	protected MessageProducer createConsumerEndpoint(String name, String group, Collection<PartitionInfo> destination, ExtendedConsumerProperties<KafkaConsumerProperties> properties) {
+	protected MessageProducer createConsumerEndpoint(String name, String group, Collection<PartitionInfo> destination,
+													 ExtendedConsumerProperties<KafkaConsumerProperties> properties) {
 		boolean anonymous = !StringUtils.hasText(group);
 		Assert.isTrue(!anonymous || !properties.getExtension().isEnableDlq(),
 				"DLQ support is not available for anonymous subscriptions");
@@ -333,55 +331,8 @@ public class KafkaMessageChannelBinder extends
 				messageListenerContainer);
 
 		kafkaMessageDrivenChannelAdapter.setBeanFactory(this.getBeanFactory());
-		kafkaMessageDrivenChannelAdapter.afterPropertiesSet();
-		// we need to wrap the adapter listener into a retrying listener so that the retry
-		// logic is applied before the ErrorHandler is executed
 		final RetryTemplate retryTemplate = buildRetryTemplate(properties);
-		if (retryTemplate != null) {
-			if (properties.getExtension().isAutoCommitOffset()) {
-				final MessageListener originalMessageListener = (MessageListener) messageListenerContainer
-						.getContainerProperties().getMessageListener();
-				messageListenerContainer.getContainerProperties().setMessageListener(new MessageListener() {
-					@Override
-					public void onMessage(final ConsumerRecord message) {
-						try {
-							retryTemplate.execute(new RetryCallback<Object, Throwable>() {
-								@Override
-								public Object doWithRetry(RetryContext context) {
-									originalMessageListener.onMessage(message);
-									return null;
-								}
-							});
-						}
-						catch (Throwable throwable) {
-							if (throwable instanceof RuntimeException) {
-								throw (RuntimeException) throwable;
-							}
-							else {
-								throw new RuntimeException(throwable);
-							}
-						}
-					}
-				});
-			}
-			else {
-				messageListenerContainer.getContainerProperties().setMessageListener(new AcknowledgingMessageListener() {
-					final AcknowledgingMessageListener originalMessageListener = (AcknowledgingMessageListener) messageListenerContainer
-							.getContainerProperties().getMessageListener();
-
-					@Override
-					public void onMessage(final ConsumerRecord message, final Acknowledgment acknowledgment) {
-						retryTemplate.execute(new RetryCallback<Object, RuntimeException>() {
-							@Override
-							public Object doWithRetry(RetryContext context) {
-								originalMessageListener.onMessage(message, acknowledgment);
-								return null;
-							}
-						});
-					}
-				});
-			}
-		}
+		kafkaMessageDrivenChannelAdapter.setRetryTemplate(retryTemplate);
 
 		if (properties.getExtension().isEnableDlq()) {
 			final String dlqTopic = "error." + name + "." + group;
@@ -415,7 +366,6 @@ public class KafkaMessageChannelBinder extends
 				}
 			});
 		}
-		kafkaMessageDrivenChannelAdapter.start();
 		return kafkaMessageDrivenChannelAdapter;
 	}
 
@@ -574,13 +524,16 @@ public class KafkaMessageChannelBinder extends
 		private boolean running = true;
 
 		private ProducerConfigurationMessageHandler(KafkaTemplate<byte[], byte[]> kafkaTemplate, String topic,
-													boolean partitioned) {
+													ExtendedProducerProperties<KafkaProducerProperties> producerProperties) {
 			super(kafkaTemplate);
 			setTopicExpression(new LiteralExpression(topic));
 			setBeanFactory(KafkaMessageChannelBinder.this.getBeanFactory());
-			if (partitioned) {
+			if (producerProperties.isPartitioned()) {
 				SpelExpressionParser parser = new SpelExpressionParser();
 				setPartitionIdExpression(parser.parseExpression("headers.partition"));
+			}
+			if (producerProperties.getExtension().isSync()){
+				setSync(true);
 			}
 		}
 

@@ -60,6 +60,7 @@ import org.springframework.context.support.GenericApplicationContext;
 import org.springframework.integration.IntegrationMessageHeaderAccessor;
 import org.springframework.integration.channel.DirectChannel;
 import org.springframework.integration.channel.QueueChannel;
+import org.springframework.integration.kafka.outbound.KafkaProducerMessageHandler;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.support.KafkaHeaders;
@@ -648,7 +649,6 @@ public class KafkaBinderTests
 	}
 
 	@Test
-	@Ignore("This test needs to be rethought")
 	public void testSyncProducerMetadata() throws Exception {
 		KafkaMessageChannelBinder binder = new KafkaMessageChannelBinder(createConfigurationProperties());
 		GenericApplicationContext context = new GenericApplicationContext();
@@ -661,12 +661,9 @@ public class KafkaBinderTests
 		properties.getExtension().setSync(true);
 		Binding<MessageChannel> producerBinding = binder.bindProducer(testTopicName, output, properties);
 		DirectFieldAccessor accessor = new DirectFieldAccessor(extractEndpoint(producerBinding));
-		MessageHandler handler = (MessageHandler) accessor.getPropertyValue("handler");
-		DirectFieldAccessor accessor1 = new DirectFieldAccessor(handler);
-//		ProducerConfiguration producerConfiguration = (ProducerConfiguration) accessor1
-//				.getPropertyValue("producerConfiguration");
-//		assertThat(producerConfiguration.getProducerMetadata().isSync())
-//				.withFailMessage("Kafka Sync Producer should have been enabled.");
+		KafkaProducerMessageHandler wrappedInstance = (KafkaProducerMessageHandler)accessor.getWrappedInstance();
+		assertThat(new DirectFieldAccessor(wrappedInstance).getPropertyValue("sync").equals(Boolean.TRUE))
+				.withFailMessage("Kafka Sync Producer should have been enabled.");
 		producerBinding.unbind();
 	}
 
