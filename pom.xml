@@ -26,11 +26,8 @@
 		</dependencies>
 	</dependencyManagement>
 	<modules>
-		<module>spring-cloud-stream-binder-kafka-common</module>
 		<module>spring-cloud-stream-binder-kafka</module>
 		<module>spring-cloud-starter-stream-kafka</module>
-		<module>spring-cloud-stream-binder-kafka-0.8</module>
-		<module>spring-cloud-starter-stream-kafka-0.8</module>
 		<module>spring-cloud-stream-binder-kafka-test-support</module>
 	</modules>
 	<build>

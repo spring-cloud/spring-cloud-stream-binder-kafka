@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.springframework.cloud.stream.binder.kafka.config;
+package org.springframework.cloud.stream.binder.kafka;
 
 import javax.validation.constraints.NotNull;
 
