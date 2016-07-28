@@ -13,7 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.springframework.cloud.stream.binder.test.junit.kafka;
+
 
 import java.util.Properties;
 
@@ -200,4 +202,3 @@ public class KafkaTestSupport extends AbstractExternalResourceTestSupport<String
 	}
 
 }
-

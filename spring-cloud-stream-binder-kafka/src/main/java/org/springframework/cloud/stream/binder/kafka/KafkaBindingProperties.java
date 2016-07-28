@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 the original author or authors.
+ * Copyright 2016 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,23 +16,28 @@
 
 package org.springframework.cloud.stream.binder.kafka;
 
-import org.springframework.cloud.stream.binder.PartitionKeyExtractorStrategy;
-import org.springframework.cloud.stream.binder.PartitionSelectorStrategy;
-import org.springframework.messaging.Message;
-
 /**
  * @author Marius Bogoevici
  */
-public class RawKafkaPartitionTestSupport implements PartitionKeyExtractorStrategy, PartitionSelectorStrategy {
+public class KafkaBindingProperties {
 
-	@Override
-	public int selectPartition(Object key, int divisor) {
-		return ((byte[]) key)[0] % divisor;
+	private KafkaConsumerProperties consumer = new KafkaConsumerProperties();
+
+	private KafkaProducerProperties producer = new KafkaProducerProperties();
+
+	public KafkaConsumerProperties getConsumer() {
+		return consumer;
 	}
 
-	@Override
-	public Object extractKey(Message<?> message) {
-		return message.getPayload();
+	public void setConsumer(KafkaConsumerProperties consumer) {
+		this.consumer = consumer;
 	}
 
+	public KafkaProducerProperties getProducer() {
+		return producer;
+	}
+
+	public void setProducer(KafkaProducerProperties producer) {
+		this.producer = producer;
+	}
 }
