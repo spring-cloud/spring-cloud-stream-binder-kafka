@@ -8,7 +8,7 @@
         <version>1.1.0.BUILD-SNAPSHOT</version>
     </parent>
 
-    <artifactId>spring-cloud-stream-binder-kafkadocs</artifactId>
+    <artifactId>spring-cloud-stream-binder-kafka-docs</artifactId>
     <name>spring-cloud-stream-binder-kafka-docs</name>
     <description>Spring Cloud Stream Kafka Binder Docs</description>
     <properties>

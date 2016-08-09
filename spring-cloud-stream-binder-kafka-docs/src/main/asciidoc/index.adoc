@@ -8,7 +8,7 @@ Sabby Anandan, Marius Bogoevici, Eric Bottard, Mark Fisher, Ilayaperumal Gopinat
 :numbered:
 :icons: font
 :hide-uri-scheme:
-:spring-cloud-stream-repo: snapshot
+:spring-cloud-stream-binder-kafka-repo: snapshot
 :github-tag: master
 :spring-cloud-stream-binder-kafka-docs-version: current
 :spring-cloud-stream-binder-kafka-docs: http://docs.spring.io/spring-cloud-stream-binder-kafka/docs/{spring-cloud-stream-binder-kafka-docs-version}/reference

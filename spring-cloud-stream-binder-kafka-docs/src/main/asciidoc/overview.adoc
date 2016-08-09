@@ -1,15 +1,12 @@
-[[overview]]
---
-This section goes into details about how you can work with Spring Cloud Stream Kafka binder.
---
-
 == Introduction
-This is Kafka specific implementation for Spring Cloud Stream. This implementation supports Kafka versions higher than 0.9.
+This is Kafka specific implementation for Spring Cloud Stream Binder.
+This implementation supports Kafka versions 0.9 and above. In the following sections, you can find more details
+on how you can work with Spring Cloud Stream Kafka binder.
 
 ==== Classpath Detection
 
 By default, Spring Cloud Stream relies on Spring Boot's auto-configuration to configure the binding process.
-Following is the maven cordinates for including the Kafka binder in a Spring Cloud Stream application.
+Following are the maven coordinates for including the Kafka binder in a Spring Cloud Stream application.
 [source,xml]
 ----
 <dependency>
@@ -29,7 +26,7 @@ Spring Cloud Stream does not use the high-level consumer, but implements a simil
 
 == Configuration Options and Properties
 
-For common configuration properties pertaining to binder,
+For common configuration options and properties pertaining to binder,
 Please refer to the https://github.com/spring-cloud/spring-cloud-stream/blob/master/spring-cloud-stream-docs/src/main/asciidoc/spring-cloud-stream-overview.adoc#configuration-options[core docs].
 
 === Kafka-Specific Settings
