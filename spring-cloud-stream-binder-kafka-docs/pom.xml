@@ -95,8 +95,8 @@
                                     <doctype>book</doctype>
                                     <attributes>
                                         <docinfo>true</docinfo>
-                                        <spring-cloud-stream-version>${project.version}</spring-cloud-stream-version>
-                                        <spring-cloud-stream-docs-version>${project.version}</spring-cloud-stream-docs-version>
+                                        <spring-cloud-stream-binder-kafka-version>${project.version}</spring-cloud-stream-binder-kafka-version>
+                                        <spring-cloud-stream-binder-kafka-docs-version>${project.version}</spring-cloud-stream-binder-kafka-docs-version>
                                         <github-tag>${github-tag}</github-tag>
                                     </attributes>
                                 </configuration>
