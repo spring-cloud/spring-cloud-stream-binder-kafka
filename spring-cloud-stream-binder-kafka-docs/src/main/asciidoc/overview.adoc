@@ -1,7 +1,8 @@
 == Introduction
 This is Kafka specific implementation for Spring Cloud Stream Binder.
 This implementation supports Kafka versions 0.9 and above. In the following sections, you can find more details
-on how you can work with Spring Cloud Stream Kafka binder.
+on how you can work with Spring Cloud Stream Kafka binder,
+in what concerns mapping the Spring Cloud Stream concepts onto the middleware concepts.
 
 ==== Classpath Detection
 
@@ -30,6 +31,8 @@ For common configuration options and properties pertaining to binder,
 Please refer to the https://github.com/spring-cloud/spring-cloud-stream/blob/master/spring-cloud-stream-docs/src/main/asciidoc/spring-cloud-stream-overview.adoc#configuration-options[core docs].
 
 === Kafka-Specific Settings
+
+The following binder, consumer, and producer properties are specific to the Kafka binder implementation.
 
 ==== Kafka Binder Properties
 
@@ -153,3 +156,12 @@ batchTimeout::
 (Normally the producer does not wait at all, and simply sends all the messages that accumulated while the previous send was in progress.) A non-zero value may increase throughput at the expense of latency.
 +
 Default: `0`.
+
+[NOTE]
+====
+The Kafka binder will use the `partitionCount` setting as a hint to create a topic with the given partition count (in conjunction with the `minPartitionCount`, the maximum of the two being the value being used).
+Exercise caution when configuring both `minPartitionCount` for a binder and `partitionCount` for an application, as the larger value will be used.
+If a topic already exists with a smaller partition count and `autoAddPartitions` is disabled (the default), then the binder will fail to start.
+If a topic already exists with a smaller partition count and `autoAddPartitions` is enabled, new partitions will be added.
+If a topic already exists with a larger number of partitions than the maximum of (`minPartitionCount` and `partitionCount`), the existing partition count will be used.
+====
