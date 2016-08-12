@@ -137,6 +137,10 @@ enableDlq::
   This provides an alternative option to the more common Kafka replay scenario for the case when the number of errors is relatively small and replaying the entire original topic may be too cumbersome.
 +
 Default: `false`.
+configuration::
+  Map with a key/value pair containing generic Kafka consumer properties.
++
+Default: Empty map.
 
 ==== Kafka Producer Properties
 
@@ -156,6 +160,10 @@ batchTimeout::
 (Normally the producer does not wait at all, and simply sends all the messages that accumulated while the previous send was in progress.) A non-zero value may increase throughput at the expense of latency.
 +
 Default: `0`.
+configuration::
+  Map with a key/value pair containing generic Kafka producer properties.
++
+Default: Empty map.
 
 [NOTE]
 ====
