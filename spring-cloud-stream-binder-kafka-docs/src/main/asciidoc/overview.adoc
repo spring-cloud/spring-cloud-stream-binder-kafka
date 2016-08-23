@@ -190,12 +190,12 @@ If a topic already exists with a larger number of partitions than the maximum of
 
 === Usage examples
 
-In this section we illustrate the use of the above properties for specific scenarios.
+In this section, we illustrate the use of the above properties for specific scenarios.
 
 ==== Example: security configuration
 
 Apache Kafka 0.9 supports secure connections between client and brokers.
-For configuring the binder to take advantage of this feature, follow the guidelines in the http://kafka.apache.org/090/documentation.html#security_configclients[Apache Kafka Documentation], using the `spring.cloud.stream.kafka.binder.configuration` option to set the consumer properties for all clients created by the binder.
+To take advantage of this feature, follow the guidelines in the http://kafka.apache.org/090/documentation.html#security_configclients[Apache Kafka Documentation], using the `spring.cloud.stream.kafka.binder.configuration` option to set security properties for all clients created by the binder.
 
 For example, for setting `security.protocol` to `SASL_SSL`, set:
 
