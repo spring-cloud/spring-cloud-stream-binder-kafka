@@ -77,6 +77,10 @@ public class KafkaBinderConfigurationProperties {
 
 	private int queueSize = 8192;
 
+	private JaasLoginModuleConfiguration jaas;
+
+	private JaasLoginModuleConfiguration zkJaas;
+
 	public String getZkConnectionString() {
 		return toConnectionString(this.zkNodes, this.defaultZkPort);
 	}
@@ -253,5 +257,21 @@ public class KafkaBinderConfigurationProperties {
 
 	public void setConfiguration(Map<String, String> configuration) {
 		this.configuration = configuration;
+	}
+
+	public JaasLoginModuleConfiguration getJaas() {
+		return jaas;
+	}
+
+	public void setJaas(JaasLoginModuleConfiguration jaas) {
+		this.jaas = jaas;
+	}
+
+	public JaasLoginModuleConfiguration getZkJaas() {
+		return zkJaas;
+	}
+
+	public void setZkJaas(JaasLoginModuleConfiguration zkJaas) {
+		this.zkJaas = zkJaas;
 	}
 }

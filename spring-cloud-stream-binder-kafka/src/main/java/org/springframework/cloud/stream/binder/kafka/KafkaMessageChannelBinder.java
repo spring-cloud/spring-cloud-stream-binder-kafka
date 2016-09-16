@@ -436,7 +436,7 @@ public class KafkaMessageChannelBinder extends
 					"No topic will be created by the binder");
 		}
 		else if (!this.configurationProperties.isAutoCreateTopics()) {
-			this.logger.warn("Auto creation of topics is disabled.");
+			this.logger.info("Auto creation of topics is disabled.");
 		}
 	}
 
@@ -449,7 +449,7 @@ public class KafkaMessageChannelBinder extends
 		final ZkUtils zkUtils = ZkUtils.apply(this.configurationProperties.getZkConnectionString(),
 				this.configurationProperties.getZkSessionTimeout(),
 				this.configurationProperties.getZkConnectionTimeout(),
-				JaasUtils.isZkSecurityEnabled());
+				JaasUtils.isZkSecurityEnabled() || this.configurationProperties.getZkJaas() != null);
 		try {
 			short errorCode = adminUtilsOperation.errorCodeFromTopicMetadata(topicName, zkUtils);
 			if (errorCode == ErrorMapping.NoError()) {

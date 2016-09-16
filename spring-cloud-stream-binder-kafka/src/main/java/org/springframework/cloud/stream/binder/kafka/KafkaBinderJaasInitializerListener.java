@@ -1,0 +1,100 @@
+/*
+ * Copyright 2016 the original author or authors.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package org.springframework.cloud.stream.binder.kafka;
+
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+import javax.security.auth.login.AppConfigurationEntry;
+import javax.security.auth.login.Configuration;
+
+import org.apache.kafka.common.security.JaasUtils;
+
+import org.springframework.beans.BeansException;
+import org.springframework.cloud.stream.binder.kafka.config.KafkaBinderConfigurationProperties;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.ApplicationContextAware;
+import org.springframework.context.ApplicationListener;
+import org.springframework.context.event.ContextRefreshedEvent;
+import org.springframework.util.Assert;
+
+/**
+ * @author Marius Bogoevici
+ */
+public class KafkaBinderJaasInitializerListener implements ApplicationListener<ContextRefreshedEvent>,
+		ApplicationContextAware {
+
+	public static final String DEFAULT_ZK_LOGIN_CONTEXT_NAME = "Client";
+
+	private ApplicationContext applicationContext;
+
+	@Override
+	public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
+		this.applicationContext = applicationContext;
+	}
+
+	@Override
+	public void onApplicationEvent(ContextRefreshedEvent event) {
+		if (event.getSource() == this.applicationContext) {
+			KafkaBinderConfigurationProperties binderConfigurationProperties =
+					applicationContext.getBean(KafkaBinderConfigurationProperties.class);
+			// only use programmatic support if a file is not set via system property
+			if (System.getProperty(JaasUtils.JAVA_LOGIN_CONFIG_PARAM) == null
+					&& binderConfigurationProperties.getJaas() != null) {
+				Map<String, AppConfigurationEntry[]> configurationEntries = new HashMap<>();
+				AppConfigurationEntry kafkaClientConfigurationEntry = new AppConfigurationEntry
+						(binderConfigurationProperties.getJaas().getLoginModule(),
+								binderConfigurationProperties.getJaas().getControlFlagValue(),
+								binderConfigurationProperties.getJaas().getOptions() != null ?
+										binderConfigurationProperties.getJaas().getOptions() :
+										Collections.<String, Object>emptyMap());
+				configurationEntries.put(JaasUtils.LOGIN_CONTEXT_CLIENT,
+						new AppConfigurationEntry[]{ kafkaClientConfigurationEntry });
+				if (binderConfigurationProperties.getZkJaas() != null) {
+					AppConfigurationEntry zkClientConfigurationEntry = new AppConfigurationEntry
+							(binderConfigurationProperties.getZkJaas().getLoginModule(),
+									binderConfigurationProperties.getZkJaas().getControlFlagValue(),
+									binderConfigurationProperties.getZkJaas().getOptions() != null ?
+											binderConfigurationProperties.getZkJaas().getOptions() :
+											Collections.<String, Object>emptyMap());
+					configurationEntries.put(System.getProperty(JaasUtils.ZK_LOGIN_CONTEXT_NAME_KEY, DEFAULT_ZK_LOGIN_CONTEXT_NAME),
+							new AppConfigurationEntry[]{ zkClientConfigurationEntry });
+				}
+				Configuration.setConfiguration(new InternalConfiguration(configurationEntries));
+			}
+		}
+	}
+
+	/**
+	 * A {@link Configuration} set up programmatically by the Kafka binder
+	 */
+	public static class InternalConfiguration extends Configuration {
+
+		private final Map<String, AppConfigurationEntry[]> configurationEntries;
+
+		public InternalConfiguration(Map<String, AppConfigurationEntry[]> configurationEntries) {
+			Assert.notNull(configurationEntries, " cannot be null");
+			Assert.notEmpty(configurationEntries, " cannot be empty");
+			this.configurationEntries = configurationEntries;
+		}
+
+		@Override
+		public AppConfigurationEntry[] getAppConfigurationEntry(String name) {
+			return configurationEntries.get(name);
+		}
+	}
+}
