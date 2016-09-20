@@ -86,16 +86,6 @@ public class KafkaBinderJaasInitializerListener implements ApplicationListener<C
 										Collections.<String, Object>emptyMap());
 				configurationEntries.put(JaasUtils.LOGIN_CONTEXT_CLIENT,
 						new AppConfigurationEntry[]{ kafkaClientConfigurationEntry });
-				if (binderConfigurationProperties.getZkJaas() != null) {
-					AppConfigurationEntry zkClientConfigurationEntry = new AppConfigurationEntry
-							(binderConfigurationProperties.getZkJaas().getLoginModule(),
-									binderConfigurationProperties.getZkJaas().getControlFlagValue(),
-									binderConfigurationProperties.getZkJaas().getOptions() != null ?
-											binderConfigurationProperties.getZkJaas().getOptions() :
-											Collections.<String, Object>emptyMap());
-					configurationEntries.put(System.getProperty(JaasUtils.ZK_LOGIN_CONTEXT_NAME_KEY, DEFAULT_ZK_LOGIN_CONTEXT_NAME),
-							new AppConfigurationEntry[]{ zkClientConfigurationEntry });
-				}
 				Configuration.setConfiguration(new InternalConfiguration(configurationEntries));
 				// Workaround for a 0.9 client issue where even if the Configuration is set
 				// a system property check is performed.

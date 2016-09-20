@@ -251,60 +251,7 @@ spring.cloud.stream.kafka.binder.jaas.options::
 +
 Default: Empty map.
 
-If the application also requires access to a secured Zookeeper instance, e.g. if it needs to create and configure topics on the broker, the following properties can be set:
-
-spring.cloud.stream.kafka.binder.zkJaas.loginModule::
-  The login module name. Not necessary to be set in normal cases.
-+
-Default: `com.sun.security.auth.module.Krb5LoginModule`.
-spring.cloud.stream.kafka.binder.zkJaas.controlFlag::
-  The control flag of the login module.
-+
-Default: `required`.
-spring.cloud.stream.kafka.binder.zkJaas.options::
-  Map with a key/value pair containing the login module options.
-+
-Default: Empty map.
-
 Here is an example of launching a Spring Cloud Stream application with SASL and Kerberos using Spring Boot configuration properties:
-
-[source]
-----
- java --spring.cloud.stream.kafka.binder.brokers=secure.server:9092 \
-   --spring.cloud.stream.kafka.binder.zkNodes=secure.zookeeper:2181 \
-   --spring.cloud.stream.bindings.input.destination=stream.ticktock \
-   --spring.cloud.stream.kafka.binder.configuration.security.protocol=SASL_PLAINTEXT \
-   --spring.cloud.stream.kafka.binder.jaas.options.useKeyTab=true \
-   --spring.cloud.stream.kafka.binder.jaas.options.storeKey=true \
-   --spring.cloud.stream.kafka.binder.jaas.options.keyTab=/etc/security/keytabs/kafka_client.keytab \
-   --spring.cloud.stream.kafka.binder.jaas.options.principal=kafka-client-1@EXAMPLE.COM \
-   --spring.cloud.stream.kafka.binder.zkJaas.options.useKeyTab=true \
-   --spring.cloud.stream.kafka.binder.zkJaas.options.storeKey=true \
-   --spring.cloud.stream.kafka.binder.zkJaas.options.keyTab=/etc/security/keytabs/zk_client.keytab \
-   --spring.cloud.stream.kafka.binder.zkJaas.options.principal=zk-client-1@EXAMPLE.COM
-----
-
-This represents the equivalent of the following JAAS file:
-
-[source]
-----
-KafkaClient {
-    com.sun.security.auth.module.Krb5LoginModule required
-    useKeyTab=true
-    storeKey=true
-    keyTab="/etc/security/keytabs/kafka_client.keytab"
-    principal="kafka-client-1@EXAMPLE.COM";
-};
-Client {
-    com.sun.security.auth.module.Krb5LoginModule required
-    useKeyTab=true
-    storeKey=true
-    keyTab="/etc/security/keytabs/zk_client.keytab"
-    principal="zk-client-1@EXAMPLE.COM";
-};
-----
-
-If the topics required already exist on the broker, or will be created by an administrator, autocreation can be turned off and only client JAAS properties need to be sent:
 
 [source]
 ----
@@ -319,7 +266,20 @@ If the topics required already exist on the broker, or will be created by an adm
    --spring.cloud.stream.kafka.binder.jaas.options.principal=kafka-client-1@EXAMPLE.COM
 ----
 
-As an alternative to setting `spring.cloud.stream.kafka.binder.autoCreateTopics` you can simply remove the broker dependency from the application. See <<exclude-admin-utils>> for details.
+This represents the equivalent of the following JAAS file:
+
+[source]
+----
+KafkaClient {
+    com.sun.security.auth.module.Krb5LoginModule required
+    useKeyTab=true
+    storeKey=true
+    keyTab="/etc/security/keytabs/kafka_client.keytab"
+    principal="kafka-client-1@EXAMPLE.COM";
+};
+----
+
+If the topics required already exist on the broker, or will be created by an administrator, autocreation can be turned off and only client JAAS properties need to be sent. As an alternative to setting `spring.cloud.stream.kafka.binder.autoCreateTopics` you can simply remove the broker dependency from the application. See <<exclude-admin-utils>> for details.
 
 [NOTE]
 ====

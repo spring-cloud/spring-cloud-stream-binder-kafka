@@ -79,8 +79,6 @@ public class KafkaBinderConfigurationProperties {
 
 	private JaasLoginModuleConfiguration jaas;
 
-	private JaasLoginModuleConfiguration zkJaas;
-
 	public String getZkConnectionString() {
 		return toConnectionString(this.zkNodes, this.defaultZkPort);
 	}
@@ -267,11 +265,4 @@ public class KafkaBinderConfigurationProperties {
 		this.jaas = jaas;
 	}
 
-	public JaasLoginModuleConfiguration getZkJaas() {
-		return zkJaas;
-	}
-
-	public void setZkJaas(JaasLoginModuleConfiguration zkJaas) {
-		this.zkJaas = zkJaas;
-	}
 }

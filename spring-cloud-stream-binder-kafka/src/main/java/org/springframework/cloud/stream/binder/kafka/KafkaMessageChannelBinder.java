@@ -449,7 +449,7 @@ public class KafkaMessageChannelBinder extends
 		final ZkUtils zkUtils = ZkUtils.apply(this.configurationProperties.getZkConnectionString(),
 				this.configurationProperties.getZkSessionTimeout(),
 				this.configurationProperties.getZkConnectionTimeout(),
-				JaasUtils.isZkSecurityEnabled() || this.configurationProperties.getZkJaas() != null);
+				JaasUtils.isZkSecurityEnabled());
 		try {
 			short errorCode = adminUtilsOperation.errorCodeFromTopicMetadata(topicName, zkUtils);
 			if (errorCode == ErrorMapping.NoError()) {
