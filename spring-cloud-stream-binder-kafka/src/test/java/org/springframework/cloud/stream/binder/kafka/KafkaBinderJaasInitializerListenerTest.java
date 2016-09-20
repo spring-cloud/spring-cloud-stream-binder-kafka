@@ -52,35 +52,7 @@ public class KafkaBinderJaasInitializerListenerTest {
 		assertThat(kafkaConfiguration[0].getOptions()).isEqualTo(kafkaConfigurationArray[0].getOptions());
 		context.close();
 	}
-
-	@Test
-	public void testConfigurationParsedCorrectlyWithKafkaAndZookeeper() throws Exception {
-		ConfigFile configFile = new ConfigFile(new ClassPathResource("jaas-sample-with-zk.conf").getURI());
-		final AppConfigurationEntry[] kafkaFileConfiguration = configFile.getAppConfigurationEntry(JaasUtils.LOGIN_CONTEXT_CLIENT);
-		final AppConfigurationEntry[] zkFileConfiguration = configFile.getAppConfigurationEntry(KafkaBinderJaasInitializerListener.DEFAULT_ZK_LOGIN_CONTEXT_NAME);
-
-		final ConfigurableApplicationContext context =
-				SpringApplication.run(SimpleApplication.class,
-						"--spring.cloud.stream.kafka.binder.jaas.options.useKeyTab=true",
-						"--spring.cloud.stream.kafka.binder.jaas.options.storeKey=true",
-						"--spring.cloud.stream.kafka.binder.jaas.options.keyTab=/etc/security/keytabs/kafka_client.keytab",
-						"--spring.cloud.stream.kafka.binder.jaas.options.principal=kafka-client-1@EXAMPLE.COM",
-						"--spring.cloud.stream.kafka.binder.zkJaas.options.useKeyTab=true",
-						"--spring.cloud.stream.kafka.binder.zkJaas.options.storeKey=true",
-						"--spring.cloud.stream.kafka.binder.zkJaas.options.keyTab=/etc/security/keytabs/zk_client.keytab",
-						"--spring.cloud.stream.kafka.binder.zkJaas.options.principal=zk-client-1@EXAMPLE.COM");
-
-		javax.security.auth.login.Configuration configuration = javax.security.auth.login.Configuration.getConfiguration();
-
-		final AppConfigurationEntry[] kafkaConfiguration = configuration.getAppConfigurationEntry(JaasUtils.LOGIN_CONTEXT_CLIENT);
-		assertThat(kafkaConfiguration).hasSize(1);
-		assertThat(kafkaConfiguration[0].getOptions()).isEqualTo(kafkaFileConfiguration[0].getOptions());
-		final AppConfigurationEntry[] zkConfiguration = configuration.getAppConfigurationEntry(KafkaBinderJaasInitializerListener.DEFAULT_ZK_LOGIN_CONTEXT_NAME);
-		assertThat(zkConfiguration).hasSize(1);
-		assertThat(zkConfiguration[0].getOptions()).isEqualTo(zkFileConfiguration[0].getOptions());
-		context.close();
-	}
-
+	
 	@SpringBootApplication
 	public static class SimpleApplication {
 
