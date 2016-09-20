@@ -229,7 +229,7 @@ Here is an example of launching a Spring Cloud Stream application with SASL and 
    --spring.cloud.stream.kafka.binder.brokers=secure.server:9092 \
    --spring.cloud.stream.kafka.binder.zkNodes=secure.zookeeper:2181 \
    --spring.cloud.stream.bindings.input.destination=stream.ticktock \
-   --spring.cloud.stream.kafka.binder.clientConfiguration.security.protocol=SASL_PLAINTEXT
+   --spring.cloud.stream.kafka.binder.configuration.security.protocol=SASL_PLAINTEXT
 ----
 
 ===== Using Spring Boot properties
@@ -270,11 +270,10 @@ Here is an example of launching a Spring Cloud Stream application with SASL and 
 
 [source]
 ----
- java -Djava.security.auth.login.config=/path.to/kafka_client_jaas.conf -jar log.jar \
-   --spring.cloud.stream.kafka.binder.brokers=secure.server:9092 \
+ java --spring.cloud.stream.kafka.binder.brokers=secure.server:9092 \
    --spring.cloud.stream.kafka.binder.zkNodes=secure.zookeeper:2181 \
    --spring.cloud.stream.bindings.input.destination=stream.ticktock \
-   --spring.cloud.stream.kafka.binder.clientConfiguration.security.protocol=SASL_PLAINTEXT \
+   --spring.cloud.stream.kafka.binder.configuration.security.protocol=SASL_PLAINTEXT \
    --spring.cloud.stream.kafka.binder.jaas.options.useKeyTab=true \
    --spring.cloud.stream.kafka.binder.jaas.options.storeKey=true \
    --spring.cloud.stream.kafka.binder.jaas.options.keyTab=/etc/security/keytabs/kafka_client.keytab \
@@ -309,12 +308,11 @@ If the topics required already exist on the broker, or will be created by an adm
 
 [source]
 ----
- java -Djava.security.auth.login.config=/path.to/kafka_client_jaas.conf -jar log.jar \
-   --spring.cloud.stream.kafka.binder.brokers=secure.server:9092 \
+ java --spring.cloud.stream.kafka.binder.brokers=secure.server:9092 \
    --spring.cloud.stream.kafka.binder.zkNodes=secure.zookeeper:2181 \
    --spring.cloud.stream.bindings.input.destination=stream.ticktock \
    --spring.cloud.stream.kafka.binder.autoCreateTopics=false \
-   --spring.cloud.stream.kafka.binder.clientConfiguration.security.protocol=SASL_PLAINTEXT \
+   --spring.cloud.stream.kafka.binder.configuration.security.protocol=SASL_PLAINTEXT \
    --spring.cloud.stream.kafka.binder.jaas.options.useKeyTab=true \
    --spring.cloud.stream.kafka.binder.jaas.options.storeKey=true \
    --spring.cloud.stream.kafka.binder.jaas.options.keyTab=/etc/security/keytabs/kafka_client.keytab \

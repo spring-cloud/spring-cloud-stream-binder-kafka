@@ -16,6 +16,8 @@
 
 package org.springframework.cloud.stream.binder.kafka.config;
 
+import java.io.IOException;
+
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.common.utils.AppInfoParser;
@@ -119,7 +121,7 @@ public class KafkaBinderConfiguration {
 	}
 
 	@Bean
-	public ApplicationListener<?> jaasInitializer() {
+	public ApplicationListener<?> jaasInitializer() throws IOException {
 		return new KafkaBinderJaasInitializerListener();
 	}
 

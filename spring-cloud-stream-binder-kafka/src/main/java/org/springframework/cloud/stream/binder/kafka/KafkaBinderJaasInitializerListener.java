@@ -16,6 +16,8 @@
 
 package org.springframework.cloud.stream.binder.kafka;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -25,6 +27,7 @@ import javax.security.auth.login.Configuration;
 import org.apache.kafka.common.security.JaasUtils;
 
 import org.springframework.beans.BeansException;
+import org.springframework.beans.factory.DisposableBean;
 import org.springframework.cloud.stream.binder.kafka.config.KafkaBinderConfigurationProperties;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
@@ -36,15 +39,34 @@ import org.springframework.util.Assert;
  * @author Marius Bogoevici
  */
 public class KafkaBinderJaasInitializerListener implements ApplicationListener<ContextRefreshedEvent>,
-		ApplicationContextAware {
+		ApplicationContextAware, DisposableBean {
 
 	public static final String DEFAULT_ZK_LOGIN_CONTEXT_NAME = "Client";
 
 	private ApplicationContext applicationContext;
 
+	private final boolean ignoreJavaLoginConfigParamSystemProperty;
+
+	private final File placeholderJaasConfiguration;
+
+	public KafkaBinderJaasInitializerListener() throws IOException {
+		// we ignore the system property if it wasn't originally set at launch
+		this.ignoreJavaLoginConfigParamSystemProperty =
+				(System.getProperty(JaasUtils.JAVA_LOGIN_CONFIG_PARAM) == null);
+		this.placeholderJaasConfiguration = File.createTempFile("kafka-client-jaas-config-placeholder", "conf");
+		this.placeholderJaasConfiguration.deleteOnExit();
+	}
+
 	@Override
 	public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
 		this.applicationContext = applicationContext;
+	}
+
+	@Override
+	public void destroy() throws Exception {
+		if (this.ignoreJavaLoginConfigParamSystemProperty) {
+			System.clearProperty(JaasUtils.JAVA_LOGIN_CONFIG_PARAM);
+		}
 	}
 
 	@Override
@@ -53,7 +75,7 @@ public class KafkaBinderJaasInitializerListener implements ApplicationListener<C
 			KafkaBinderConfigurationProperties binderConfigurationProperties =
 					applicationContext.getBean(KafkaBinderConfigurationProperties.class);
 			// only use programmatic support if a file is not set via system property
-			if (System.getProperty(JaasUtils.JAVA_LOGIN_CONFIG_PARAM) == null
+			if (ignoreJavaLoginConfigParamSystemProperty
 					&& binderConfigurationProperties.getJaas() != null) {
 				Map<String, AppConfigurationEntry[]> configurationEntries = new HashMap<>();
 				AppConfigurationEntry kafkaClientConfigurationEntry = new AppConfigurationEntry
@@ -75,6 +97,12 @@ public class KafkaBinderJaasInitializerListener implements ApplicationListener<C
 							new AppConfigurationEntry[]{ zkClientConfigurationEntry });
 				}
 				Configuration.setConfiguration(new InternalConfiguration(configurationEntries));
+				// Workaround for a 0.9 client issue where even if the Configuration is set
+				// a system property check is performed.
+				// Since the Configuration already exists, this will be ignored.
+				if (this.placeholderJaasConfiguration != null) {
+					System.setProperty(JaasUtils.JAVA_LOGIN_CONFIG_PARAM, this.placeholderJaasConfiguration.getAbsolutePath());
+				}
 			}
 		}
 	}
