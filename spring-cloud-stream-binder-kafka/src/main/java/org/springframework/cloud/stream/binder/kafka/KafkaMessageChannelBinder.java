@@ -340,6 +340,9 @@ public class KafkaMessageChannelBinder extends
 			messageListenerContainer.getContainerProperties().setAckMode(AbstractMessageListenerContainer.AckMode.MANUAL);
 		}
 
+		if (!properties.getExtension().isAutoCommitOffset())
+			messageListenerContainer.getContainerProperties().setAckMode(AbstractMessageListenerContainer.AckMode.MANUAL);
+
 		if (this.logger.isDebugEnabled()) {
 			this.logger.debug(
 					"Listened partitions: " + StringUtils.collectionToCommaDelimitedString(listenedPartitions));
