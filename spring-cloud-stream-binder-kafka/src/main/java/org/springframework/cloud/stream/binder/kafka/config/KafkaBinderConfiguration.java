@@ -17,9 +17,13 @@
 package org.springframework.cloud.stream.binder.kafka.config;
 
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 import org.apache.kafka.common.utils.AppInfoParser;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -46,8 +50,11 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 import org.springframework.core.type.AnnotatedTypeMetadata;
 import org.springframework.integration.codec.Codec;
+import org.springframework.kafka.core.ConsumerFactory;
+import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.support.LoggingProducerListener;
 import org.springframework.kafka.support.ProducerListener;
+import org.springframework.util.ObjectUtils;
 
 /**
  * @author David Turanski
@@ -101,7 +108,15 @@ public class KafkaBinderConfiguration {
 
 	@Bean
 	KafkaBinderHealthIndicator healthIndicator(KafkaMessageChannelBinder kafkaMessageChannelBinder) {
-		return new KafkaBinderHealthIndicator(kafkaMessageChannelBinder, this.configurationProperties);
+		Map<String, Object> props = new HashMap<>();
+		props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class);
+		props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class);
+		if (!ObjectUtils.isEmpty(configurationProperties.getConfiguration())) {
+			props.putAll(configurationProperties.getConfiguration());
+		}
+		props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, this.configurationProperties.getKafkaConnectionString());
+		ConsumerFactory<?, ?> consumerFactory = new DefaultKafkaConsumerFactory<>(props);
+		return new KafkaBinderHealthIndicator(kafkaMessageChannelBinder, consumerFactory);
 	}
 
 	@Bean(name = "adminUtilsOperation")
