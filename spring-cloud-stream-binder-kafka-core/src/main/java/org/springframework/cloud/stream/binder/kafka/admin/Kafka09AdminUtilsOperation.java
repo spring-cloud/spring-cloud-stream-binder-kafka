@@ -116,7 +116,7 @@ public class Kafka09AdminUtilsOperation implements AdminUtilsOperation {
 	}
 
 	public void invokeCreateTopic(ZkUtils zkUtils, String topic, int partitions,
-								int replicationFactor, Properties topicConfig) {
+								  int replicationFactor, Properties topicConfig) {
 		try {
 			Method[] declaredMethods = ADMIN_UTIL_CLASS.getDeclaredMethods();
 			Method createTopic = null;
