@@ -17,7 +17,6 @@ package org.springframework.cloud.stream.binder.kafka;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.Matchers.anyString;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -66,7 +65,7 @@ public class KafkaBinderHealthIndicatorTest {
 	public void kafkaBinderIsUp() {
 		final List<PartitionInfo> partitions = partitions(new Node(0, null, 0));
 		topicsInUse.put(TEST_TOPIC, partitions);
-		given(consumer.partitionsFor(anyString())).willReturn(partitions);
+		given(consumer.partitionsFor(TEST_TOPIC)).willReturn(partitions);
 		Health health = indicator.health();
 		assertThat(health.getStatus()).isEqualTo(Status.UP);
 	}

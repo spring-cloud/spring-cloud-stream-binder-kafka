@@ -46,8 +46,7 @@ public class KafkaBinderHealthIndicator implements HealthIndicator {
 
 	@Override
 	public Health health() {
-		Consumer<?, ?> metadataConsumer = consumerFactory.createConsumer();
-		try {
+		try (Consumer<?, ?> metadataConsumer = consumerFactory.createConsumer()) {
 			Set<String> downMessages = new HashSet<>();
 			for (String topic : this.binder.getTopicsInUse().keySet()) {
 				List<PartitionInfo> partitionInfos = metadataConsumer.partitionsFor(topic);
@@ -66,9 +65,6 @@ public class KafkaBinderHealthIndicator implements HealthIndicator {
 		}
 		catch (Exception e) {
 			return Health.down(e).build();
-		}
-		finally {
-			metadataConsumer.close();
 		}
 	}
 }
