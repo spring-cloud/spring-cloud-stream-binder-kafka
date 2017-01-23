@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 the original author or authors.
+ * Copyright 2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -39,8 +39,6 @@ public class KafkaBinderEnvironmentPostProcessor implements EnvironmentPostProce
 		propertiesToAdd.put("logging.level.org.I0Itec.zkclient", "ERROR");
 		propertiesToAdd.put("logging.level.kafka.server.KafkaConfig", "ERROR");
 		propertiesToAdd.put("logging.level.kafka.admin.AdminClient.AdminConfig", "ERROR");
-		propertiesToAdd.put("logging.level.org.apache.kafka.clients.consumer.ConsumerConfig", "ERROR");
-		propertiesToAdd.put("logging.level.org.apache.kafka.clients.producer.ProducerConfig", "ERROR");
 		environment.getPropertySources().addLast(new MapPropertySource("kafkaBinderLogConfig", propertiesToAdd));
 	}
 }
