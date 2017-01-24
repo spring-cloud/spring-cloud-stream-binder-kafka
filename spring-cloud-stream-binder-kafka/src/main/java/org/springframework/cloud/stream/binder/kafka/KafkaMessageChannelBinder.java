@@ -223,7 +223,7 @@ public class KafkaMessageChannelBinder extends
 	protected String createProducerDestinationIfNecessary(String name,
 														ExtendedProducerProperties<KafkaProducerProperties> properties) {
 		if (this.logger.isInfoEnabled()) {
-			this.logger.info("Using kafka topic for outbound: " + name);
+			this.logger.info("Using - foobar kafka topic for outbound: " + name);
 		}
 		KafkaTopicUtils.validateTopicName(name);
 		createTopicsIfAutoCreateEnabledAndAdminUtilsPresent(name, properties.getPartitionCount());
@@ -470,8 +470,18 @@ public class KafkaMessageChannelBinder extends
 					@Override
 					public Object doWithRetry(RetryContext context) throws RuntimeException {
 
-						adminUtilsOperation.invokeCreateTopic(zkUtils, topicName, effectivePartitionCount,
-								configurationProperties.getReplicationFactor(), new Properties());
+						try {
+							adminUtilsOperation.invokeCreateTopic(zkUtils, topicName, effectivePartitionCount,
+									configurationProperties.getReplicationFactor(), new Properties());
+						}
+						catch (Exception e) {
+							if (e.getClass().getName().endsWith("TopicExistsException")){
+								logger.warn("Attempted to create topic: " + topicName + ". Topic already exists.");
+							}
+							else {
+								throw e;
+							}
+						}
 						return null;
 					}
 				});
