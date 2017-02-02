@@ -60,7 +60,6 @@ import org.springframework.expression.spel.standard.SpelExpressionParser;
 import org.springframework.integration.core.MessageProducer;
 import org.springframework.integration.kafka.inbound.KafkaMessageDrivenChannelAdapter;
 import org.springframework.integration.kafka.outbound.KafkaProducerMessageHandler;
-import org.springframework.integration.support.MessageBuilder;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
@@ -200,7 +199,7 @@ public class KafkaMessageChannelBinder extends
 
 	@Override
 	protected MessageHandler createProducerMessageHandler(final String destination,
-															ExtendedProducerProperties<KafkaProducerProperties> producerProperties) throws Exception {
+			ExtendedProducerProperties<KafkaProducerProperties> producerProperties) throws Exception {
 
 		KafkaTopicUtils.validateTopicName(destination);
 		createTopicsIfAutoCreateEnabledAndAdminUtilsPresent(destination, producerProperties.getPartitionCount());
@@ -226,7 +225,7 @@ public class KafkaMessageChannelBinder extends
 
 	@Override
 	protected String createProducerDestinationIfNecessary(String name,
-														ExtendedProducerProperties<KafkaProducerProperties> properties) {
+			ExtendedProducerProperties<KafkaProducerProperties> properties) {
 		if (this.logger.isInfoEnabled()) {
 			this.logger.info("Using kafka topic for outbound: " + name);
 		}
@@ -269,7 +268,7 @@ public class KafkaMessageChannelBinder extends
 
 	@Override
 	protected Collection<PartitionInfo> createConsumerDestinationIfNecessary(String name, String group,
-																			ExtendedConsumerProperties<KafkaConsumerProperties> properties) {
+			ExtendedConsumerProperties<KafkaConsumerProperties> properties) {
 		KafkaTopicUtils.validateTopicName(name);
 		if (properties.getInstanceCount() == 0) {
 			throw new IllegalArgumentException("Instance count cannot be zero");
@@ -300,7 +299,7 @@ public class KafkaMessageChannelBinder extends
 	@Override
 	@SuppressWarnings("unchecked")
 	protected MessageProducer createConsumerEndpoint(String name, String group, Collection<PartitionInfo> destination,
-													final ExtendedConsumerProperties<KafkaConsumerProperties> properties) {
+			final ExtendedConsumerProperties<KafkaConsumerProperties> properties) {
 		boolean anonymous = !StringUtils.hasText(group);
 		Assert.isTrue(!anonymous || !properties.getExtension().isEnableDlq(),
 				"DLQ support is not available for anonymous subscriptions");
@@ -360,10 +359,10 @@ public class KafkaMessageChannelBinder extends
 					if (properties.getHeaderMode().equals(HeaderMode.embeddedHeaders)) {
 						EmbeddedHeadersMessageConverter embeddedHeadersMessageConverter = new EmbeddedHeadersMessageConverter();
 						try {
-							MessageValues messageValues = embeddedHeadersMessageConverter.extractHeaders(MessageBuilder.withPayload(payload).build(), true);
+							MessageValues messageValues = embeddedHeadersMessageConverter.extractHeaders(payload, true, null);
 							messageValues.getHeaders().put("exception", thrownException.getMessage());
 							List<String> headers = new ArrayList<>();
-							for (String header: messageValues.getHeaders().keySet()) {
+							for (String header : messageValues.getHeaders().keySet()) {
 								headers.add(header);
 							}
 							payload = embeddedHeadersMessageConverter.embedHeaders(messageValues, headers.toArray(new String[0]));
@@ -578,8 +577,8 @@ public class KafkaMessageChannelBinder extends
 		private final DefaultKafkaProducerFactory<byte[], byte[]> producerFactory;
 
 		private ProducerConfigurationMessageHandler(KafkaTemplate<byte[], byte[]> kafkaTemplate, String topic,
-													ExtendedProducerProperties<KafkaProducerProperties> producerProperties,
-													DefaultKafkaProducerFactory<byte[], byte[]> producerFactory) {
+				ExtendedProducerProperties<KafkaProducerProperties> producerProperties,
+				DefaultKafkaProducerFactory<byte[], byte[]> producerFactory) {
 			super(kafkaTemplate);
 			setTopicExpression(new LiteralExpression(topic));
 			setBeanFactory(KafkaMessageChannelBinder.this.getBeanFactory());
