@@ -359,7 +359,7 @@ public class KafkaMessageChannelBinder extends
 					if (properties.getHeaderMode().equals(HeaderMode.embeddedHeaders)) {
 						EmbeddedHeadersMessageConverter embeddedHeadersMessageConverter = new EmbeddedHeadersMessageConverter();
 						try {
-							MessageValues messageValues = embeddedHeadersMessageConverter.extractHeaders(payload, true, null);
+							MessageValues messageValues = embeddedHeadersMessageConverter.extractHeaders(payload);
 							messageValues.getHeaders().put("exception", thrownException.getMessage());
 							List<String> headers = new ArrayList<>();
 							for (String header : messageValues.getHeaders().keySet()) {
