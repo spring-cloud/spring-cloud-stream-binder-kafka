@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 the original author or authors.
+ * Copyright 2016-2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,7 +26,9 @@ import javax.validation.constraints.NotNull;
  */
 public class KafkaProducerProperties {
 
-	private int bufferSize = 16384;
+	private int batchSize = 16384;
+
+	private int bufferMemory = 33554432;
 
 	private CompressionType compressionType = CompressionType.none;
 
@@ -36,12 +38,20 @@ public class KafkaProducerProperties {
 
 	private Map<String, String> configuration = new HashMap<>();
 
-	public int getBufferSize() {
-		return this.bufferSize;
+	public int getBatchSize() {
+		return this.batchSize;
 	}
 
-	public void setBufferSize(int bufferSize) {
-		this.bufferSize = bufferSize;
+	public void setBatchSize(int batchSize) {
+		this.batchSize = batchSize;
+	}
+
+	public int getBufferMemory() {
+		return bufferMemory;
+	}
+
+	public void setBufferMemory(int bufferMemory) {
+		this.bufferMemory = bufferMemory;
 	}
 
 	@NotNull
