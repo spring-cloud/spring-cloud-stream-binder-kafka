@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-2016 the original author or authors.
+ * Copyright 2014-2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.UUID;
@@ -45,9 +46,12 @@ import org.springframework.cloud.stream.binder.AbstractMessageChannelBinder;
 import org.springframework.cloud.stream.binder.Binder;
 import org.springframework.cloud.stream.binder.BinderException;
 import org.springframework.cloud.stream.binder.BinderHeaders;
+import org.springframework.cloud.stream.binder.EmbeddedHeadersMessageConverter;
 import org.springframework.cloud.stream.binder.ExtendedConsumerProperties;
 import org.springframework.cloud.stream.binder.ExtendedProducerProperties;
 import org.springframework.cloud.stream.binder.ExtendedPropertiesBinder;
+import org.springframework.cloud.stream.binder.HeaderMode;
+import org.springframework.cloud.stream.binder.MessageValues;
 import org.springframework.cloud.stream.binder.kafka.admin.AdminUtilsOperation;
 import org.springframework.cloud.stream.binder.kafka.config.KafkaBinderConfigurationProperties;
 import org.springframework.context.Lifecycle;
@@ -195,7 +199,7 @@ public class KafkaMessageChannelBinder extends
 
 	@Override
 	protected MessageHandler createProducerMessageHandler(final String destination,
-															ExtendedProducerProperties<KafkaProducerProperties> producerProperties) throws Exception {
+			ExtendedProducerProperties<KafkaProducerProperties> producerProperties) throws Exception {
 
 		KafkaTopicUtils.validateTopicName(destination);
 		createTopicsIfAutoCreateEnabledAndAdminUtilsPresent(destination, producerProperties.getPartitionCount());
@@ -221,7 +225,7 @@ public class KafkaMessageChannelBinder extends
 
 	@Override
 	protected String createProducerDestinationIfNecessary(String name,
-														ExtendedProducerProperties<KafkaProducerProperties> properties) {
+			ExtendedProducerProperties<KafkaProducerProperties> properties) {
 		if (this.logger.isInfoEnabled()) {
 			this.logger.info("Using kafka topic for outbound: " + name);
 		}
@@ -264,7 +268,7 @@ public class KafkaMessageChannelBinder extends
 
 	@Override
 	protected Collection<PartitionInfo> createConsumerDestinationIfNecessary(String name, String group,
-																			ExtendedConsumerProperties<KafkaConsumerProperties> properties) {
+			ExtendedConsumerProperties<KafkaConsumerProperties> properties) {
 		KafkaTopicUtils.validateTopicName(name);
 		if (properties.getInstanceCount() == 0) {
 			throw new IllegalArgumentException("Instance count cannot be zero");
@@ -295,7 +299,7 @@ public class KafkaMessageChannelBinder extends
 	@Override
 	@SuppressWarnings("unchecked")
 	protected MessageProducer createConsumerEndpoint(String name, String group, Collection<PartitionInfo> destination,
-													ExtendedConsumerProperties<KafkaConsumerProperties> properties) {
+			final ExtendedConsumerProperties<KafkaConsumerProperties> properties) {
 		boolean anonymous = !StringUtils.hasText(group);
 		Assert.isTrue(!anonymous || !properties.getExtension().isEnableDlq(),
 				"DLQ support is not available for anonymous subscriptions");
@@ -350,8 +354,24 @@ public class KafkaMessageChannelBinder extends
 				public void handle(Exception thrownException, final ConsumerRecord message) {
 					final byte[] key = message.key() != null ? Utils.toArray(ByteBuffer.wrap((byte[]) message.key()))
 							: null;
-					final byte[] payload = message.value() != null
+					byte[] payload = message.value() != null
 							? Utils.toArray(ByteBuffer.wrap((byte[]) message.value())) : null;
+					if (properties.getHeaderMode().equals(HeaderMode.embeddedHeaders)) {
+						EmbeddedHeadersMessageConverter embeddedHeadersMessageConverter = new EmbeddedHeadersMessageConverter();
+						try {
+							MessageValues messageValues = embeddedHeadersMessageConverter.extractHeaders(payload);
+							messageValues.getHeaders().put("exception", thrownException.getMessage());
+							List<String> headers = new ArrayList<>();
+							for (String header : messageValues.getHeaders().keySet()) {
+								headers.add(header);
+							}
+							payload = embeddedHeadersMessageConverter.embedHeaders(messageValues, headers.toArray(new String[0]));
+						}
+						catch (Exception e) {
+							logger.warn("Exception when embedding exception message into payload: " + e);
+						}
+					}
+					final byte[] payloadToSend = payload;
 					KafkaMessageChannelBinder.this.dlqProducer.send(new ProducerRecord<>(dlqTopic, key, payload),
 							new Callback() {
 
@@ -361,7 +381,7 @@ public class KafkaMessageChannelBinder extends
 									messageLog.append(" a message with key='"
 											+ toDisplayString(ObjectUtils.nullSafeToString(key), 50) + "'");
 									messageLog.append(" and payload='"
-											+ toDisplayString(ObjectUtils.nullSafeToString(payload), 50) + "'");
+											+ toDisplayString(ObjectUtils.nullSafeToString(payloadToSend), 50) + "'");
 									messageLog.append(" received from " + message.partition());
 									if (exception != null) {
 										KafkaMessageChannelBinder.this.logger.error(
@@ -571,8 +591,8 @@ public class KafkaMessageChannelBinder extends
 		private final DefaultKafkaProducerFactory<byte[], byte[]> producerFactory;
 
 		private ProducerConfigurationMessageHandler(KafkaTemplate<byte[], byte[]> kafkaTemplate, String topic,
-													ExtendedProducerProperties<KafkaProducerProperties> producerProperties,
-													DefaultKafkaProducerFactory<byte[], byte[]> producerFactory) {
+				ExtendedProducerProperties<KafkaProducerProperties> producerProperties,
+				DefaultKafkaProducerFactory<byte[], byte[]> producerFactory) {
 			super(kafkaTemplate);
 			setTopicExpression(new LiteralExpression(topic));
 			setBeanFactory(KafkaMessageChannelBinder.this.getBeanFactory());

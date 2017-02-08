@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 the original author or authors.
+ * Copyright 2016-2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -155,6 +155,8 @@ public abstract class KafkaBinderTests extends PartitionCapableBinderTests<Abstr
 		assertThat(receivedMessage).isNotNull();
 		assertThat(receivedMessage.getPayload()).isEqualTo(testMessagePayload);
 		assertThat(handler.getInvocationCount()).isEqualTo(consumerProperties.getMaxAttempts());
+		assertThat(receivedMessage.getHeaders().containsKey("exception"));
+		assertTrue(receivedMessage.getHeaders().get("exception").toString().equals("failed to send Message to channel 'null'; nested exception is java.lang.RuntimeException"));
 		binderBindUnbindLatency();
 		dlqConsumerBinding.unbind();
 		consumerBinding.unbind();
