@@ -171,10 +171,14 @@ Default: Empty map.
 The following properties are available for Kafka producers only and
 must be prefixed with `spring.cloud.stream.kafka.bindings.<channelName>.producer.`.
 
-bufferSize::
+batchSize::
   Upper limit, in bytes, of how much data the Kafka producer will attempt to batch before sending.
 +
 Default: `16384`.
+bufferMemory::
+  the total bytes of memory the producer can use to buffer records waiting to be sent to the server. .
++
+Default: `33554432`.
 sync::
   Whether the producer is synchronous.
 +

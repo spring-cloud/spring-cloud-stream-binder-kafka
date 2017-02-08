@@ -195,7 +195,7 @@ public class KafkaMessageChannelBinder extends
 
 	@Override
 	protected MessageHandler createProducerMessageHandler(final String destination,
-															ExtendedProducerProperties<KafkaProducerProperties> producerProperties) throws Exception {
+			ExtendedProducerProperties<KafkaProducerProperties> producerProperties) throws Exception {
 
 		KafkaTopicUtils.validateTopicName(destination);
 		createTopicsIfAutoCreateEnabledAndAdminUtilsPresent(destination, producerProperties.getPartitionCount());
@@ -221,7 +221,7 @@ public class KafkaMessageChannelBinder extends
 
 	@Override
 	protected String createProducerDestinationIfNecessary(String name,
-														ExtendedProducerProperties<KafkaProducerProperties> properties) {
+			ExtendedProducerProperties<KafkaProducerProperties> properties) {
 		if (this.logger.isInfoEnabled()) {
 			this.logger.info("Using kafka topic for outbound: " + name);
 		}
@@ -247,8 +247,8 @@ public class KafkaMessageChannelBinder extends
 		}
 		props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, this.configurationProperties.getKafkaConnectionString());
 		props.put(ProducerConfig.RETRIES_CONFIG, 0);
-		props.put(ProducerConfig.BATCH_SIZE_CONFIG, String.valueOf(producerProperties.getExtension().getBufferSize()));
-		props.put(ProducerConfig.BUFFER_MEMORY_CONFIG, 33554432);
+		props.put(ProducerConfig.BATCH_SIZE_CONFIG, String.valueOf(producerProperties.getExtension().getBatchSize()));
+		props.put(ProducerConfig.BUFFER_MEMORY_CONFIG, String.valueOf(producerProperties.getExtension().getBufferMemory()));
 		props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, ByteArraySerializer.class);
 		props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, ByteArraySerializer.class);
 		props.put(ProducerConfig.ACKS_CONFIG, String.valueOf(this.configurationProperties.getRequiredAcks()));
@@ -264,7 +264,7 @@ public class KafkaMessageChannelBinder extends
 
 	@Override
 	protected Collection<PartitionInfo> createConsumerDestinationIfNecessary(String name, String group,
-																			ExtendedConsumerProperties<KafkaConsumerProperties> properties) {
+			ExtendedConsumerProperties<KafkaConsumerProperties> properties) {
 		KafkaTopicUtils.validateTopicName(name);
 		if (properties.getInstanceCount() == 0) {
 			throw new IllegalArgumentException("Instance count cannot be zero");
@@ -295,7 +295,7 @@ public class KafkaMessageChannelBinder extends
 	@Override
 	@SuppressWarnings("unchecked")
 	protected MessageProducer createConsumerEndpoint(String name, String group, Collection<PartitionInfo> destination,
-													ExtendedConsumerProperties<KafkaConsumerProperties> properties) {
+			ExtendedConsumerProperties<KafkaConsumerProperties> properties) {
 		boolean anonymous = !StringUtils.hasText(group);
 		Assert.isTrue(!anonymous || !properties.getExtension().isEnableDlq(),
 				"DLQ support is not available for anonymous subscriptions");
@@ -477,7 +477,7 @@ public class KafkaMessageChannelBinder extends
 						catch (Exception e) {
 							String exceptionClass = e.getClass().getName();
 							if (exceptionClass.equals("kafka.common.TopicExistsException") ||
-									exceptionClass.equals("org.apache.kafka.common.errors.TopicExistsException")){
+									exceptionClass.equals("org.apache.kafka.common.errors.TopicExistsException")) {
 								if (logger.isWarnEnabled()) {
 									logger.warn("Attempt to create topic: " + topicName + ". Topic already exists.");
 								}
@@ -571,8 +571,8 @@ public class KafkaMessageChannelBinder extends
 		private final DefaultKafkaProducerFactory<byte[], byte[]> producerFactory;
 
 		private ProducerConfigurationMessageHandler(KafkaTemplate<byte[], byte[]> kafkaTemplate, String topic,
-													ExtendedProducerProperties<KafkaProducerProperties> producerProperties,
-													DefaultKafkaProducerFactory<byte[], byte[]> producerFactory) {
+				ExtendedProducerProperties<KafkaProducerProperties> producerProperties,
+				DefaultKafkaProducerFactory<byte[], byte[]> producerFactory) {
 			super(kafkaTemplate);
 			setTopicExpression(new LiteralExpression(topic));
 			setBeanFactory(KafkaMessageChannelBinder.this.getBeanFactory());
