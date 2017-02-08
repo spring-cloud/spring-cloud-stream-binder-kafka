@@ -223,7 +223,7 @@ public class KafkaMessageChannelBinder extends
 	protected String createProducerDestinationIfNecessary(String name,
 														ExtendedProducerProperties<KafkaProducerProperties> properties) {
 		if (this.logger.isInfoEnabled()) {
-			this.logger.info("Using kafka topic for outbound: " + name);
+			this.logger.info("Using - kafka topic for outbound: " + name);
 		}
 		KafkaTopicUtils.validateTopicName(name);
 		createTopicsIfAutoCreateEnabledAndAdminUtilsPresent(name, properties.getPartitionCount());
