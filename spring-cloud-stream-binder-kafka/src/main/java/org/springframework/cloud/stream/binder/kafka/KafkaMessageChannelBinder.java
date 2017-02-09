@@ -175,11 +175,11 @@ public class KafkaMessageChannelBinder extends
 	protected MessageHandler createProducerMessageHandler(final ProducerDestination destination,
 															ExtendedProducerProperties<KafkaProducerProperties> producerProperties) throws Exception {
 
-		Collection<PartitionInfo> partitions = getPartitionsForTopic(destination.getProducerDestinationName(), producerProperties.getPartitionCount());
-		this.topicsInUse.put(destination.getProducerDestinationName(), partitions);
+		Collection<PartitionInfo> partitions = getPartitionsForTopic(destination.getName(), producerProperties.getPartitionCount());
+		this.topicsInUse.put(destination.getName(), partitions);
 		if (producerProperties.getPartitionCount() < partitions.size()) {
 			if (this.logger.isInfoEnabled()) {
-				this.logger.info("The `partitionCount` of the producer for topic " + destination.getProducerDestinationName() + " is "
+				this.logger.info("The `partitionCount` of the producer for topic " + destination.getName() + " is "
 						+ producerProperties.getPartitionCount() + ", smaller than the actual partition count of "
 						+ partitions.size() + " of the topic. The larger number will be used instead.");
 			}
@@ -190,7 +190,7 @@ public class KafkaMessageChannelBinder extends
 		if (this.producerListener != null) {
 			kafkaTemplate.setProducerListener(this.producerListener);
 		}
-		return new ProducerConfigurationMessageHandler(kafkaTemplate, destination.getProducerDestinationName(), producerProperties, producerFB);
+		return new ProducerConfigurationMessageHandler(kafkaTemplate, destination.getName(), producerProperties, producerFB);
 	}
 
 	private DefaultKafkaProducerFactory<byte[], byte[]> getProducerFactory(
@@ -232,7 +232,7 @@ public class KafkaMessageChannelBinder extends
 		ConsumerFactory<?, ?> consumerFactory = new DefaultKafkaConsumerFactory<>(props);
 		int partitionCount = properties.getInstanceCount() * properties.getConcurrency();
 
-		Collection<PartitionInfo> allPartitions = getPartitionsForTopic(destination.getConsumerDestinationName(), partitionCount);
+		Collection<PartitionInfo> allPartitions = getPartitionsForTopic(destination.getName(), partitionCount);
 
 		Collection<PartitionInfo> listenedPartitions;
 
@@ -249,13 +249,13 @@ public class KafkaMessageChannelBinder extends
 				}
 			}
 		}
-		this.topicsInUse.put(destination.getConsumerDestinationName(), listenedPartitions);
+		this.topicsInUse.put(destination.getName(), listenedPartitions);
 
 		Assert.isTrue(!CollectionUtils.isEmpty(listenedPartitions), "A list of partitions must be provided");
 		final TopicPartitionInitialOffset[] topicPartitionInitialOffsets = getTopicPartitionInitialOffsets(
 				listenedPartitions);
 		final ContainerProperties containerProperties =
-				anonymous || properties.getExtension().isAutoRebalanceEnabled() ? new ContainerProperties(destination.getConsumerDestinationName())
+				anonymous || properties.getExtension().isAutoRebalanceEnabled() ? new ContainerProperties(destination.getName())
 						: new ContainerProperties(topicPartitionInitialOffsets);
 		int concurrency = Math.min(properties.getConcurrency(), listenedPartitions.size());
 		final ConcurrentMessageListenerContainer<?, ?> messageListenerContainer =
@@ -297,7 +297,7 @@ public class KafkaMessageChannelBinder extends
 							: null;
 					final byte[] payload = message.value() != null
 							? Utils.toArray(ByteBuffer.wrap((byte[]) message.value())) : null;
-					ListenableFuture<SendResult<byte[], byte[]>> sentDlq = kafkaTemplate.send("error." + destination.getConsumerDestinationName() + "." + group,
+					ListenableFuture<SendResult<byte[], byte[]>> sentDlq = kafkaTemplate.send("error." + destination.getName() + "." + group,
 							message.partition(), key, payload);
 					sentDlq.addCallback(new ListenableFutureCallback<SendResult<byte[], byte[]>>() {
 						StringBuilder sb = new StringBuilder().append(" a message with key='")

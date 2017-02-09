@@ -215,12 +215,12 @@ public class KafkaTopicProvisioner implements ProvisioningProvider<ExtendedConsu
 		}
 
 		@Override
-		public String getProducerDestinationName() {
+		public String getName() {
 			return producerDestinationName;
 		}
 
 		@Override
-		public String getPartitionedProducerDestinationName(int partition) {
+		public String getNameForPartition(int partition) {
 			return producerDestinationName;
 		}
 
@@ -252,7 +252,7 @@ public class KafkaTopicProvisioner implements ProvisioningProvider<ExtendedConsu
 		}
 
 		@Override
-		public String getConsumerDestinationName() {
+		public String getName() {
 			return this.consumerDestinationName;
 		}
 
