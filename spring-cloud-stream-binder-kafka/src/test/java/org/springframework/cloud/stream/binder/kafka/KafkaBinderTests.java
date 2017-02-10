@@ -38,7 +38,6 @@ import org.junit.Test;
 
 import org.springframework.beans.DirectFieldAccessor;
 import org.springframework.cloud.stream.binder.Binder;
-import org.springframework.cloud.stream.binder.BinderException;
 import org.springframework.cloud.stream.binder.Binding;
 import org.springframework.cloud.stream.binder.DefaultBinding;
 import org.springframework.cloud.stream.binder.ExtendedConsumerProperties;
@@ -51,6 +50,7 @@ import org.springframework.cloud.stream.binder.kafka.properties.KafkaConsumerPro
 import org.springframework.cloud.stream.binder.kafka.properties.KafkaProducerProperties;
 import org.springframework.cloud.stream.binder.kafka.utils.KafkaTopicUtils;
 import org.springframework.cloud.stream.config.BindingProperties;
+import org.springframework.cloud.stream.provisioning.ProvisioningException;
 import org.springframework.context.support.GenericApplicationContext;
 import org.springframework.integration.IntegrationMessageHeaderAccessor;
 import org.springframework.integration.channel.DirectChannel;
@@ -1108,7 +1108,7 @@ public abstract class KafkaBinderTests extends PartitionCapableBinderTests<Abstr
 			binding = binder.bindConsumer(testTopicName, "test", output, consumerProperties);
 		}
 		catch (Exception e) {
-			assertThat(e).isInstanceOf(BinderException.class);
+			assertThat(e).isInstanceOf(ProvisioningException.class);
 			assertThat(e)
 					.hasMessageContaining("The number of expected partitions was: 3, but 1 has been found instead");
 		}

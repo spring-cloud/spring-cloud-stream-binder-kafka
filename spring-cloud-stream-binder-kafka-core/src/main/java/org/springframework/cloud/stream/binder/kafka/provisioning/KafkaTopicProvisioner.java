@@ -25,16 +25,16 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.common.security.JaasUtils;
 
 import org.springframework.beans.factory.InitializingBean;
-import org.springframework.cloud.stream.binder.BinderException;
 import org.springframework.cloud.stream.binder.ExtendedConsumerProperties;
 import org.springframework.cloud.stream.binder.ExtendedProducerProperties;
+import org.springframework.cloud.stream.binder.kafka.admin.AdminUtilsOperation;
 import org.springframework.cloud.stream.binder.kafka.properties.KafkaBinderConfigurationProperties;
 import org.springframework.cloud.stream.binder.kafka.properties.KafkaConsumerProperties;
 import org.springframework.cloud.stream.binder.kafka.properties.KafkaProducerProperties;
 import org.springframework.cloud.stream.binder.kafka.utils.KafkaTopicUtils;
-import org.springframework.cloud.stream.binder.kafka.admin.AdminUtilsOperation;
 import org.springframework.cloud.stream.provisioning.ConsumerDestination;
 import org.springframework.cloud.stream.provisioning.ProducerDestination;
+import org.springframework.cloud.stream.provisioning.ProvisioningException;
 import org.springframework.cloud.stream.provisioning.ProvisioningProvider;
 import org.springframework.retry.RetryCallback;
 import org.springframework.retry.RetryContext;
@@ -167,7 +167,7 @@ public class KafkaTopicProvisioner implements ProvisioningProvider<ExtendedConsu
 						adminUtilsOperation.invokeAddPartitions(zkUtils, topicName, effectivePartitionCount, null, false);
 					}
 					else {
-						throw new BinderException("The number of expected partitions was: " + partitionCount + ", but "
+						throw new ProvisioningException("The number of expected partitions was: " + partitionCount + ", but "
 								+ partitionSize + (partitionSize > 1 ? " have " : " has ") + "been found instead."
 								+ "Consider either increasing the partition count of the topic or enabling " +
 								"`autoAddPartitions`");
@@ -191,7 +191,7 @@ public class KafkaTopicProvisioner implements ProvisioningProvider<ExtendedConsu
 				});
 			}
 			else {
-				throw new BinderException("Error fetching Kafka topic metadata: ",
+				throw new ProvisioningException("Error fetching Kafka topic metadata: ",
 						ErrorMapping.exceptionFor(errorCode));
 			}
 		}
