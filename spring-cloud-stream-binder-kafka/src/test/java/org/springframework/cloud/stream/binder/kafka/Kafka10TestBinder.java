@@ -16,15 +16,10 @@
 
 package org.springframework.cloud.stream.binder.kafka;
 
-import org.springframework.cloud.stream.binder.ExtendedConsumerProperties;
-import org.springframework.cloud.stream.binder.ExtendedProducerProperties;
 import org.springframework.cloud.stream.binder.kafka.admin.AdminUtilsOperation;
 import org.springframework.cloud.stream.binder.kafka.admin.Kafka10AdminUtilsOperation;
 import org.springframework.cloud.stream.binder.kafka.properties.KafkaBinderConfigurationProperties;
-import org.springframework.cloud.stream.binder.kafka.properties.KafkaConsumerProperties;
-import org.springframework.cloud.stream.binder.kafka.properties.KafkaProducerProperties;
 import org.springframework.cloud.stream.binder.kafka.provisioning.KafkaTopicProvisioner;
-import org.springframework.cloud.stream.provisioning.ProvisioningProvider;
 import org.springframework.context.support.GenericApplicationContext;
 import org.springframework.kafka.support.LoggingProducerListener;
 import org.springframework.kafka.support.ProducerListener;
@@ -42,10 +37,9 @@ public class Kafka10TestBinder extends AbstractKafkaTestBinder {
 	public Kafka10TestBinder(KafkaBinderConfigurationProperties binderConfiguration) {
 		try {
 			AdminUtilsOperation adminUtilsOperation = new Kafka10AdminUtilsOperation();
-			ProvisioningProvider<ExtendedConsumerProperties<KafkaConsumerProperties>,
-					ExtendedProducerProperties<KafkaProducerProperties>> provisioningProvider =
+			KafkaTopicProvisioner provisioningProvider =
 					new KafkaTopicProvisioner(binderConfiguration, adminUtilsOperation);
-			((KafkaTopicProvisioner)provisioningProvider).afterPropertiesSet();
+			provisioningProvider.afterPropertiesSet();
 
 			KafkaMessageChannelBinder binder = new KafkaMessageChannelBinder(binderConfiguration, provisioningProvider);
 

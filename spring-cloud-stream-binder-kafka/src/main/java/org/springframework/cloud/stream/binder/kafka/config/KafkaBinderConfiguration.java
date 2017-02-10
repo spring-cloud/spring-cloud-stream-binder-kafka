@@ -28,22 +28,17 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.cloud.stream.binder.Binder;
-import org.springframework.cloud.stream.binder.ExtendedConsumerProperties;
-import org.springframework.cloud.stream.binder.ExtendedProducerProperties;
-import org.springframework.cloud.stream.binder.kafka.properties.JaasLoginModuleConfiguration;
-import org.springframework.cloud.stream.binder.kafka.properties.KafkaBinderConfigurationProperties;
 import org.springframework.cloud.stream.binder.kafka.KafkaBinderHealthIndicator;
 import org.springframework.cloud.stream.binder.kafka.KafkaBinderJaasInitializerListener;
-import org.springframework.cloud.stream.binder.kafka.properties.KafkaConsumerProperties;
-import org.springframework.cloud.stream.binder.kafka.properties.KafkaExtendedBindingProperties;
 import org.springframework.cloud.stream.binder.kafka.KafkaMessageChannelBinder;
-import org.springframework.cloud.stream.binder.kafka.properties.KafkaProducerProperties;
 import org.springframework.cloud.stream.binder.kafka.admin.AdminUtilsOperation;
 import org.springframework.cloud.stream.binder.kafka.admin.Kafka09AdminUtilsOperation;
 import org.springframework.cloud.stream.binder.kafka.admin.Kafka10AdminUtilsOperation;
+import org.springframework.cloud.stream.binder.kafka.properties.JaasLoginModuleConfiguration;
+import org.springframework.cloud.stream.binder.kafka.properties.KafkaBinderConfigurationProperties;
+import org.springframework.cloud.stream.binder.kafka.properties.KafkaExtendedBindingProperties;
 import org.springframework.cloud.stream.binder.kafka.provisioning.KafkaTopicProvisioner;
 import org.springframework.cloud.stream.config.codec.kryo.KryoCodecAutoConfiguration;
-import org.springframework.cloud.stream.provisioning.ProvisioningProvider;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationListener;
 import org.springframework.context.annotation.Bean;
@@ -91,8 +86,7 @@ public class KafkaBinderConfiguration {
 	private AdminUtilsOperation adminUtilsOperation;
 
 	@Bean
-	ProvisioningProvider<ExtendedConsumerProperties<KafkaConsumerProperties>,
-			ExtendedProducerProperties<KafkaProducerProperties>> provisioningProvider() {
+	KafkaTopicProvisioner provisioningProvider() {
 		return new KafkaTopicProvisioner(this.configurationProperties, this.adminUtilsOperation);
 	}
 

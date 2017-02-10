@@ -43,9 +43,9 @@ import org.springframework.cloud.stream.binder.kafka.properties.KafkaBinderConfi
 import org.springframework.cloud.stream.binder.kafka.properties.KafkaConsumerProperties;
 import org.springframework.cloud.stream.binder.kafka.properties.KafkaExtendedBindingProperties;
 import org.springframework.cloud.stream.binder.kafka.properties.KafkaProducerProperties;
+import org.springframework.cloud.stream.binder.kafka.provisioning.KafkaTopicProvisioner;
 import org.springframework.cloud.stream.provisioning.ConsumerDestination;
 import org.springframework.cloud.stream.provisioning.ProducerDestination;
-import org.springframework.cloud.stream.provisioning.ProvisioningProvider;
 import org.springframework.context.Lifecycle;
 import org.springframework.expression.common.LiteralExpression;
 import org.springframework.expression.spel.standard.SpelExpressionParser;
@@ -104,12 +104,10 @@ public class KafkaMessageChannelBinder extends
 
 	private final Map<String, Collection<PartitionInfo>> topicsInUse = new HashMap<>();
 
-	ProvisioningProvider<ExtendedConsumerProperties<KafkaConsumerProperties>,
-			ExtendedProducerProperties<KafkaProducerProperties>> provisioningProvider;
+	KafkaTopicProvisioner provisioningProvider;
 
 	public KafkaMessageChannelBinder(KafkaBinderConfigurationProperties configurationProperties,
-									ProvisioningProvider<ExtendedConsumerProperties<KafkaConsumerProperties>,
-									ExtendedProducerProperties<KafkaProducerProperties>> provisioningProvider) {
+									KafkaTopicProvisioner provisioningProvider) {
 		super(false, headersToMap(configurationProperties), provisioningProvider);
 		this.configurationProperties = configurationProperties;
 		this.provisioningProvider = provisioningProvider;
