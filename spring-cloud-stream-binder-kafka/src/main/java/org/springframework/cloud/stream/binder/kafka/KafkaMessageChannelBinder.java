@@ -113,6 +113,14 @@ public class KafkaMessageChannelBinder extends
 		this.provisioningProvider = provisioningProvider;
 	}
 
+	/**
+	 *
+	 * @param metadataRetryOperations the retry configuration
+	 */
+	public void setMetadataRetryOperations(RetryOperations metadataRetryOperations) {
+		this.metadataRetryOperations = metadataRetryOperations;
+	}
+
 	@Override
 	public void onInit() throws Exception {
 		if (this.metadataRetryOperations == null) {
