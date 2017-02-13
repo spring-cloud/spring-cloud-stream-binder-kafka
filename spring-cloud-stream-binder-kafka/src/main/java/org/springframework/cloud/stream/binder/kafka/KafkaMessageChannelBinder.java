@@ -104,13 +104,10 @@ public class KafkaMessageChannelBinder extends
 
 	private final Map<String, Collection<PartitionInfo>> topicsInUse = new HashMap<>();
 
-	KafkaTopicProvisioner provisioningProvider;
-
 	public KafkaMessageChannelBinder(KafkaBinderConfigurationProperties configurationProperties,
 									KafkaTopicProvisioner provisioningProvider) {
 		super(false, headersToMap(configurationProperties), provisioningProvider);
 		this.configurationProperties = configurationProperties;
-		this.provisioningProvider = provisioningProvider;
 	}
 
 	/**
