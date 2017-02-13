@@ -226,8 +226,10 @@ public class KafkaTopicProvisioner implements ProvisioningProvider<ExtendedConsu
 
 		@Override
 		public String toString() {
-			return partitions == 0 ? "[Topic=" + producerDestinationName + ". No topic is provisioned."
-					: "[Topic=" + producerDestinationName + ", Partitions=" + partitions + "]";
+			return "KafkaProducerDestination{" +
+					"producerDestinationName='" + producerDestinationName + '\'' +
+					", partitions=" + partitions +
+					'}';
 		}
 	}
 
@@ -258,18 +260,13 @@ public class KafkaTopicProvisioner implements ProvisioningProvider<ExtendedConsu
 
 		@Override
 		public String toString() {
-			StringBuilder sb = new StringBuilder();
-			sb.append(partitions == 0 ? "[Topic=" + consumerDestinationName + ". No topic is provisioned."
-					: "[Topic=" + consumerDestinationName + ", Partitions=" + partitions + "]");
-			if (dlqName != null) {
-				sb.append("[DLQ-Topic=")
-						.append(dlqName)
-						.append(", DLQ Partitions=")
-						.append(partitions)
-						.append("]");
-			}
-			return sb.toString();
+			return "KafkaConsumerDestination{" +
+					"consumerDestinationName='" + consumerDestinationName + '\'' +
+					", partitions=" + partitions +
+					", dlqName='" + dlqName + '\'' +
+					'}';
 		}
+
 	}
 
 }
