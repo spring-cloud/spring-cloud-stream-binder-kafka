@@ -16,15 +16,19 @@
 
 package org.springframework.cloud.stream.binder.kafka.provisioning;
 
+import java.util.Collection;
 import java.util.Properties;
+import java.util.concurrent.Callable;
 
 import kafka.common.ErrorMapping;
 import kafka.utils.ZkUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.security.JaasUtils;
 
 import org.springframework.beans.factory.InitializingBean;
+import org.springframework.cloud.stream.binder.BinderException;
 import org.springframework.cloud.stream.binder.ExtendedConsumerProperties;
 import org.springframework.cloud.stream.binder.ExtendedProducerProperties;
 import org.springframework.cloud.stream.binder.kafka.admin.AdminUtilsOperation;
@@ -64,6 +68,14 @@ public class KafkaTopicProvisioner implements ProvisioningProvider<ExtendedConsu
 								AdminUtilsOperation adminUtilsOperation) {
 		this.configurationProperties = kafkaBinderConfigurationProperties;
 		this.adminUtilsOperation = adminUtilsOperation;
+	}
+
+	/**
+	 *
+	 * @param metadataRetryOperations the retry configuration
+	 */
+	public void setMetadataRetryOperations(RetryOperations metadataRetryOperations) {
+		this.metadataRetryOperations = metadataRetryOperations;
 	}
 
 	@Override
@@ -197,6 +209,30 @@ public class KafkaTopicProvisioner implements ProvisioningProvider<ExtendedConsu
 		}
 		finally {
 			zkUtils.close();
+		}
+	}
+
+	public Collection<PartitionInfo> getPartitionsForTopic(final int partitionCount, final Callable<Collection<PartitionInfo>> callable) {
+		try {
+			return this.metadataRetryOperations
+					.execute(new RetryCallback<Collection<PartitionInfo>, Exception>() {
+
+						@Override
+						public Collection<PartitionInfo> doWithRetry(RetryContext context) throws Exception {
+							Collection<PartitionInfo> partitions = callable.call();
+							// do a sanity check on the partition set
+							if (partitions.size() < partitionCount) {
+								throw new IllegalStateException("The number of expected partitions was: "
+										+ partitionCount + ", but " + partitions.size()
+										+ (partitions.size() > 1 ? " have " : " has ") + "been found instead");
+							}
+							return partitions;
+						}
+					});
+		}
+		catch (Exception e) {
+			this.logger.error("Cannot initialize Binder", e);
+			throw new BinderException("Cannot initialize binder:", e);
 		}
 	}
 

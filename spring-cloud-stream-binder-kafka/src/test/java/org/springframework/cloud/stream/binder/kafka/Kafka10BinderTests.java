@@ -57,7 +57,6 @@ import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.SubscribableChannel;
 import org.springframework.messaging.support.MessageBuilder;
-import org.springframework.retry.RetryOperations;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.fail;
@@ -112,12 +111,6 @@ public class Kafka10BinderTests extends KafkaBinderTests {
 	@Override
 	protected int partitionSize(String topic) {
 		return consumerFactory().createConsumer().partitionsFor(topic).size();
-	}
-
-	@Override
-	@SuppressWarnings("unchecked")
-	protected void setMetadataRetryOperations(Binder binder, RetryOperations retryOperations) {
-		((Kafka10TestBinder) binder).getBinder().setMetadataRetryOperations(retryOperations);
 	}
 
 	@Override

@@ -23,6 +23,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.Callable;
 
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -34,7 +35,6 @@ import org.apache.kafka.common.utils.Utils;
 
 import org.springframework.cloud.stream.binder.AbstractMessageChannelBinder;
 import org.springframework.cloud.stream.binder.Binder;
-import org.springframework.cloud.stream.binder.BinderException;
 import org.springframework.cloud.stream.binder.BinderHeaders;
 import org.springframework.cloud.stream.binder.ExtendedConsumerProperties;
 import org.springframework.cloud.stream.binder.ExtendedProducerProperties;
@@ -65,11 +65,6 @@ import org.springframework.kafka.support.SendResult;
 import org.springframework.kafka.support.TopicPartitionInitialOffset;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.MessageHandler;
-import org.springframework.retry.RetryCallback;
-import org.springframework.retry.RetryContext;
-import org.springframework.retry.RetryOperations;
-import org.springframework.retry.backoff.ExponentialBackOffPolicy;
-import org.springframework.retry.policy.SimpleRetryPolicy;
 import org.springframework.retry.support.RetryTemplate;
 import org.springframework.util.Assert;
 import org.springframework.util.CollectionUtils;
@@ -100,40 +95,12 @@ public class KafkaMessageChannelBinder extends
 
 	private KafkaExtendedBindingProperties extendedBindingProperties = new KafkaExtendedBindingProperties();
 
-	private RetryOperations metadataRetryOperations;
-
 	private final Map<String, Collection<PartitionInfo>> topicsInUse = new HashMap<>();
 
 	public KafkaMessageChannelBinder(KafkaBinderConfigurationProperties configurationProperties,
 									KafkaTopicProvisioner provisioningProvider) {
 		super(false, headersToMap(configurationProperties), provisioningProvider);
 		this.configurationProperties = configurationProperties;
-	}
-
-	/**
-	 *
-	 * @param metadataRetryOperations the retry configuration
-	 */
-	public void setMetadataRetryOperations(RetryOperations metadataRetryOperations) {
-		this.metadataRetryOperations = metadataRetryOperations;
-	}
-
-	@Override
-	public void onInit() throws Exception {
-		if (this.metadataRetryOperations == null) {
-			RetryTemplate retryTemplate = new RetryTemplate();
-
-			SimpleRetryPolicy simpleRetryPolicy = new SimpleRetryPolicy();
-			simpleRetryPolicy.setMaxAttempts(10);
-			retryTemplate.setRetryPolicy(simpleRetryPolicy);
-
-			ExponentialBackOffPolicy backOffPolicy = new ExponentialBackOffPolicy();
-			backOffPolicy.setInitialInterval(100);
-			backOffPolicy.setMultiplier(2);
-			backOffPolicy.setMaxInterval(1000);
-			retryTemplate.setBackOffPolicy(backOffPolicy);
-			this.metadataRetryOperations = retryTemplate;
-		}
 	}
 
 	private static String[] headersToMap(KafkaBinderConfigurationProperties configurationProperties) {
@@ -177,8 +144,14 @@ public class KafkaMessageChannelBinder extends
 	@Override
 	protected MessageHandler createProducerMessageHandler(final ProducerDestination destination,
 															ExtendedProducerProperties<KafkaProducerProperties> producerProperties) throws Exception {
-
-		Collection<PartitionInfo> partitions = getPartitionsForTopic(destination.getName(), producerProperties.getPartitionCount());
+		final DefaultKafkaProducerFactory<byte[], byte[]> producerFB = getProducerFactory(producerProperties);
+		Collection<PartitionInfo> partitions = ((KafkaTopicProvisioner)provisioningProvider)
+				.getPartitionsForTopic(producerProperties.getPartitionCount(), new Callable<Collection<PartitionInfo>>() {
+					@Override
+					public Collection<PartitionInfo> call() throws Exception {
+						return producerFB.createProducer().partitionsFor(destination.getName());
+					}
+				});
 		this.topicsInUse.put(destination.getName(), partitions);
 		if (producerProperties.getPartitionCount() < partitions.size()) {
 			if (this.logger.isInfoEnabled()) {
@@ -188,7 +161,6 @@ public class KafkaMessageChannelBinder extends
 			}
 		}
 
-		DefaultKafkaProducerFactory<byte[], byte[]> producerFB = getProducerFactory(producerProperties);
 		KafkaTemplate<byte[], byte[]> kafkaTemplate = new KafkaTemplate<>(producerFB);
 		if (this.producerListener != null) {
 			kafkaTemplate.setProducerListener(this.producerListener);
@@ -232,10 +204,16 @@ public class KafkaMessageChannelBinder extends
 		if (!ObjectUtils.isEmpty(properties.getExtension().getConfiguration())) {
 			props.putAll(properties.getExtension().getConfiguration());
 		}
-		ConsumerFactory<?, ?> consumerFactory = new DefaultKafkaConsumerFactory<>(props);
+		final ConsumerFactory<?, ?> consumerFactory = new DefaultKafkaConsumerFactory<>(props);
 		int partitionCount = properties.getInstanceCount() * properties.getConcurrency();
 
-		Collection<PartitionInfo> allPartitions = getPartitionsForTopic(destination.getName(), partitionCount);
+		Collection<PartitionInfo> allPartitions = ((KafkaTopicProvisioner)provisioningProvider).getPartitionsForTopic(partitionCount,
+				new Callable<Collection<PartitionInfo>>() {
+					@Override
+					public Collection<PartitionInfo> call() throws Exception {
+						return consumerFactory.createConsumer().partitionsFor(destination.getName());
+					}
+				});
 
 		Collection<PartitionInfo> listenedPartitions;
 
@@ -328,34 +306,6 @@ public class KafkaMessageChannelBinder extends
 			});
 		}
 		return kafkaMessageDrivenChannelAdapter;
-	}
-
-	private Collection<PartitionInfo> getPartitionsForTopic(final String topicName, final int partitionCount) {
-		try {
-			return this.metadataRetryOperations
-					.execute(new RetryCallback<Collection<PartitionInfo>, Exception>() {
-
-						@Override
-						public Collection<PartitionInfo> doWithRetry(RetryContext context) throws Exception {
-							Collection<PartitionInfo> partitions =
-									getProducerFactory(
-											new ExtendedProducerProperties<>(new KafkaProducerProperties()))
-											.createProducer().partitionsFor(topicName);
-
-							// do a sanity check on the partition set
-							if (partitions.size() < partitionCount) {
-								throw new IllegalStateException("The number of expected partitions was: "
-										+ partitionCount + ", but " + partitions.size()
-										+ (partitions.size() > 1 ? " have " : " has ") + "been found instead");
-							}
-							return partitions;
-						}
-					});
-		}
-		catch (Exception e) {
-			this.logger.error("Cannot initialize Binder", e);
-			throw new BinderException("Cannot initialize binder:", e);
-		}
 	}
 
 	private Map<String, Object> getConsumerConfig(boolean anonymous, String consumerGroup) {
