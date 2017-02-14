@@ -86,7 +86,7 @@ import org.springframework.util.concurrent.ListenableFutureCallback;
  */
 public class KafkaMessageChannelBinder extends
 		AbstractMessageChannelBinder<ExtendedConsumerProperties<KafkaConsumerProperties>,
-				ExtendedProducerProperties<KafkaProducerProperties>>
+				ExtendedProducerProperties<KafkaProducerProperties>, KafkaTopicProvisioner>
 		implements ExtendedPropertiesBinder<MessageChannel, KafkaConsumerProperties, KafkaProducerProperties> {
 
 	private final KafkaBinderConfigurationProperties configurationProperties;
@@ -145,8 +145,8 @@ public class KafkaMessageChannelBinder extends
 	protected MessageHandler createProducerMessageHandler(final ProducerDestination destination,
 															ExtendedProducerProperties<KafkaProducerProperties> producerProperties) throws Exception {
 		final DefaultKafkaProducerFactory<byte[], byte[]> producerFB = getProducerFactory(producerProperties);
-		Collection<PartitionInfo> partitions = ((KafkaTopicProvisioner)provisioningProvider)
-				.getPartitionsForTopic(producerProperties.getPartitionCount(), new Callable<Collection<PartitionInfo>>() {
+		Collection<PartitionInfo> partitions = provisioningProvider.getPartitionsForTopic(producerProperties.getPartitionCount(),
+				new Callable<Collection<PartitionInfo>>() {
 					@Override
 					public Collection<PartitionInfo> call() throws Exception {
 						return producerFB.createProducer().partitionsFor(destination.getName());
@@ -207,7 +207,7 @@ public class KafkaMessageChannelBinder extends
 		final ConsumerFactory<?, ?> consumerFactory = new DefaultKafkaConsumerFactory<>(props);
 		int partitionCount = properties.getInstanceCount() * properties.getConcurrency();
 
-		Collection<PartitionInfo> allPartitions = ((KafkaTopicProvisioner)provisioningProvider).getPartitionsForTopic(partitionCount,
+		Collection<PartitionInfo> allPartitions = provisioningProvider.getPartitionsForTopic(partitionCount,
 				new Callable<Collection<PartitionInfo>>() {
 					@Override
 					public Collection<PartitionInfo> call() throws Exception {
