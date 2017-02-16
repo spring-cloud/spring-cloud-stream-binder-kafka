@@ -27,8 +27,18 @@ import javax.validation.constraints.NotNull;
 public class KafkaProducerProperties {
 
 	@Deprecated
+	/**
+	 * bufferSize property is deprecated.
+	 * It is recommended to set compressionType as one of the per binding Kafka producer `configuration` properties.
+	 * If using KafkaAutoConfiguration from Spring Boot 1.5.x, `spring.kafka.producer.batchSize` property can also be used.
+	 */
 	private int bufferSize = 16384;
 
+	/**
+	 * compressionType property is deprecated.
+	 * It is recommended to set compressionType as one of the per binding Kafka producer `configuration` properties.
+	 * If using KafkaAutoConfiguration from Spring Boot 1.5.x, `spring.kafka.producer.compressionType` property can also be used.
+	 */
 	@Deprecated
 	private CompressionType compressionType = CompressionType.none;
 
@@ -79,6 +89,10 @@ public class KafkaProducerProperties {
 		this.configuration = configuration;
 	}
 
+	@Deprecated
+	/**
+	 * @see compressionType
+	 */
 	public enum CompressionType {
 		none,
 		gzip,
