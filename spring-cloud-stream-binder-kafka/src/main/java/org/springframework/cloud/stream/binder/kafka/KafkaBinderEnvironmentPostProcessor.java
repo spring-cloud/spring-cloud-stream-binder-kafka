@@ -26,6 +26,7 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.env.EnvironmentPostProcessor;
 import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.core.env.MapPropertySource;
+import org.springframework.core.env.PropertySource;
 
 /**
  * An {@link EnvironmentPostProcessor} that sets some common configuration properties (log config etc.,) for Kafka
@@ -49,47 +50,30 @@ public class KafkaBinderEnvironmentPostProcessor implements EnvironmentPostProce
 
 	public final static String SPRING_KAFKA_CONSUMER_VALUE_DESERIALIZER = SPRING_KAFKA_CONSUMER + "." + "valueDeserializer";
 
-	public final static String SPRING_KAFKA_BOOTSTRAP_SERVERS = SPRING_KAFKA + "." + "bootstrapServers";
+	private static final String KAFKA_BINDER_DEFAULT_PROPERTIES = "kafkaBinderDefaultProperties";
 
 	@Override
 	public void postProcessEnvironment(ConfigurableEnvironment environment, SpringApplication application) {
-		Map<String, Object> logProperties = new HashMap<>();
-		logProperties.put("logging.pattern.console", "%d{ISO8601} %5p %t %c{2}:%L - %m%n");
-		logProperties.put("logging.level.org.I0Itec.zkclient", "ERROR");
-		logProperties.put("logging.level.kafka.server.KafkaConfig", "ERROR");
-		logProperties.put("logging.level.kafka.admin.AdminClient.AdminConfig", "ERROR");
-		environment.getPropertySources().addLast(new MapPropertySource("kafkaBinderLogConfig", logProperties));
-		Map<String, Object> binderConfig = new HashMap<>();
-		if (environment.getProperty(SPRING_KAFKA_PRODUCER_KEY_SERIALIZER) != null) {
-			binderConfig.put(SPRING_KAFKA_PRODUCER_KEY_SERIALIZER, environment.getProperty(SPRING_KAFKA_PRODUCER_KEY_SERIALIZER));
+		if (!hasPropertySource(KAFKA_BINDER_DEFAULT_PROPERTIES, environment)) {
+			Map<String, Object> kafkaBinderDefaultProperties = new HashMap<>();
+			kafkaBinderDefaultProperties.put("logging.pattern.console", "%d{ISO8601} %5p %t %c{2}:%L - %m%n");
+			kafkaBinderDefaultProperties.put("logging.level.org.I0Itec.zkclient", "ERROR");
+			kafkaBinderDefaultProperties.put("logging.level.kafka.server.KafkaConfig", "ERROR");
+			kafkaBinderDefaultProperties.put("logging.level.kafka.admin.AdminClient.AdminConfig", "ERROR");
+			kafkaBinderDefaultProperties.put(SPRING_KAFKA_PRODUCER_KEY_SERIALIZER, ByteArraySerializer.class.getName());
+			kafkaBinderDefaultProperties.put(SPRING_KAFKA_PRODUCER_VALUE_SERIALIZER, ByteArraySerializer.class.getName());
+			kafkaBinderDefaultProperties.put(SPRING_KAFKA_CONSUMER_KEY_DESERIALIZER, ByteArrayDeserializer.class.getName());
+			kafkaBinderDefaultProperties.put(SPRING_KAFKA_CONSUMER_VALUE_DESERIALIZER, ByteArrayDeserializer.class.getName());
+			environment.getPropertySources().addLast(new MapPropertySource(KAFKA_BINDER_DEFAULT_PROPERTIES, kafkaBinderDefaultProperties));
 		}
-		else {
-			binderConfig.put(SPRING_KAFKA_PRODUCER_KEY_SERIALIZER, ByteArraySerializer.class);
+	}
+
+	private boolean hasPropertySource(String name, ConfigurableEnvironment environment) {
+		for (PropertySource<?> propertySource : environment.getPropertySources()) {
+			if (name.equals(propertySource.getName())) {
+				return true;
+			}
 		}
-		if (environment.getProperty(SPRING_KAFKA_PRODUCER_VALUE_SERIALIZER) != null) {
-			binderConfig.put(SPRING_KAFKA_PRODUCER_VALUE_SERIALIZER, environment.getProperty(SPRING_KAFKA_PRODUCER_VALUE_SERIALIZER));
-		}
-		else {
-			binderConfig.put(SPRING_KAFKA_PRODUCER_VALUE_SERIALIZER, ByteArraySerializer.class);
-		}
-		if (environment.getProperty(SPRING_KAFKA_CONSUMER_KEY_DESERIALIZER) != null) {
-			binderConfig.put(SPRING_KAFKA_CONSUMER_KEY_DESERIALIZER, environment.getProperty(SPRING_KAFKA_CONSUMER_KEY_DESERIALIZER));
-		}
-		else {
-			binderConfig.put(SPRING_KAFKA_CONSUMER_KEY_DESERIALIZER, ByteArrayDeserializer.class);
-		}
-		if (environment.getProperty(SPRING_KAFKA_CONSUMER_VALUE_DESERIALIZER) != null) {
-			binderConfig.put(SPRING_KAFKA_CONSUMER_VALUE_DESERIALIZER, environment.getProperty(SPRING_KAFKA_CONSUMER_VALUE_DESERIALIZER));
-		}
-		else {
-			binderConfig.put(SPRING_KAFKA_CONSUMER_VALUE_DESERIALIZER, ByteArrayDeserializer.class);
-		}
-		if (environment.getProperty(SPRING_KAFKA_BOOTSTRAP_SERVERS) != null) {
-			binderConfig.put(SPRING_KAFKA_BOOTSTRAP_SERVERS, environment.getProperty(SPRING_KAFKA_BOOTSTRAP_SERVERS));
-		}
-		else {
-			binderConfig.put(SPRING_KAFKA_BOOTSTRAP_SERVERS, "");
-		}
-		environment.getPropertySources().addLast(new MapPropertySource("kafkaBinderConfig", binderConfig));
+		return false;
 	}
 }
