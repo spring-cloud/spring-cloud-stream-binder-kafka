@@ -64,7 +64,7 @@ public class ReRouteDlqKApplication implements CommandLineRunner {
             System.out.println("First retry for " + failed);
             return MessageBuilder.fromMessage(failed)
                     .setHeader(X_RETRIES_HEADER, new Integer(1))
-                    .setHeader(BinderHeaders.PARTITION_HEADER,
+                    .setHeader(BinderHeaders.PARTITION_OVERRIDE,
                             failed.getHeaders().get(KafkaHeaders.RECEIVED_PARTITION_ID))
                     .build();
         }
@@ -72,14 +72,14 @@ public class ReRouteDlqKApplication implements CommandLineRunner {
             System.out.println("Another retry for " + failed);
             return MessageBuilder.fromMessage(failed)
                     .setHeader(X_RETRIES_HEADER, new Integer(retries.intValue() + 1))
-                    .setHeader(BinderHeaders.PARTITION_HEADER,
+                    .setHeader(BinderHeaders.PARTITION_OVERRIDE,
                             failed.getHeaders().get(KafkaHeaders.RECEIVED_PARTITION_ID))
                     .build();
         }
         else {
             System.out.println("Retries exhausted for " + failed);
             parkingLot.send(MessageBuilder.fromMessage(failed)
-                    .setHeader(BinderHeaders.PARTITION_HEADER,
+                    .setHeader(BinderHeaders.PARTITION_OVERRIDE,
                             failed.getHeaders().get(KafkaHeaders.RECEIVED_PARTITION_ID))
                     .build());
         }
