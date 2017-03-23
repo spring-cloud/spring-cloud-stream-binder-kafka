@@ -283,7 +283,7 @@ public abstract class KafkaBinderTests extends PartitionCapableBinderTests<Abstr
 		FailingInvocationCountingMessageHandler handler = new FailingInvocationCountingMessageHandler();
 		moduleInputChannel.subscribe(handler);
 		ExtendedProducerProperties<KafkaProducerProperties> producerProperties = createProducerProperties();
-		producerProperties.setPartitionCount(10);
+		producerProperties.setPartitionCount(1);
 		ExtendedConsumerProperties<KafkaConsumerProperties> consumerProperties = createConsumerProperties();
 		consumerProperties.setMaxAttempts(3);
 		consumerProperties.setBackOffInitialInterval(100);

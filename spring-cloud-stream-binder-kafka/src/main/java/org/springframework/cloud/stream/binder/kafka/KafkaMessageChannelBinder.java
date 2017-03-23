@@ -281,8 +281,8 @@ public class KafkaMessageChannelBinder extends
 							: null;
 					final byte[] payload = message.value() != null
 							? Utils.toArray(ByteBuffer.wrap((byte[]) message.value())) : null;
-					String dlqName = StringUtils.hasText(properties.getExtension().getDlqName()) ? properties.getExtension().getDlqName()
-							: "error." + destination.getName() + "." + group;
+					String dlqName = StringUtils.hasText(extendedConsumerProperties.getExtension().getDlqName()) ?
+							extendedConsumerProperties.getExtension().getDlqName() : "error." + destination.getName() + "." + group;
 					ListenableFuture<SendResult<byte[], byte[]>> sentDlq = kafkaTemplate.send(dlqName, message.partition(), key, payload);
 					sentDlq.addCallback(new ListenableFutureCallback<SendResult<byte[], byte[]>>() {
 						StringBuilder sb = new StringBuilder().append(" a message with key='")
