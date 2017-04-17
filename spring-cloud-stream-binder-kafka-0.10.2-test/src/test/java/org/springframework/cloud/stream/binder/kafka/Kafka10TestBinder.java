@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2016 the original author or authors.
+ * Copyright 2015-2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,10 +16,13 @@
 
 package org.springframework.cloud.stream.binder.kafka;
 
+import org.springframework.cloud.stream.binder.ExtendedConsumerProperties;
 import org.springframework.cloud.stream.binder.kafka.admin.AdminUtilsOperation;
 import org.springframework.cloud.stream.binder.kafka.admin.Kafka10AdminUtilsOperation;
 import org.springframework.cloud.stream.binder.kafka.properties.KafkaBinderConfigurationProperties;
+import org.springframework.cloud.stream.binder.kafka.properties.KafkaConsumerProperties;
 import org.springframework.cloud.stream.binder.kafka.provisioning.KafkaTopicProvisioner;
+import org.springframework.cloud.stream.provisioning.ConsumerDestination;
 import org.springframework.context.support.GenericApplicationContext;
 import org.springframework.kafka.support.LoggingProducerListener;
 import org.springframework.kafka.support.ProducerListener;
@@ -34,6 +37,7 @@ import org.springframework.kafka.support.ProducerListener;
  */
 public class Kafka10TestBinder extends AbstractKafkaTestBinder {
 
+	@SuppressWarnings({ "rawtypes", "unchecked" })
 	public Kafka10TestBinder(KafkaBinderConfigurationProperties binderConfiguration) {
 		try {
 			AdminUtilsOperation adminUtilsOperation = new Kafka10AdminUtilsOperation();
@@ -41,12 +45,27 @@ public class Kafka10TestBinder extends AbstractKafkaTestBinder {
 					new KafkaTopicProvisioner(binderConfiguration, adminUtilsOperation);
 			provisioningProvider.afterPropertiesSet();
 
-			KafkaMessageChannelBinder binder = new KafkaMessageChannelBinder(binderConfiguration, provisioningProvider);
+			KafkaMessageChannelBinder binder = new KafkaMessageChannelBinder(binderConfiguration,
+					provisioningProvider) {
+
+				/*
+				 * Some tests use multiple instance indexes for the same topic; we need to make
+				 * the error infrastructure beans unique.
+				 */
+				@Override
+				protected String errorsBaseName(ConsumerDestination destination, String group,
+						ExtendedConsumerProperties<KafkaConsumerProperties> consumerProperties) {
+					return super.errorsBaseName(destination, group, consumerProperties) + "-"
+							+ consumerProperties.getInstanceIndex();
+				}
+
+			};
 
 			binder.setCodec(AbstractKafkaTestBinder.getCodec());
 			ProducerListener producerListener = new LoggingProducerListener();
 			binder.setProducerListener(producerListener);
 			GenericApplicationContext context = new GenericApplicationContext();
+			addErrorChannel(context);
 			context.refresh();
 			binder.setApplicationContext(context);
 			binder.afterPropertiesSet();
