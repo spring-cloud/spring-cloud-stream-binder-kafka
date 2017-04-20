@@ -129,10 +129,10 @@ public class KafkaTopicProvisioner implements ProvisioningProvider<ExtendedConsu
 		}
 		int partitionCount = properties.getInstanceCount() * properties.getConcurrency();
 		
-		UnexpectedPartitionCountHandling partitionCountExpecationHandling = properties.getExtension().isAutoRebalanceEnabled()?
+		UnexpectedPartitionCountHandling unexpectedPartitionCountHandling = properties.getExtension().isAutoRebalanceEnabled() ?
 				consumerIdlingAllowed() : consumerIdlingForbidden();
 				
-		createTopicsIfAutoCreateEnabledAndAdminUtilsPresent(name, partitionCount, partitionCountExpecationHandling);
+		createTopicsIfAutoCreateEnabledAndAdminUtilsPresent(name, partitionCount, unexpectedPartitionCountHandling);
 		if (this.configurationProperties.isAutoCreateTopics() && adminUtilsOperation != null) {
 			final ZkUtils zkUtils = ZkUtils.apply(this.configurationProperties.getZkConnectionString(),
 					this.configurationProperties.getZkSessionTimeout(),
@@ -142,7 +142,7 @@ public class KafkaTopicProvisioner implements ProvisioningProvider<ExtendedConsu
 			if (properties.getExtension().isEnableDlq() && !anonymous) {
 				String dlqTopic = StringUtils.hasText(properties.getExtension().getDlqName()) ?
 						properties.getExtension().getDlqName() : "error." + name + "." + group;
-				createTopicAndPartitions(dlqTopic, partitions, partitionCountExpecationHandling);
+				createTopicAndPartitions(dlqTopic, partitions, unexpectedPartitionCountHandling);
 				return new KafkaConsumerDestination(name, partitions, dlqTopic);
 			}
 			return new KafkaConsumerDestination(name, partitions);
@@ -150,9 +150,11 @@ public class KafkaTopicProvisioner implements ProvisioningProvider<ExtendedConsu
 		return new KafkaConsumerDestination(name);
 	}
 
-	private void createTopicsIfAutoCreateEnabledAndAdminUtilsPresent(final String topicName, final int partitionCount, UnexpectedPartitionCountHandling handling) {
+	private void createTopicsIfAutoCreateEnabledAndAdminUtilsPresent(final String topicName, final int partitionCount, 
+			UnexpectedPartitionCountHandling unexpectedPartitionCountHandling) {
+		
 		if (this.configurationProperties.isAutoCreateTopics() && adminUtilsOperation != null) {
-			createTopicAndPartitions(topicName, partitionCount, handling);
+			createTopicAndPartitions(topicName, partitionCount, unexpectedPartitionCountHandling);
 		}
 		else if (this.configurationProperties.isAutoCreateTopics() && adminUtilsOperation == null) {
 			this.logger.warn("Auto creation of topics is enabled, but Kafka AdminUtils class is not present on the classpath. " +
@@ -168,7 +170,9 @@ public class KafkaTopicProvisioner implements ProvisioningProvider<ExtendedConsu
 	 * desired number.
 	 * @param allowIdlers 
 	 */
-	private void createTopicAndPartitions(final String topicName, final int partitionCount, UnexpectedPartitionCountHandling handling) {
+	private void createTopicAndPartitions(final String topicName, final int partitionCount, 
+			UnexpectedPartitionCountHandling unexpectPartitonCountHandling) {
+		
 		final ZkUtils zkUtils = ZkUtils.apply(this.configurationProperties.getZkConnectionString(),
 				this.configurationProperties.getZkSessionTimeout(),
 				this.configurationProperties.getZkConnectionTimeout(),
@@ -186,7 +190,7 @@ public class KafkaTopicProvisioner implements ProvisioningProvider<ExtendedConsu
 					if (this.configurationProperties.isAutoAddPartitions()) {
 						adminUtilsOperation.invokeAddPartitions(zkUtils, topicName, effectivePartitionCount, null, false);
 					} else {
-						handling.handlePartitionCountTooLow(topicName, partitionSize, effectivePartitionCount);
+						unexpectPartitonCountHandling.handlePartitionCountTooLow(topicName, partitionSize, effectivePartitionCount);
 					}
 				}
 			}
@@ -231,7 +235,7 @@ public class KafkaTopicProvisioner implements ProvisioningProvider<ExtendedConsu
 	}
 
 	public Collection<PartitionInfo> getPartitionsForTopic(final int partitionCount, 
-			UnexpectedPartitionCountHandling partitionCountExpectationHandling,
+			UnexpectedPartitionCountHandling unexpectedPartitionCountHandling,
 			final Callable<Collection<PartitionInfo>> callable) {
 		
 		try {
@@ -244,7 +248,7 @@ public class KafkaTopicProvisioner implements ProvisioningProvider<ExtendedConsu
 							// do a sanity check on the partition set
 							if (partitions.size() < partitionCount) {
 								String topic = partitions.isEmpty()? "unknown" : partitions.iterator().next().topic();
-								partitionCountExpectationHandling.handlePartitionCountTooLow(topic, partitions.size(), partitionCount);
+								unexpectedPartitionCountHandling.handlePartitionCountTooLow(topic, partitions.size(), partitionCount);
 							}
 							return partitions;
 						}
