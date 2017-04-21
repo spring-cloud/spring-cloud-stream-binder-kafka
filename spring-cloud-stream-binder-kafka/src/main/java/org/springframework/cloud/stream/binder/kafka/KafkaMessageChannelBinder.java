@@ -210,20 +210,13 @@ public class KafkaMessageChannelBinder extends
 				"DLQ support is not available for anonymous subscriptions");
 		String consumerGroup = anonymous ? "anonymous." + UUID.randomUUID().toString() : group;
 		final ConsumerFactory<?, ?> consumerFactory = createKafkaConsumerFactory(anonymous, consumerGroup, extendedConsumerProperties);
-		boolean autoRebalanceEnabled = extendedConsumerProperties.getExtension().isAutoRebalanceEnabled();
-		
-		/*
-		 * if auto rebalance is enabled, we don't assign specific partitions, so it's okay, if we have less partitions
-		 * than consumers. Some will be idle until another consumer crashes. We set the partition count to 1 to disable
-		 * the sanity check
-		 */
-		int partitionCount = autoRebalanceEnabled? 1 : extendedConsumerProperties.getInstanceCount() * extendedConsumerProperties.getConcurrency();
+		int partitionCount = extendedConsumerProperties.getInstanceCount() * extendedConsumerProperties.getConcurrency();
 
-		UnexpectedPartitionCountHandling unexpedPartitionHandling = extendedConsumerProperties.getExtension().isAutoRebalanceEnabled()? provisioningProvider.consumerIdlingAllowed()
+		UnexpectedPartitionCountHandling unexpedPartitionCountHandling = extendedConsumerProperties.getExtension().isAutoRebalanceEnabled()? provisioningProvider.consumerIdlingAllowed()
 				: provisioningProvider.consumerIdlingForbidden();
 		
 		Collection<PartitionInfo> allPartitions = provisioningProvider.getPartitionsForTopic(partitionCount,
-				unexpedPartitionHandling,
+				unexpedPartitionCountHandling,
 				new Callable<Collection<PartitionInfo>>() {
 					@Override
 					public Collection<PartitionInfo> call() throws Exception {
@@ -252,8 +245,8 @@ public class KafkaMessageChannelBinder extends
 		final TopicPartitionInitialOffset[] topicPartitionInitialOffsets = getTopicPartitionInitialOffsets(
 				listenedPartitions);
 		final ContainerProperties containerProperties =
-				anonymous || autoRebalanceEnabled ? new ContainerProperties(destination.getName())
-						: new ContainerProperties(topicPartitionInitialOffsets);
+				anonymous || extendedConsumerProperties.getExtension().isAutoRebalanceEnabled() ? 
+						new ContainerProperties(destination.getName()) : new ContainerProperties(topicPartitionInitialOffsets);
 		int concurrency = Math.min(extendedConsumerProperties.getConcurrency(), listenedPartitions.size());
 		final ConcurrentMessageListenerContainer<?, ?> messageListenerContainer =
 				new ConcurrentMessageListenerContainer(

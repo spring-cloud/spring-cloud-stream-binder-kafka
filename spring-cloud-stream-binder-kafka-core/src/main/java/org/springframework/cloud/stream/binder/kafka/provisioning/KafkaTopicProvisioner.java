@@ -168,7 +168,6 @@ public class KafkaTopicProvisioner implements ProvisioningProvider<ExtendedConsu
 	/**
 	 * Creates a Kafka topic if needed, or try to increase its partition count to the
 	 * desired number.
-	 * @param allowIdlers 
 	 */
 	private void createTopicAndPartitions(final String topicName, final int partitionCount, 
 			UnexpectedPartitionCountHandling unexpectPartitonCountHandling) {
