@@ -361,8 +361,10 @@ public class KafkaTopicProvisioner implements ProvisioningProvider<ExtendedConsu
 
 			@Override
 			public void handlePartitionCountTooLow(String topicName, int partitionSize, int effectivePartitionCount) {
-				logger.debug(String.format("There is only %s partitions on topic %s, but producer has % partitions configured",
-						partitionSize, topicName, effectivePartitionCount));
+				throw new ProvisioningException("The number of expected partitions was: " + partitionSize + ", but "
+						+ partitionSize + (partitionSize > 1 ? " have " : " has ") + "been found instead."
+						+ "Consider either increasing the partition count of the topic or enabling " +
+						"`autoAddPartitions`");
 			}
 			
 		};
