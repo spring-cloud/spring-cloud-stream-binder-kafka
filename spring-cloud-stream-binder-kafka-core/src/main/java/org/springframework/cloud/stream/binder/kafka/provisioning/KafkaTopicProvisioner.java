@@ -234,7 +234,7 @@ public class KafkaTopicProvisioner implements ProvisioningProvider<ExtendedConsu
 	}
 
 	public Collection<PartitionInfo> getPartitionsForTopic(final int partitionCount, 
-			UnexpectedPartitionCountHandling unexpectedPartitionCountHandling,
+			final UnexpectedPartitionCountHandling unexpectedPartitionCountHandling,
 			final Callable<Collection<PartitionInfo>> callable) {
 		
 		try {
