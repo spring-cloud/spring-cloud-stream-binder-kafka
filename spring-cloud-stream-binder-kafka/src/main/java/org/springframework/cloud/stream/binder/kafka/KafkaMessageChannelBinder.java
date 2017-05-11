@@ -371,6 +371,7 @@ public class KafkaMessageChannelBinder extends
 				DefaultKafkaProducerFactory<byte[], byte[]> producerFactory) {
 			super(kafkaTemplate);
 			setTopicExpression(new LiteralExpression(topic));
+			setMessageKeyExpression(producerProperties.getExtension().getMessageKeyExpression());
 			setBeanFactory(KafkaMessageChannelBinder.this.getBeanFactory());
 			if (producerProperties.isPartitioned()) {
 				SpelExpressionParser parser = new SpelExpressionParser();
