@@ -254,7 +254,7 @@ public class KafkaTopicProvisioner implements ProvisioningProvider<ExtendedConsu
 								if (tolerateLowerPartitionsOnBroker) {
 									logger.warn("The number of expected partitions was: " + partitionCount + ", but "
 											+ partitionSize + (partitionSize > 1 ? " have " : " has ") + "been found instead."
-											+ "There will be " + (partitionCount - partitionSize) + " consumers");
+											+ "There will be " + (partitionCount - partitionSize) + "idle consumers");
 								}
 								else {
 									throw new IllegalStateException("The number of expected partitions was: "
