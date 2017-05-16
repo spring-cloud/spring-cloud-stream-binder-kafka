@@ -16,6 +16,8 @@
 
 package org.springframework.cloud.stream.binder.kafka.properties;
 
+import org.springframework.expression.Expression;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -33,6 +35,8 @@ public class KafkaProducerProperties {
 	private boolean sync;
 
 	private int batchTimeout;
+
+	private Expression messageKeyExpression;
 
 	private Map<String, String> configuration = new HashMap<>();
 
@@ -67,6 +71,14 @@ public class KafkaProducerProperties {
 
 	public void setBatchTimeout(int batchTimeout) {
 		this.batchTimeout = batchTimeout;
+	}
+
+	public Expression getMessageKeyExpression() {
+		return messageKeyExpression;
+	}
+
+	public void setMessageKeyExpression(Expression messageKeyExpression) {
+		this.messageKeyExpression = messageKeyExpression;
 	}
 
 	public Map<String, String> getConfiguration() {
