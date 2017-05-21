@@ -10,14 +10,14 @@
 	<parent>
 		<groupId>org.springframework.cloud</groupId>
 		<artifactId>spring-cloud-stream-binder-kafka-parent</artifactId>
-		<version>1.3.0.BUILD-SNAPSHOT</version>
+		<version>2.0.0.BUILD-SNAPSHOT</version>
 	</parent>
 
 	<dependencies>
 		<dependency>
 			<groupId>org.springframework.cloud</groupId>
 			<artifactId>spring-cloud-stream-binder-kafka-core</artifactId>
-			<version>1.3.0.BUILD-SNAPSHOT</version>
+			<version>2.0.0.BUILD-SNAPSHOT</version>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -90,13 +90,13 @@
 		<dependency>
 			<groupId>io.confluent</groupId>
 			<artifactId>kafka-avro-serializer</artifactId>
-			<version>3.1.2</version>
+			<version>3.2.1</version>
 			<scope>test</scope>
 		</dependency>
 		<dependency>
 			<groupId>io.confluent</groupId>
 			<artifactId>kafka-schema-registry</artifactId>
-			<version>3.1.2</version>
+			<version>3.2.1</version>
 			<scope>test</scope>
 		</dependency>
 	</dependencies>
