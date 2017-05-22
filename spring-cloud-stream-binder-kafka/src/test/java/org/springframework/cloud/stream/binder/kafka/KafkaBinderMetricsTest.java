@@ -15,31 +15,39 @@
  */
 package org.springframework.cloud.stream.binder.kafka;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.BDDMockito.given;
-
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.Node;
 import org.apache.kafka.common.PartitionInfo;
+import org.apache.kafka.common.TopicPartition;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
-import org.springframework.boot.actuate.health.Health;
-import org.springframework.boot.actuate.health.Status;
+import org.springframework.boot.actuate.metrics.Metric;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import static java.util.Collections.singletonMap;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.anyCollectionOf;
+import static org.springframework.cloud.stream.binder.kafka.KafkaBinderMetrics.METRIC_PREFIX;
+
 /**
- * @author Barry Commins
+ * @author Henryk Konsek
  */
-public class KafkaBinderHealthIndicatorTest {
+public class KafkaBinderMetricsTest {
 
 	private static final String TEST_TOPIC = "test";
-	private KafkaBinderHealthIndicator indicator;
+
+	private KafkaBinderMetrics metrics;
 
 	@Mock
 	private DefaultKafkaConsumerFactory consumerFactory;
@@ -57,25 +65,31 @@ public class KafkaBinderHealthIndicatorTest {
 		MockitoAnnotations.initMocks(this);
 		given(consumerFactory.createConsumer()).willReturn(consumer);
 		given(binder.getTopicsInUse()).willReturn(topicsInUse);
-		indicator = new KafkaBinderHealthIndicator(binder, consumerFactory);
+		metrics = new KafkaBinderMetrics(binder, consumerFactory);
+		given(consumer.endOffsets(anyCollectionOf(TopicPartition.class))).willReturn(singletonMap(new TopicPartition(TEST_TOPIC, 0), 1000L));
 	}
 
 	@Test
-	public void kafkaBinderIsUp() {
+	public void shouldIndicateLag() {
+		given(consumer.committed(any(TopicPartition.class))).willReturn(new OffsetAndMetadata(500));
 		final List<PartitionInfo> partitions = partitions(new Node(0, null, 0));
 		topicsInUse.put(TEST_TOPIC, new KafkaMessageChannelBinder.TopicInformation(true, partitions));
 		given(consumer.partitionsFor(TEST_TOPIC)).willReturn(partitions);
-		Health health = indicator.health();
-		assertThat(health.getStatus()).isEqualTo(Status.UP);
+		Collection<Metric<?>> collectedMetrics = metrics.metrics();
+		assertThat(collectedMetrics).hasSize(1);
+		assertThat(collectedMetrics.iterator().next().getName()).isEqualTo(METRIC_PREFIX + TEST_TOPIC);
+		assertThat(collectedMetrics.iterator().next().getValue()).isEqualTo(500L);
 	}
 
 	@Test
-	public void kafkaBinderIsDown() {
-		final List<PartitionInfo> partitions = partitions(new Node(-1, null, 0));
+	public void shouldNotIndicateLagForNotCommittedGroups() {
+		final List<PartitionInfo> partitions = partitions(new Node(0, null, 0));
 		topicsInUse.put(TEST_TOPIC, new KafkaMessageChannelBinder.TopicInformation(true, partitions));
 		given(consumer.partitionsFor(TEST_TOPIC)).willReturn(partitions);
-		Health health = indicator.health();
-		assertThat(health.getStatus()).isEqualTo(Status.DOWN);
+		Collection<Metric<?>> collectedMetrics = metrics.metrics();
+		assertThat(collectedMetrics).hasSize(1);
+		assertThat(collectedMetrics.iterator().next().getName()).isEqualTo(METRIC_PREFIX + TEST_TOPIC);
+		assertThat(collectedMetrics.iterator().next().getValue()).isEqualTo(0L);
 	}
 
 	private List<PartitionInfo> partitions(Node leader) {
@@ -83,4 +97,5 @@ public class KafkaBinderHealthIndicatorTest {
 		partitions.add(new PartitionInfo(TEST_TOPIC, 0, leader, null, null));
 		return partitions;
 	}
+
 }

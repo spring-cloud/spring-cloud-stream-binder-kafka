@@ -96,7 +96,7 @@ public class KafkaMessageChannelBinder extends
 
 	private KafkaExtendedBindingProperties extendedBindingProperties = new KafkaExtendedBindingProperties();
 
-	private final Map<String, Collection<PartitionInfo>> topicsInUse = new HashMap<>();
+	private final Map<String, TopicInformation> topicsInUse = new HashMap<>();
 
 	public KafkaMessageChannelBinder(KafkaBinderConfigurationProperties configurationProperties,
 			KafkaTopicProvisioner provisioningProvider) {
@@ -128,7 +128,7 @@ public class KafkaMessageChannelBinder extends
 		this.producerListener = producerListener;
 	}
 
-	Map<String, Collection<PartitionInfo>> getTopicsInUse() {
+	Map<String, TopicInformation> getTopicsInUse() {
 		return this.topicsInUse;
 	}
 
@@ -154,7 +154,7 @@ public class KafkaMessageChannelBinder extends
 						return producerFB.createProducer().partitionsFor(destination.getName());
 					}
 				});
-		this.topicsInUse.put(destination.getName(), partitions);
+		this.topicsInUse.put(destination.getName(), new TopicInformation(false, partitions));
 		if (producerProperties.getPartitionCount() < partitions.size()) {
 			if (this.logger.isInfoEnabled()) {
 				this.logger.info("The `partitionCount` of the producer for topic " + destination.getName() + " is "
@@ -236,7 +236,7 @@ public class KafkaMessageChannelBinder extends
 				}
 			}
 		}
-		this.topicsInUse.put(destination.getName(), listenedPartitions);
+		this.topicsInUse.put(destination.getName(), new TopicInformation(true, listenedPartitions));
 
 		Assert.isTrue(!CollectionUtils.isEmpty(listenedPartitions), "A list of partitions must be provided");
 		final TopicPartitionInitialOffset[] topicPartitionInitialOffsets = getTopicPartitionInitialOffsets(
@@ -408,4 +408,26 @@ public class KafkaMessageChannelBinder extends
 			return this.running;
 		}
 	}
+
+	public static class TopicInformation {
+
+		private final boolean consumerTopic;
+
+		private final Collection<PartitionInfo> partitionInfos;
+
+		public TopicInformation(boolean consumerTopic, Collection<PartitionInfo> partitionInfos) {
+			this.consumerTopic = consumerTopic;
+			this.partitionInfos = partitionInfos;
+		}
+
+		public boolean isConsumerTopic() {
+			return consumerTopic;
+		}
+
+		public Collection<PartitionInfo> getPartitionInfos() {
+			return partitionInfos;
+		}
+
+	}
+
 }

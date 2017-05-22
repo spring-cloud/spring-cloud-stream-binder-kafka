@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2016 the original author or authors.
+ * Copyright 2015-2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -38,6 +38,7 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.cloud.stream.binder.Binder;
 import org.springframework.cloud.stream.binder.kafka.KafkaBinderHealthIndicator;
 import org.springframework.cloud.stream.binder.kafka.KafkaBinderJaasInitializerListener;
+import org.springframework.cloud.stream.binder.kafka.KafkaBinderMetrics;
 import org.springframework.cloud.stream.binder.kafka.KafkaMessageChannelBinder;
 import org.springframework.cloud.stream.binder.kafka.admin.AdminUtilsOperation;
 import org.springframework.cloud.stream.binder.kafka.admin.Kafka09AdminUtilsOperation;
@@ -69,6 +70,7 @@ import org.springframework.util.ObjectUtils;
  * @author Soby Chacko
  * @author Mark Fisher
  * @author Ilayaperumal Gopinathan
+ * @author Henryk Konsek
  */
 @Configuration
 @ConditionalOnMissingBean(Binder.class)
@@ -130,6 +132,20 @@ public class KafkaBinderConfiguration {
 		}
 		ConsumerFactory<?, ?> consumerFactory = new DefaultKafkaConsumerFactory<>(props);
 		return new KafkaBinderHealthIndicator(kafkaMessageChannelBinder, consumerFactory);
+	}
+
+	@Bean KafkaBinderMetrics kafkaBinderMetrics(KafkaMessageChannelBinder kafkaMessageChannelBinder) {
+		Map<String, Object> props = new HashMap<>();
+		props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class);
+		props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class);
+		if (!ObjectUtils.isEmpty(configurationProperties.getConfiguration())) {
+			props.putAll(configurationProperties.getConfiguration());
+		}
+		if (!props.containsKey(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG)) {
+			props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, this.configurationProperties.getKafkaConnectionString());
+		}
+		ConsumerFactory<?, ?> consumerFactory = new DefaultKafkaConsumerFactory<>(props);
+		return new KafkaBinderMetrics(kafkaMessageChannelBinder, consumerFactory);
 	}
 
 	@Bean(name = "adminUtilsOperation")
