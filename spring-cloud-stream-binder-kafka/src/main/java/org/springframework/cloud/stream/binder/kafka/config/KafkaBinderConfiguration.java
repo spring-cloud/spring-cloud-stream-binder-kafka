@@ -16,20 +16,14 @@
 
 package org.springframework.cloud.stream.binder.kafka.config;
 
-import javax.annotation.PostConstruct;
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 import org.apache.kafka.common.utils.AppInfoParser;
-
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.actuate.endpoint.PublicMetrics;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.context.PropertyPlaceholderAutoConfiguration;
@@ -47,6 +41,7 @@ import org.springframework.cloud.stream.binder.kafka.properties.JaasLoginModuleC
 import org.springframework.cloud.stream.binder.kafka.properties.KafkaBinderConfigurationProperties;
 import org.springframework.cloud.stream.binder.kafka.properties.KafkaExtendedBindingProperties;
 import org.springframework.cloud.stream.binder.kafka.provisioning.KafkaTopicProvisioner;
+import org.springframework.cloud.stream.config.BindingServiceProperties;
 import org.springframework.cloud.stream.config.codec.kryo.KryoCodecAutoConfiguration;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationListener;
@@ -56,6 +51,7 @@ import org.springframework.context.annotation.ConditionContext;
 import org.springframework.context.annotation.Conditional;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
+import org.springframework.core.env.PropertyResolver;
 import org.springframework.core.type.AnnotatedTypeMetadata;
 import org.springframework.integration.codec.Codec;
 import org.springframework.kafka.core.ConsumerFactory;
@@ -63,6 +59,12 @@ import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.support.LoggingProducerListener;
 import org.springframework.kafka.support.ProducerListener;
 import org.springframework.util.ObjectUtils;
+
+import javax.annotation.PostConstruct;
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * @author David Turanski
@@ -134,18 +136,11 @@ public class KafkaBinderConfiguration {
 		return new KafkaBinderHealthIndicator(kafkaMessageChannelBinder, consumerFactory);
 	}
 
-	@Bean KafkaBinderMetrics kafkaBinderMetrics(KafkaMessageChannelBinder kafkaMessageChannelBinder) {
-		Map<String, Object> props = new HashMap<>();
-		props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class);
-		props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class);
-		if (!ObjectUtils.isEmpty(configurationProperties.getConfiguration())) {
-			props.putAll(configurationProperties.getConfiguration());
-		}
-		if (!props.containsKey(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG)) {
-			props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, this.configurationProperties.getKafkaConnectionString());
-		}
-		ConsumerFactory<?, ?> consumerFactory = new DefaultKafkaConsumerFactory<>(props);
-		return new KafkaBinderMetrics(kafkaMessageChannelBinder, consumerFactory);
+	@Bean
+	PublicMetrics kafkaBinderMetrics(KafkaMessageChannelBinder kafkaMessageChannelBinder, BindingServiceProperties bindingServiceProperties,
+			PropertyResolver propertyResolver) {
+		PublicMetrics metrics = new KafkaBinderMetrics(kafkaMessageChannelBinder, configurationProperties, bindingServiceProperties, propertyResolver);
+		return metrics;
 	}
 
 	@Bean(name = "adminUtilsOperation")

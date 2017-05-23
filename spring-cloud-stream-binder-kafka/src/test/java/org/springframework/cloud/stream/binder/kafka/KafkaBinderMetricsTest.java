@@ -25,6 +25,9 @@ import org.junit.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.springframework.boot.actuate.metrics.Metric;
+import org.springframework.cloud.stream.binder.kafka.properties.KafkaBinderConfigurationProperties;
+import org.springframework.cloud.stream.config.BindingServiceProperties;
+import org.springframework.core.env.PropertyResolver;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 
 import java.util.ArrayList;
@@ -60,12 +63,22 @@ public class KafkaBinderMetricsTest {
 
 	private Map<String, KafkaMessageChannelBinder.TopicInformation> topicsInUse = new HashMap<>();
 
+	@Mock
+	private PropertyResolver propertyResolver;
+
+	@Mock
+	private KafkaBinderConfigurationProperties kafkaBinderConfigurationProperties;
+
+	@Mock
+	private BindingServiceProperties bindingServiceProperties;
+
 	@Before
 	public void setup() {
 		MockitoAnnotations.initMocks(this);
+		given(propertyResolver.getProperty("spring.cloud.stream.bindings.test.group")).willReturn("foo");
 		given(consumerFactory.createConsumer()).willReturn(consumer);
 		given(binder.getTopicsInUse()).willReturn(topicsInUse);
-		metrics = new KafkaBinderMetrics(binder, consumerFactory);
+		metrics = new KafkaBinderMetrics(binder, kafkaBinderConfigurationProperties, bindingServiceProperties, propertyResolver, consumerFactory);
 		given(consumer.endOffsets(anyCollectionOf(TopicPartition.class))).willReturn(singletonMap(new TopicPartition(TEST_TOPIC, 0), 1000L));
 	}
 
@@ -77,19 +90,19 @@ public class KafkaBinderMetricsTest {
 		given(consumer.partitionsFor(TEST_TOPIC)).willReturn(partitions);
 		Collection<Metric<?>> collectedMetrics = metrics.metrics();
 		assertThat(collectedMetrics).hasSize(1);
-		assertThat(collectedMetrics.iterator().next().getName()).isEqualTo(METRIC_PREFIX + TEST_TOPIC);
+		assertThat(collectedMetrics.iterator().next().getName()).isEqualTo(String.format("%s.%s.%s.lag", METRIC_PREFIX, TEST_TOPIC, "foo"));
 		assertThat(collectedMetrics.iterator().next().getValue()).isEqualTo(500L);
 	}
 
 	@Test
-	public void shouldNotIndicateLagForNotCommittedGroups() {
+	public void shouldIndicateFullLagForNotCommittedGroups() {
 		final List<PartitionInfo> partitions = partitions(new Node(0, null, 0));
 		topicsInUse.put(TEST_TOPIC, new KafkaMessageChannelBinder.TopicInformation(true, partitions));
 		given(consumer.partitionsFor(TEST_TOPIC)).willReturn(partitions);
 		Collection<Metric<?>> collectedMetrics = metrics.metrics();
 		assertThat(collectedMetrics).hasSize(1);
-		assertThat(collectedMetrics.iterator().next().getName()).isEqualTo(METRIC_PREFIX + TEST_TOPIC);
-		assertThat(collectedMetrics.iterator().next().getValue()).isEqualTo(0L);
+		assertThat(collectedMetrics.iterator().next().getName()).isEqualTo(String.format("%s.%s.%s.lag", METRIC_PREFIX, TEST_TOPIC, "foo"));
+		assertThat(collectedMetrics.iterator().next().getValue()).isEqualTo(1000L);
 	}
 
 	private List<PartitionInfo> partitions(Node leader) {

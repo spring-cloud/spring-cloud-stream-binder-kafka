@@ -23,17 +23,22 @@ import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.cloud.stream.binder.kafka.config.KafkaBinderConfiguration;
+import org.springframework.cloud.stream.config.BindingServiceProperties;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.support.ProducerListener;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 import org.springframework.util.ReflectionUtils;
 
 import static org.junit.Assert.assertNotNull;
+import static org.mockito.Mockito.mock;
 
 /**
  * @author Ilayaperumal Gopinathan
  */
 @RunWith(SpringJUnit4ClassRunner.class)
-@SpringBootTest(classes = KafkaBinderConfiguration.class)
+@SpringBootTest(classes = {KafkaBinderConfiguration.class, KafkaBinderConfigurationTest.class})
+@Configuration
 public class KafkaBinderConfigurationTest {
 
 	@Autowired
@@ -50,4 +55,10 @@ public class KafkaBinderConfigurationTest {
 				producerListenerField, this.kafkaMessageChannelBinder);
 		assertNotNull(producerListener);
 	}
+
+	@Bean
+	BindingServiceProperties bindingServiceProperties() {
+		return mock(BindingServiceProperties.class);
+	}
+
 }

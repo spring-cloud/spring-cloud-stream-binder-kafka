@@ -33,6 +33,9 @@ import org.springframework.cloud.stream.binder.ExtendedProducerProperties;
 import org.springframework.cloud.stream.binder.kafka.config.KafkaBinderConfiguration;
 import org.springframework.cloud.stream.binder.kafka.properties.KafkaConsumerProperties;
 import org.springframework.cloud.stream.binder.kafka.properties.KafkaProducerProperties;
+import org.springframework.cloud.stream.config.BindingServiceProperties;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.test.context.TestPropertySource;
@@ -41,13 +44,15 @@ import org.springframework.util.ReflectionUtils;
 
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.mock;
 
 /**
  * @author Ilayaperumal Gopinathan
  */
 @RunWith(SpringJUnit4ClassRunner.class)
-@SpringBootTest(classes = {KafkaBinderConfiguration.class})
+@SpringBootTest(classes = {KafkaBinderConfiguration.class, KafkaBinderConfigurationPropertiesTest.class})
 @TestPropertySource(locations = "classpath:binder-config.properties")
+@Configuration
 public class KafkaBinderConfigurationPropertiesTest {
 
 	@Autowired
@@ -86,4 +91,10 @@ public class KafkaBinderConfigurationPropertiesTest {
 		assertTrue(consumerConfigs.get("value.deserializer").equals(ByteArrayDeserializer.class));
 		assertTrue((((String) consumerConfigs.get("bootstrap.servers")).contains("10.98.09.199:9082")));
 	}
+
+	@Bean
+	BindingServiceProperties bindingServiceProperties() {
+		return mock(BindingServiceProperties.class);
+	}
+
 }
