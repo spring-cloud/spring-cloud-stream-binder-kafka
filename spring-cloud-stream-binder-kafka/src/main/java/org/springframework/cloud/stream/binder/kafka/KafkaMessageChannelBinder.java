@@ -321,12 +321,8 @@ public class KafkaMessageChannelBinder extends
 		props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class);
 		props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class);
 		props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
-		props.put(ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG, 100);
-		
+		props.put(ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG, 100);		
 		props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, anonymous ? "latest" : "earliest");
-		if (!ObjectUtils.isEmpty(consumerProperties.getExtension().getStartOffset())) {
-			props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, consumerProperties.getExtension().getStartOffset().name());
-		}
 
 		if (!ObjectUtils.isEmpty(configurationProperties.getConfiguration())) {
 			props.putAll(configurationProperties.getConfiguration());
@@ -337,7 +333,11 @@ public class KafkaMessageChannelBinder extends
 		if (!ObjectUtils.isEmpty(consumerProperties.getExtension().getConfiguration())) {
 			props.putAll(consumerProperties.getExtension().getConfiguration());
 		}
+		
 		props.put(ConsumerConfig.GROUP_ID_CONFIG, consumerGroup);
+		if (!ObjectUtils.isEmpty(consumerProperties.getExtension().getStartOffset())) {
+			props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, consumerProperties.getExtension().getStartOffset().name());
+		}
 
 		return new DefaultKafkaConsumerFactory<>(props);
 	}
