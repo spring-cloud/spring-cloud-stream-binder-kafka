@@ -63,7 +63,7 @@ public class KafkaBinderHealthIndicatorTest {
 	@Test
 	public void kafkaBinderIsUp() {
 		final List<PartitionInfo> partitions = partitions(new Node(0, null, 0));
-		topicsInUse.put(TEST_TOPIC, new KafkaMessageChannelBinder.TopicInformation(true, partitions));
+		topicsInUse.put(TEST_TOPIC, new KafkaMessageChannelBinder.TopicInformation("group", partitions));
 		given(consumer.partitionsFor(TEST_TOPIC)).willReturn(partitions);
 		Health health = indicator.health();
 		assertThat(health.getStatus()).isEqualTo(Status.UP);
@@ -72,7 +72,7 @@ public class KafkaBinderHealthIndicatorTest {
 	@Test
 	public void kafkaBinderIsDown() {
 		final List<PartitionInfo> partitions = partitions(new Node(-1, null, 0));
-		topicsInUse.put(TEST_TOPIC, new KafkaMessageChannelBinder.TopicInformation(true, partitions));
+		topicsInUse.put(TEST_TOPIC, new KafkaMessageChannelBinder.TopicInformation("group", partitions));
 		given(consumer.partitionsFor(TEST_TOPIC)).willReturn(partitions);
 		Health health = indicator.health();
 		assertThat(health.getStatus()).isEqualTo(Status.DOWN);

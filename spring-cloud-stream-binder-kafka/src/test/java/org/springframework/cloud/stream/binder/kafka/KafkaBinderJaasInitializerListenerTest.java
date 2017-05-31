@@ -25,13 +25,10 @@ import org.junit.Test;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.cloud.stream.config.BindingServiceProperties;
 import org.springframework.context.ConfigurableApplicationContext;
-import org.springframework.context.annotation.Bean;
 import org.springframework.core.io.ClassPathResource;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.mock;
 
 /**
  * @author Marius Bogoevici
@@ -59,11 +56,6 @@ public class KafkaBinderJaasInitializerListenerTest {
 
 	@SpringBootApplication
 	public static class SimpleApplication {
-
-		@Bean
-		BindingServiceProperties bindingServiceProperties() {
-			return mock(BindingServiceProperties.class);
-		}
 
 	}
 }

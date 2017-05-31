@@ -154,7 +154,7 @@ public class KafkaMessageChannelBinder extends
 						return producerFB.createProducer().partitionsFor(destination.getName());
 					}
 				});
-		this.topicsInUse.put(destination.getName(), new TopicInformation(false, partitions));
+		this.topicsInUse.put(destination.getName(), new TopicInformation(null, partitions));
 		if (producerProperties.getPartitionCount() < partitions.size()) {
 			if (this.logger.isInfoEnabled()) {
 				this.logger.info("The `partitionCount` of the producer for topic " + destination.getName() + " is "
@@ -236,7 +236,7 @@ public class KafkaMessageChannelBinder extends
 				}
 			}
 		}
-		this.topicsInUse.put(destination.getName(), new TopicInformation(true, listenedPartitions));
+		this.topicsInUse.put(destination.getName(), new TopicInformation(group, listenedPartitions));
 
 		Assert.isTrue(!CollectionUtils.isEmpty(listenedPartitions), "A list of partitions must be provided");
 		final TopicPartitionInitialOffset[] topicPartitionInitialOffsets = getTopicPartitionInitialOffsets(
@@ -411,17 +411,21 @@ public class KafkaMessageChannelBinder extends
 
 	public static class TopicInformation {
 
-		private final boolean consumerTopic;
+		private final String consumerGroup;
 
 		private final Collection<PartitionInfo> partitionInfos;
 
-		public TopicInformation(boolean consumerTopic, Collection<PartitionInfo> partitionInfos) {
-			this.consumerTopic = consumerTopic;
+		public TopicInformation(String consumerGroup, Collection<PartitionInfo> partitionInfos) {
+			this.consumerGroup = consumerGroup;
 			this.partitionInfos = partitionInfos;
 		}
 
+		public String getConsumerGroup() {
+			return consumerGroup;
+		}
+
 		public boolean isConsumerTopic() {
-			return consumerTopic;
+			return consumerGroup != null;
 		}
 
 		public Collection<PartitionInfo> getPartitionInfos() {

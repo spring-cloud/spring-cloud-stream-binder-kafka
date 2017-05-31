@@ -26,9 +26,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.boot.actuate.endpoint.PublicMetrics;
 import org.springframework.boot.actuate.metrics.Metric;
 import org.springframework.cloud.stream.binder.kafka.properties.KafkaBinderConfigurationProperties;
-import org.springframework.cloud.stream.config.BindingProperties;
-import org.springframework.cloud.stream.config.BindingServiceProperties;
-import org.springframework.core.env.PropertyResolver;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.util.ObjectUtils;
@@ -48,30 +45,23 @@ public class KafkaBinderMetrics implements PublicMetrics {
 
 	private final static Logger LOG = LoggerFactory.getLogger(KafkaBinderMetrics.class);
 
-	static final String METRIC_PREFIX = "spring.cloud.stream.binder.kafka.bindings";
+	static final String METRIC_PREFIX = "spring.cloud.stream.binder.kafka";
 
 	private final KafkaMessageChannelBinder binder;
 
 	private final KafkaBinderConfigurationProperties binderConfigurationProperties;
 
-	private final BindingServiceProperties bindingServiceProperties;
-
-	private final PropertyResolver propertyResolver;
-
 	private ConsumerFactory<?, ?> defaultConsumerFactory;
 
 	public KafkaBinderMetrics(KafkaMessageChannelBinder binder, KafkaBinderConfigurationProperties binderConfigurationProperties,
-			BindingServiceProperties bindingServiceProperties, PropertyResolver propertyResolver, ConsumerFactory<?, ?> defaultConsumerFactory) {
+			ConsumerFactory<?, ?> defaultConsumerFactory) {
 		this.binder = binder;
 		this.binderConfigurationProperties = binderConfigurationProperties;
-		this.bindingServiceProperties = bindingServiceProperties;
-		this.propertyResolver = propertyResolver;
 		this.defaultConsumerFactory = defaultConsumerFactory;
 	}
 
-	public KafkaBinderMetrics(KafkaMessageChannelBinder binder, KafkaBinderConfigurationProperties binderConfigurationProperties,
-			BindingServiceProperties bindingServiceProperties, PropertyResolver propertyResolver) {
-		this(binder, binderConfigurationProperties, bindingServiceProperties, propertyResolver, null);
+	public KafkaBinderMetrics(KafkaMessageChannelBinder binder, KafkaBinderConfigurationProperties binderConfigurationProperties) {
+		this(binder, binderConfigurationProperties, null);
 	}
 
 	@Override public Collection<Metric<?>> metrics() {
@@ -82,16 +72,7 @@ public class KafkaBinderMetrics implements PublicMetrics {
 			}
 
 			String topic = topicInfo.getKey();
-			String binding = topic;
-			for(Map.Entry<String, BindingProperties> bindingProperties : bindingServiceProperties.getBindings().entrySet()) {
-				if(bindingProperties.getValue().getDestination() != null && bindingProperties.getValue().getDestination().equals(topic)) {
-					binding = bindingProperties.getKey();
-				}
-			}
-			String group = propertyResolver.getProperty("spring.cloud.stream.bindings." + binding + ".group");
-			if(group == null) {
-				continue;
-			}
+			String group = topicInfo.getValue().getConsumerGroup();
 
 			try (Consumer<?, ?> metadataConsumer = createConsumerFactory(group).createConsumer()) {
 				List<PartitionInfo> partitionInfos = metadataConsumer.partitionsFor(topic);
@@ -109,7 +90,7 @@ public class KafkaBinderMetrics implements PublicMetrics {
 						lag += endOffset.getValue();
 					}
 				}
-				metrics.add(new Metric<>(String.format("%s.%s.%s.lag", METRIC_PREFIX, binding, group), lag));
+				metrics.add(new Metric<>(String.format("%s.%s.%s.lag", METRIC_PREFIX, topic, group), lag));
 			} catch (Exception e) {
 				LOG.debug("Cannot generate metric for topic: " + topic, e);
 			}

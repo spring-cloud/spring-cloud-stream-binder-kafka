@@ -41,7 +41,6 @@ import org.springframework.cloud.stream.binder.kafka.properties.JaasLoginModuleC
 import org.springframework.cloud.stream.binder.kafka.properties.KafkaBinderConfigurationProperties;
 import org.springframework.cloud.stream.binder.kafka.properties.KafkaExtendedBindingProperties;
 import org.springframework.cloud.stream.binder.kafka.provisioning.KafkaTopicProvisioner;
-import org.springframework.cloud.stream.config.BindingServiceProperties;
 import org.springframework.cloud.stream.config.codec.kryo.KryoCodecAutoConfiguration;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationListener;
@@ -51,7 +50,6 @@ import org.springframework.context.annotation.ConditionContext;
 import org.springframework.context.annotation.Conditional;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
-import org.springframework.core.env.PropertyResolver;
 import org.springframework.core.type.AnnotatedTypeMetadata;
 import org.springframework.integration.codec.Codec;
 import org.springframework.kafka.core.ConsumerFactory;
@@ -137,10 +135,8 @@ public class KafkaBinderConfiguration {
 	}
 
 	@Bean
-	PublicMetrics kafkaBinderMetrics(KafkaMessageChannelBinder kafkaMessageChannelBinder, BindingServiceProperties bindingServiceProperties,
-			PropertyResolver propertyResolver) {
-		PublicMetrics metrics = new KafkaBinderMetrics(kafkaMessageChannelBinder, configurationProperties, bindingServiceProperties, propertyResolver);
-		return metrics;
+	PublicMetrics kafkaBinderMetrics(KafkaMessageChannelBinder kafkaMessageChannelBinder) {
+		return new KafkaBinderMetrics(kafkaMessageChannelBinder, configurationProperties);
 	}
 
 	@Bean(name = "adminUtilsOperation")
