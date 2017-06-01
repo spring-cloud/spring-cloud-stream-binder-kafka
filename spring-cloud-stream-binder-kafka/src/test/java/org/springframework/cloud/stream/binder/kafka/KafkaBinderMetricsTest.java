@@ -25,6 +25,7 @@ import org.junit.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.springframework.boot.actuate.metrics.Metric;
+import org.springframework.cloud.stream.binder.kafka.KafkaMessageChannelBinder.TopicInformation;
 import org.springframework.cloud.stream.binder.kafka.properties.KafkaBinderConfigurationProperties;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 
@@ -59,7 +60,7 @@ public class KafkaBinderMetricsTest {
 	@Mock
 	private KafkaMessageChannelBinder binder;
 
-	private Map<String, KafkaMessageChannelBinder.TopicInformation> topicsInUse = new HashMap<>();
+	private Map<String, TopicInformation> topicsInUse = new HashMap<>();
 
 	@Mock
 	private KafkaBinderConfigurationProperties kafkaBinderConfigurationProperties;
@@ -76,8 +77,8 @@ public class KafkaBinderMetricsTest {
 	@Test
 	public void shouldIndicateLag() {
 		given(consumer.committed(any(TopicPartition.class))).willReturn(new OffsetAndMetadata(500));
-		final List<PartitionInfo> partitions = partitions(new Node(0, null, 0));
-		topicsInUse.put(TEST_TOPIC, new KafkaMessageChannelBinder.TopicInformation("group", partitions));
+		List<PartitionInfo> partitions = partitions(new Node(0, null, 0));
+		topicsInUse.put(TEST_TOPIC, new TopicInformation("group", partitions));
 		given(consumer.partitionsFor(TEST_TOPIC)).willReturn(partitions);
 		Collection<Metric<?>> collectedMetrics = metrics.metrics();
 		assertThat(collectedMetrics).hasSize(1);
@@ -86,9 +87,14 @@ public class KafkaBinderMetricsTest {
 	}
 
 	@Test
-	public void shouldIndicateFullLagForNotCommittedGroups() {
-		final List<PartitionInfo> partitions = partitions(new Node(0, null, 0));
-		topicsInUse.put(TEST_TOPIC, new KafkaMessageChannelBinder.TopicInformation("group", partitions));
+	public void shouldSumUpPartitionsLags() {
+		Map<TopicPartition, Long> endOffsets = new HashMap<>();
+		endOffsets.put(new TopicPartition(TEST_TOPIC, 0), 1000L);
+		endOffsets.put(new TopicPartition(TEST_TOPIC, 1), 1000L);
+		given(consumer.endOffsets(anyCollectionOf(TopicPartition.class))).willReturn(endOffsets);
+		given(consumer.committed(any(TopicPartition.class))).willReturn(new OffsetAndMetadata(500));
+		List<PartitionInfo> partitions = partitions(new Node(0, null, 0), new Node(0, null, 0));
+		topicsInUse.put(TEST_TOPIC, new TopicInformation("group", partitions));
 		given(consumer.partitionsFor(TEST_TOPIC)).willReturn(partitions);
 		Collection<Metric<?>> collectedMetrics = metrics.metrics();
 		assertThat(collectedMetrics).hasSize(1);
@@ -96,9 +102,30 @@ public class KafkaBinderMetricsTest {
 		assertThat(collectedMetrics.iterator().next().getValue()).isEqualTo(1000L);
 	}
 
-	private List<PartitionInfo> partitions(Node leader) {
+	@Test
+	public void shouldIndicateFullLagForNotCommittedGroups() {
+		List<PartitionInfo> partitions = partitions(new Node(0, null, 0));
+		topicsInUse.put(TEST_TOPIC, new TopicInformation("group", partitions));
+		given(consumer.partitionsFor(TEST_TOPIC)).willReturn(partitions);
+		Collection<Metric<?>> collectedMetrics = metrics.metrics();
+		assertThat(collectedMetrics).hasSize(1);
+		assertThat(collectedMetrics.iterator().next().getName()).isEqualTo(String.format("%s.%s.%s.lag", METRIC_PREFIX, TEST_TOPIC, "group"));
+		assertThat(collectedMetrics.iterator().next().getValue()).isEqualTo(1000L);
+	}
+
+	@Test
+	public void shouldNotCalculateLagForProducerTopics() {
+		List<PartitionInfo> partitions = partitions(new Node(0, null, 0));
+		topicsInUse.put(TEST_TOPIC, new TopicInformation(null, partitions));
+		Collection<Metric<?>> collectedMetrics = metrics.metrics();
+		assertThat(collectedMetrics).isEmpty();
+	}
+
+	private List<PartitionInfo> partitions(Node... nodes) {
 		List<PartitionInfo> partitions = new ArrayList<>();
-		partitions.add(new PartitionInfo(TEST_TOPIC, 0, leader, null, null));
+		for(int i = 0; i < nodes.length; i++) {
+			partitions.add(new PartitionInfo(TEST_TOPIC, i, nodes[i], null, null));
+		}
 		return partitions;
 	}
 
