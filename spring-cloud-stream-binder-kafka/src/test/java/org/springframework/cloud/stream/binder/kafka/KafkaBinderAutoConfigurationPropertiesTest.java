@@ -25,7 +25,6 @@ import org.apache.kafka.common.serialization.LongDeserializer;
 import org.apache.kafka.common.serialization.LongSerializer;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.kafka.KafkaProperties;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -115,5 +114,6 @@ public class KafkaBinderAutoConfigurationPropertiesTest {
 		KafkaProperties kafkaProperties() {
 			return new KafkaProperties();
 		}
+
 	}
 }

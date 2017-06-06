@@ -19,7 +19,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -51,7 +50,7 @@ public class KafkaBinderHealthIndicatorTest {
 	@Mock
 	private KafkaMessageChannelBinder binder;
 
-	private Map<String, Collection<PartitionInfo>> topicsInUse = new HashMap<>();
+	private Map<String, KafkaMessageChannelBinder.TopicInformation> topicsInUse = new HashMap<>();
 
 	@Before
 	public void setup() {
@@ -64,7 +63,7 @@ public class KafkaBinderHealthIndicatorTest {
 	@Test
 	public void kafkaBinderIsUp() {
 		final List<PartitionInfo> partitions = partitions(new Node(0, null, 0));
-		topicsInUse.put(TEST_TOPIC, partitions);
+		topicsInUse.put(TEST_TOPIC, new KafkaMessageChannelBinder.TopicInformation("group", partitions));
 		given(consumer.partitionsFor(TEST_TOPIC)).willReturn(partitions);
 		Health health = indicator.health();
 		assertThat(health.getStatus()).isEqualTo(Status.UP);
@@ -73,7 +72,7 @@ public class KafkaBinderHealthIndicatorTest {
 	@Test
 	public void kafkaBinderIsDown() {
 		final List<PartitionInfo> partitions = partitions(new Node(-1, null, 0));
-		topicsInUse.put(TEST_TOPIC, partitions);
+		topicsInUse.put(TEST_TOPIC, new KafkaMessageChannelBinder.TopicInformation("group", partitions));
 		given(consumer.partitionsFor(TEST_TOPIC)).willReturn(partitions);
 		Health health = indicator.health();
 		assertThat(health.getStatus()).isEqualTo(Status.DOWN);

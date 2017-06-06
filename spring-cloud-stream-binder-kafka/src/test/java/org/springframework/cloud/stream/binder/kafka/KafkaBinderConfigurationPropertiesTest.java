@@ -46,7 +46,7 @@ import static org.junit.Assert.assertTrue;
  * @author Ilayaperumal Gopinathan
  */
 @RunWith(SpringJUnit4ClassRunner.class)
-@SpringBootTest(classes = {KafkaBinderConfiguration.class})
+@SpringBootTest(classes = {KafkaBinderConfiguration.class, KafkaBinderConfigurationPropertiesTest.class})
 @TestPropertySource(locations = "classpath:binder-config.properties")
 public class KafkaBinderConfigurationPropertiesTest {
 
@@ -86,4 +86,5 @@ public class KafkaBinderConfigurationPropertiesTest {
 		assertTrue(consumerConfigs.get("value.deserializer").equals(ByteArrayDeserializer.class));
 		assertTrue((((String) consumerConfigs.get("bootstrap.servers")).contains("10.98.09.199:9082")));
 	}
+
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2016 the original author or authors.
+ * Copyright 2015-2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,20 +16,14 @@
 
 package org.springframework.cloud.stream.binder.kafka.config;
 
-import javax.annotation.PostConstruct;
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 import org.apache.kafka.common.utils.AppInfoParser;
-
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.actuate.endpoint.PublicMetrics;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.context.PropertyPlaceholderAutoConfiguration;
@@ -38,6 +32,7 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.cloud.stream.binder.Binder;
 import org.springframework.cloud.stream.binder.kafka.KafkaBinderHealthIndicator;
 import org.springframework.cloud.stream.binder.kafka.KafkaBinderJaasInitializerListener;
+import org.springframework.cloud.stream.binder.kafka.KafkaBinderMetrics;
 import org.springframework.cloud.stream.binder.kafka.KafkaMessageChannelBinder;
 import org.springframework.cloud.stream.binder.kafka.admin.AdminUtilsOperation;
 import org.springframework.cloud.stream.binder.kafka.admin.Kafka09AdminUtilsOperation;
@@ -63,12 +58,19 @@ import org.springframework.kafka.support.LoggingProducerListener;
 import org.springframework.kafka.support.ProducerListener;
 import org.springframework.util.ObjectUtils;
 
+import javax.annotation.PostConstruct;
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 /**
  * @author David Turanski
  * @author Marius Bogoevici
  * @author Soby Chacko
  * @author Mark Fisher
  * @author Ilayaperumal Gopinathan
+ * @author Henryk Konsek
  */
 @Configuration
 @ConditionalOnMissingBean(Binder.class)
@@ -130,6 +132,11 @@ public class KafkaBinderConfiguration {
 		}
 		ConsumerFactory<?, ?> consumerFactory = new DefaultKafkaConsumerFactory<>(props);
 		return new KafkaBinderHealthIndicator(kafkaMessageChannelBinder, consumerFactory);
+	}
+
+	@Bean
+	PublicMetrics kafkaBinderMetrics(KafkaMessageChannelBinder kafkaMessageChannelBinder) {
+		return new KafkaBinderMetrics(kafkaMessageChannelBinder, configurationProperties);
 	}
 
 	@Bean(name = "adminUtilsOperation")
