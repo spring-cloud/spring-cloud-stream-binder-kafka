@@ -1,0 +1,34 @@
+package org.springframework.cloud.stream.binder.kstream;
+
+import org.apache.kafka.streams.KeyValue;
+import org.apache.kafka.streams.kstream.KStream;
+import org.apache.kafka.streams.kstream.KeyValueMapper;
+
+import org.springframework.cloud.stream.binding.StreamListenerResultAdapter;
+import org.springframework.messaging.Message;
+import org.springframework.messaging.support.MessageBuilder;
+
+/**
+ * @author Marius Bogoevici
+ */
+public class KStreamStreamListenerResultAdapter implements StreamListenerResultAdapter<KStream, KStream> {
+	@Override
+	public boolean supports(Class<?> resultType, Class<?> boundElement) {
+		return KStream.class.isAssignableFrom(resultType) && KStream.class.isAssignableFrom(boundElement);
+	}
+
+	@Override
+	public void adapt(KStream streamListenerResult, KStream boundElement) {
+		((KStreamDelegate<?, ?>) boundElement).setDelegate(streamListenerResult.map(new KeyValueMapper() {
+			@Override
+			public Object apply(Object k, Object v) {
+				if (v instanceof Message<?>) {
+					return new KeyValue<>(k, v);
+				}
+				else {
+					return new KeyValue<>(k, MessageBuilder.withPayload(v).build());
+				}
+			}
+		}));
+	}
+}
