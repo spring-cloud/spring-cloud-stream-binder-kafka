@@ -1,5 +1,8 @@
 package org.springframework.cloud.stream.binder.kstream;
 
+import java.io.Closeable;
+import java.io.IOException;
+
 import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.kstream.KStream;
 import org.apache.kafka.streams.kstream.KeyValueMapper;
@@ -18,7 +21,7 @@ public class KStreamStreamListenerResultAdapter implements StreamListenerResultA
 	}
 
 	@Override
-	public void adapt(KStream streamListenerResult, KStream boundElement) {
+	public Closeable adapt(KStream streamListenerResult, KStream boundElement) {
 		((KStreamDelegate<?, ?>) boundElement).setDelegate(streamListenerResult.map(new KeyValueMapper() {
 			@Override
 			public Object apply(Object k, Object v) {
@@ -30,5 +33,15 @@ public class KStreamStreamListenerResultAdapter implements StreamListenerResultA
 				}
 			}
 		}));
+		return new NoOpCloseeable();
+	}
+
+	private static final class NoOpCloseeable implements Closeable {
+
+		@Override
+		public void close() throws IOException {
+
+		}
+
 	}
 }

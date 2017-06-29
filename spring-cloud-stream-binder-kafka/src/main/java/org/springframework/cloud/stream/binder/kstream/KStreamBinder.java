@@ -54,7 +54,7 @@ public class KStreamBinder extends
 	private final KafkaExtendedBindingProperties kafkaExtendedBindingProperties;
 
 	public KStreamBinder(KStreamBinderProperties kStreamBinderProperties, KafkaTopicProvisioner kafkaTopicProvisioner,
-						 KafkaExtendedBindingProperties kafkaExtendedBindingProperties) {
+						KafkaExtendedBindingProperties kafkaExtendedBindingProperties) {
 		this.headers = EmbeddedHeaderUtils.headersToEmbed(kStreamBinderProperties.getHeaders());
 		this.kafkaTopicProvisioner = kafkaTopicProvisioner;
 		this.kafkaExtendedBindingProperties = kafkaExtendedBindingProperties;
