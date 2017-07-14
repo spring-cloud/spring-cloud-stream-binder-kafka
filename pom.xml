@@ -13,8 +13,8 @@
 	<properties>
 		<java.version>1.7</java.version>
 		<kafka.version>0.10.1.1</kafka.version>
-		<spring-kafka.version>1.1.6.RELEASE</spring-kafka.version>
-		<spring-integration-kafka.version>2.1.1.RELEASE</spring-integration-kafka.version>
+		<spring-kafka.version>1.1.5.RELEASE</spring-kafka.version>
+		<spring-integration-kafka.version>2.1.0.RELEASE</spring-integration-kafka.version>
 		<spring-cloud-stream.version>1.3.0.BUILD-SNAPSHOT</spring-cloud-stream.version>
 	</properties>
 	<modules>
@@ -24,6 +24,7 @@
 		<module>spring-cloud-stream-binder-kafka-0.10.1-test</module>
 		<module>spring-cloud-stream-binder-kafka-0.10.2-test</module>
 		<module>spring-cloud-stream-binder-kafka-core</module>
+		<module>spring-cloud-stream-binder-kstream</module>
     </modules>
 
 	<dependencyManagement>

@@ -25,11 +25,13 @@ import org.springframework.core.MethodParameter;
 import org.springframework.core.ResolvableType;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.converter.MessageConverter;
+import org.springframework.messaging.support.MessageBuilder;
 
 /**
  * @author Marius Bogoevici
+ * @author Soby Chacko
  */
-public class KStreamListenerParameterAdapter implements StreamListenerParameterAdapter<KStream<?,?>, KStream<?, ?>> {
+public class KStreamListenerParameterAdapter implements StreamListenerParameterAdapter<KStream, KStream<?, ?>> {
 
 	private final MessageConverter messageConverter;
 
@@ -44,52 +46,30 @@ public class KStreamListenerParameterAdapter implements StreamListenerParameterA
 	}
 
 	@Override
-	public KStream adapt(KStream<?,?> bindingTarget, MethodParameter parameter) {
+	@SuppressWarnings("unchecked")
+	public KStream adapt(KStream<?, ?> bindingTarget, MethodParameter parameter) {
 		ResolvableType resolvableType = ResolvableType.forMethodParameter(parameter);
 		final Class<?> valueClass = (resolvableType.getGeneric(1).getRawClass() != null)
 				? (resolvableType.getGeneric(1).getRawClass()) : Object.class;
 
-		new KeyValueMapper() {
-
+		return bindingTarget.map(new KeyValueMapper() {
 			@Override
 			public Object apply(Object o, Object o2) {
-				if (o2 instanceof Message) {
-					Object payload = ((Message<?>) o2).getPayload();
-					if (valueClass.isAssignableFrom(payload.getClass())) {
-						return new KeyValue<>(o, payload);
-					}
-					else {
-						return new KeyValue<>(o, messageConverter.fromMessage((Message) o2, valueClass));
-					}
+				if (valueClass.isAssignableFrom(o2.getClass())) {
+					return new KeyValue<>(o, o2);
+				}
+				else if (o2 instanceof Message) {
+					return new KeyValue<>(o, messageConverter.fromMessage((Message) o2, valueClass));
+				}
+				else if(o2 instanceof String || o2 instanceof byte[]) {
+					Message<Object> message = MessageBuilder.withPayload(o2).build();
+					return new KeyValue<>(o, messageConverter.fromMessage(message, valueClass));
 				}
 				else {
 					return new KeyValue<>(o, o2);
 				}
 			}
-		};
-
-		if (!Message.class.isAssignableFrom(valueClass)) {
-			return bindingTarget.map(new KeyValueMapper() {
-
-				@Override
-				public Object apply(Object o, Object o2) {
-					if (o2 instanceof Message) {
-						Object payload = ((Message<?>) o2).getPayload();
-						if (valueClass.isAssignableFrom(payload.getClass())) {
-							return new KeyValue<>(o, payload);
-						}
-						else {
-							return new KeyValue<>(o, messageConverter.fromMessage((Message) o2, valueClass));
-						}
-					}
-					else {
-						return new KeyValue<>(o, o2);
-					}
-				}
-			});
-		}
-		return bindingTarget;
-
+		});
 	}
 
 }

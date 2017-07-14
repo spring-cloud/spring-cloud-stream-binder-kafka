@@ -21,6 +21,7 @@ public class KStreamStreamListenerResultAdapter implements StreamListenerResultA
 	}
 
 	@Override
+	@SuppressWarnings("unchecked")
 	public Closeable adapt(KStream streamListenerResult, KStream boundElement) {
 		((KStreamDelegate<?, ?>) boundElement).setDelegate(streamListenerResult.map(new KeyValueMapper() {
 			@Override
