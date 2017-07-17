@@ -1753,7 +1753,7 @@ public abstract class KafkaBinderTests extends
 				receivedMessages.put(offset, message);
 				latch.countDown();
 			}
-			throw new RuntimeException();
+			throw new RuntimeException("fail");
 		}
 
 		public LinkedHashMap<Long, Message<?>> getReceivedMessages() {

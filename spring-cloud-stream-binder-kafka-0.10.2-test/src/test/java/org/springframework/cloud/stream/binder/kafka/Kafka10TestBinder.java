@@ -23,7 +23,9 @@ import org.springframework.cloud.stream.binder.kafka.properties.KafkaBinderConfi
 import org.springframework.cloud.stream.binder.kafka.properties.KafkaConsumerProperties;
 import org.springframework.cloud.stream.binder.kafka.provisioning.KafkaTopicProvisioner;
 import org.springframework.cloud.stream.provisioning.ConsumerDestination;
-import org.springframework.context.support.GenericApplicationContext;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.integration.config.EnableIntegration;
 import org.springframework.kafka.support.LoggingProducerListener;
 import org.springframework.kafka.support.ProducerListener;
 
@@ -64,9 +66,7 @@ public class Kafka10TestBinder extends AbstractKafkaTestBinder {
 			binder.setCodec(AbstractKafkaTestBinder.getCodec());
 			ProducerListener producerListener = new LoggingProducerListener();
 			binder.setProducerListener(producerListener);
-			GenericApplicationContext context = new GenericApplicationContext();
-			addErrorChannel(context);
-			context.refresh();
+			AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext(Config.class);
 			binder.setApplicationContext(context);
 			binder.afterPropertiesSet();
 			this.setBinder(binder);
@@ -74,6 +74,12 @@ public class Kafka10TestBinder extends AbstractKafkaTestBinder {
 		catch (Exception e) {
 			throw new RuntimeException(e);
 		}
+	}
+
+	@Configuration
+	@EnableIntegration
+	static class Config {
+
 	}
 
 }
