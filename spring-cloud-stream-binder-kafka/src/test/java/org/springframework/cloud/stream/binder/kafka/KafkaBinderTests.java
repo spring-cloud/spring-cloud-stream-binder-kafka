@@ -168,7 +168,6 @@ public abstract class KafkaBinderTests extends
 		ApplicationContext context = TestUtils.getPropertyValue(binder.getBinder(), "applicationContext",
 				ApplicationContext.class);
 		Map<String, MessageChannel> beansOfType = context.getBeansOfType(MessageChannel.class);
-		System.out.println(beansOfType);
 		SubscribableChannel boundErrorChannel = context
 				.getBean(producerName + ".testGroup.errors-0", SubscribableChannel.class);
 		SubscribableChannel globalErrorChannel = context.getBean("errorChannel", SubscribableChannel.class);
