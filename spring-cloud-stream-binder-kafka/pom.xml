@@ -80,14 +80,6 @@
 			<artifactId>spring-cloud-stream-binder-test</artifactId>
 			<scope>test</scope>
 		</dependency>
-<<<<<<< HEAD
-=======
-		<dependency>
-			<groupId>org.springframework.cloud</groupId>
-			<artifactId>spring-cloud-stream-binder-kafka-test-support</artifactId>
-			<scope>test</scope>
-		</dependency>
->>>>>>> f473b3b... POM structure corrections
 	</dependencies>
 
 	<build>
