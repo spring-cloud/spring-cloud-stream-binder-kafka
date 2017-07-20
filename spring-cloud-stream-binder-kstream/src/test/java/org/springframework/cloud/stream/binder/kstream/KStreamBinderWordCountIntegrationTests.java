@@ -24,7 +24,6 @@ import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.serialization.Serdes;
-import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.kstream.KStream;
 import org.apache.kafka.streams.kstream.TimeWindows;
@@ -42,7 +41,6 @@ import org.springframework.cloud.stream.annotation.EnableBinding;
 import org.springframework.cloud.stream.annotation.StreamListener;
 import org.springframework.cloud.stream.binder.kstream.annotations.KStreamProcessor;
 import org.springframework.context.ConfigurableApplicationContext;
-import org.springframework.context.annotation.PropertySource;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -57,7 +55,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * @author Marius Bogoevici
  * @author Soby Chacko
  */
-public class KStreamBinderIntegrationTests {
+public class KStreamBinderWordCountIntegrationTests {
 
 	@ClassRule
 	public static KafkaEmbedded embeddedKafka = new KafkaEmbedded(1, true, "counts");
@@ -67,8 +65,6 @@ public class KStreamBinderIntegrationTests {
 	@BeforeClass
 	public static void setUp() throws Exception {
 		Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("group", "false", embeddedKafka);
-		consumerProps.put("key.deserializer", StringDeserializer.class);
-		consumerProps.put("value.deserializer", StringDeserializer.class);
 		consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 		DefaultKafkaConsumerFactory<String, String> cf = new DefaultKafkaConsumerFactory<>(consumerProps);
 		consumer = cf.createConsumer();
@@ -81,8 +77,11 @@ public class KStreamBinderIntegrationTests {
 	}
 
 	@Test
-	public void testKstreamWordCount() throws Exception {
-		ConfigurableApplicationContext context = SpringApplication.run(WordCountProcessorApplication.class, "--server.port=0",
+	public void testKstreamWordCountWithStringInputAndPojoOuput() throws Exception {
+		SpringApplication app = new SpringApplication(WordCountProcessorApplication.class);
+		app.setWebEnvironment(false);
+
+		ConfigurableApplicationContext context = app.run("--server.port=0",
 				"--spring.cloud.stream.bindings.input.destination=words",
 				"--spring.cloud.stream.bindings.output.destination=counts",
 				"--spring.cloud.stream.bindings.output.contentType=application/json",
@@ -109,9 +108,8 @@ public class KStreamBinderIntegrationTests {
 	}
 
 	@EnableBinding(KStreamProcessor.class)
-	@EnableConfigurationProperties(WordCountProcessorProperties.class)
 	@EnableAutoConfiguration
-	@PropertySource("classpath:/org/springframework/cloud/stream/binder/kstream/basic-test.properties")
+	@EnableConfigurationProperties(WordCountProcessorProperties.class)
 	public static class WordCountProcessorApplication {
 
 		@Autowired
