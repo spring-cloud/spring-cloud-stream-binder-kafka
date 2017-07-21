@@ -45,10 +45,7 @@ import org.springframework.cloud.stream.binder.kstream.config.KStreamExtendedBin
 import org.springframework.cloud.stream.binder.kstream.config.KStreamProducerProperties;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageHeaders;
-import org.springframework.util.ClassUtils;
 import org.springframework.util.MimeType;
-import org.springframework.util.ObjectUtils;
-import org.springframework.util.ReflectionUtils;
 import org.springframework.util.StringUtils;
 
 /**
@@ -78,7 +75,7 @@ public class KStreamBinder extends
 	protected Binding<KStream<Object, Object>> doBindConsumer(String name, String group,
 			KStream<Object, Object> inputTarget, ExtendedConsumerProperties<KStreamConsumerProperties> properties) {
 
-		ExtendedConsumerProperties<KafkaConsumerProperties> extendedConsumerProperties = new ExtendedConsumerProperties<>(new KStreamConsumerProperties());
+		ExtendedConsumerProperties<KafkaConsumerProperties> extendedConsumerProperties = new ExtendedConsumerProperties<KafkaConsumerProperties>(new KStreamConsumerProperties());
 		BeanUtils.copyProperties(properties, extendedConsumerProperties, "extension");
 		this.kafkaTopicProvisioner.provisionConsumerDestination(name, group, extendedConsumerProperties);
 		return new DefaultBinding<>(name, group, inputTarget, null);
@@ -87,7 +84,7 @@ public class KStreamBinder extends
 	@Override
 	protected Binding<KStream<Object, Object>> doBindProducer(String name, KStream<Object, Object> outboundBindTarget,
 			ExtendedProducerProperties<KStreamProducerProperties> properties) {
-		ExtendedProducerProperties<KafkaProducerProperties> extendedProducerProperties = new ExtendedProducerProperties<>(new KStreamProducerProperties());
+		ExtendedProducerProperties<KafkaProducerProperties> extendedProducerProperties = new ExtendedProducerProperties<KafkaProducerProperties>(new KStreamProducerProperties());
 		BeanUtils.copyProperties(properties, extendedProducerProperties, "extension");
 		this.kafkaTopicProvisioner.provisionProducerDestination(name , extendedProducerProperties);
 		if (HeaderMode.embeddedHeaders.equals(properties.getHeaderMode())) {
