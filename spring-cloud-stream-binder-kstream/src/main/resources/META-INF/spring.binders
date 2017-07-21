@@ -1,0 +1,3 @@
+kstream:\
+org.springframework.cloud.stream.binder.kstream.config.KStreamBinderConfiguration
+
