@@ -23,7 +23,10 @@ import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.kstream.KStream;
+import org.apache.kafka.streams.kstream.KeyValueMapper;
+import org.apache.kafka.streams.kstream.Predicate;
 import org.apache.kafka.streams.kstream.TimeWindows;
+import org.apache.kafka.streams.kstream.Windowed;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
@@ -46,7 +49,6 @@ import org.springframework.messaging.handler.annotation.SendTo;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- *
  * @author Marius Bogoevici
  * @author Soby Chacko
  */
@@ -90,7 +92,7 @@ public class KstreamBinderPojoInputStringOutputIntegrationTests {
 		context.close();
 	}
 
-	private void receiveAndValidateFoo(ConfigurableApplicationContext context) throws Exception{
+	private void receiveAndValidateFoo(ConfigurableApplicationContext context) throws Exception {
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
 		DefaultKafkaProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<>(senderProps);
 		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf, true);
@@ -106,27 +108,45 @@ public class KstreamBinderPojoInputStringOutputIntegrationTests {
 
 		@StreamListener("input")
 		@SendTo("output")
-		public KStream<?, String> process(KStream<?, Product> input) {
+		public KStream<?, String> process(KStream<Object, Product> input) {
 
 			return input
-					.filter((key, product) -> product.getId().equals("123"))
-					.map((k,v) -> new KeyValue<>(v, v))
+					.filter(new Predicate<Object, Product>() {
+
+						@Override
+						public boolean test(Object key, Product product) {
+							return product.getId() == 123;
+						}
+					})
+					.map(new KeyValueMapper<Object, Product, KeyValue<Product, Product>>() {
+
+						@Override
+						public KeyValue<Product, Product> apply(Object key, Product value) {
+							return new KeyValue<>(value, value);
+						}
+					})
 					.groupByKey(new JsonSerde<>(Product.class), new JsonSerde<>(Product.class))
 					.count(TimeWindows.of(5000), "id-count-store")
 					.toStream()
-					.map((w,c) -> new KeyValue<>(null, ("Count for product with ID 123: " + c)));
+					.map(new KeyValueMapper<Windowed<Product>, Long, KeyValue<Object, String>>() {
+
+						@Override
+						public KeyValue<Object, String> apply(Windowed<Product> key, Long value) {
+							return new KeyValue<>(null, "Count for product with ID 123: " + value);
+						}
+					});
 		}
 	}
 
 	static class Product {
 
-		String id;
+		Integer id;
 
-		public String getId() {
+		public Integer getId() {
 			return id;
 		}
 
-		public void setId(String id) {
+		public void setId(Integer id) {
 			this.id = id;
 		}
 	}

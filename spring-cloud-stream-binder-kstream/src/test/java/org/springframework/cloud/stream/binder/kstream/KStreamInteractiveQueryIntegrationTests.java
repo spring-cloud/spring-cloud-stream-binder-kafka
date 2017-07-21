@@ -24,6 +24,8 @@ import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.kstream.KStream;
+import org.apache.kafka.streams.kstream.KeyValueMapper;
+import org.apache.kafka.streams.kstream.Predicate;
 import org.apache.kafka.streams.state.QueryableStoreTypes;
 import org.apache.kafka.streams.state.ReadOnlyKeyValueStore;
 import org.junit.AfterClass;
@@ -103,7 +105,7 @@ public class KStreamInteractiveQueryIntegrationTests {
 		assertThat(cr.value().contains("Count for product with ID 123: 1")).isTrue();
 
 		ProductCountApplication.Foo foo = context.getBean(ProductCountApplication.Foo.class);
-		assertThat(foo.getProductStock("123").equals(1L));
+		assertThat(foo.getProductStock(123).equals(1L));
 	}
 
 	@EnableBinding(KStreamProcessor.class)
@@ -115,15 +117,33 @@ public class KStreamInteractiveQueryIntegrationTests {
 
 		@StreamListener("input")
 		@SendTo("output")
-		public KStream<?, String> process(KStream<?, Product> input) {
+		public KStream<?, String> process(KStream<Object, Product> input) {
 
 			return input
-					.filter((key, product) -> product.getId().equals("123"))
-					.map((k,v) -> new KeyValue<>(v.getId(), v))
-					.groupByKey(new Serdes.StringSerde(), new JsonSerde<>(Product.class))
+					.filter(new Predicate<Object, Product>() {
+
+						@Override
+						public boolean test(Object key, Product product) {
+							return product.getId() == 123;
+						}
+					})
+					.map(new KeyValueMapper<Object, Product, KeyValue<Integer, Product>>() {
+
+						@Override
+						public KeyValue<Integer, Product> apply(Object key, Product value) {
+							return new KeyValue<>(value.id, value);
+						}
+					})
+					.groupByKey(new Serdes.IntegerSerde(), new JsonSerde<>(Product.class))
 					.count("prod-id-count-store")
 					.toStream()
-					.map((w,c) -> new KeyValue<>(null, ("Count for product with ID 123: " + c)));
+					.map(new KeyValueMapper<Integer, Long, KeyValue<Object, String>>() {
+
+						@Override
+						public KeyValue<Object, String> apply(Integer key, Long value) {
+							return new KeyValue<>(null, "Count for product with ID 123: " + value);
+						}
+					});
 		}
 
 		@Bean
@@ -139,11 +159,11 @@ public class KStreamInteractiveQueryIntegrationTests {
 				this.kStreamBuilderFactoryBean = kStreamBuilderFactoryBean;
 			}
 
-			public Long getProductStock(String id) {
+			public Long getProductStock(Integer id) {
 				KafkaStreams streams = kStreamBuilderFactoryBean.getKafkaStreams();
-				ReadOnlyKeyValueStore<String, Long> keyValueStore =
+				ReadOnlyKeyValueStore<Object, Object> keyValueStore =
 						streams.store("prod-id-count-store", QueryableStoreTypes.keyValueStore());
-				return keyValueStore.get(id);
+				return (Long)keyValueStore.get(id);
 			}
 		}
 
@@ -151,13 +171,13 @@ public class KStreamInteractiveQueryIntegrationTests {
 
 	static class Product {
 
-		String id;
+		Integer id;
 
-		public String getId() {
+		public Integer getId() {
 			return id;
 		}
 
-		public void setId(String id) {
+		public void setId(Integer id) {
 			this.id = id;
 		}
 	}
