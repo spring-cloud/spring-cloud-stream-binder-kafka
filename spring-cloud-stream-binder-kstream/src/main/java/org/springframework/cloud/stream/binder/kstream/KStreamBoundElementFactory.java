@@ -25,6 +25,7 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.kstream.KStream;
 import org.apache.kafka.streams.kstream.KStreamBuilder;
+import org.apache.kafka.streams.kstream.KeyValueMapper;
 
 import org.springframework.cloud.stream.binder.BinderHeaders;
 import org.springframework.cloud.stream.binder.ConsumerProperties;
@@ -82,18 +83,22 @@ public class KStreamBoundElementFactory extends AbstractBindingTargetFactory<KSt
 		KStream<Object, Object> stream = kStreamBuilder.stream(bindingServiceProperties.getBindingDestination(name));
 		ConsumerProperties properties = bindingServiceProperties.getConsumerProperties(name);
 		if (HeaderMode.embeddedHeaders.equals(properties.getHeaderMode())) {
-			stream = stream.map((key, value) -> {
-				if (!(value instanceof byte[])) {
-					return new KeyValue<>(key, value);
-				}
-				try {
-					MessageValues messageValues = EmbeddedHeaderUtils
-							.extractHeaders(MessageBuilder.withPayload((byte[]) value).build(), true);
-					messageValues = deserializePayloadIfNecessary(messageValues);
-					return new KeyValue<>(null, messageValues.toMessage());
-				}
-				catch (Exception e) {
-					throw new IllegalArgumentException(e);
+
+			stream = stream.map(new KeyValueMapper<Object, Object, KeyValue<Object, Object>>() {
+				@Override
+				public KeyValue<Object, Object> apply(Object key, Object value) {
+					if (!(value instanceof byte[])) {
+						return new KeyValue<>(key, value);
+					}
+					try {
+						MessageValues messageValues = EmbeddedHeaderUtils
+								.extractHeaders(MessageBuilder.withPayload((byte[]) value).build(), true);
+						messageValues = deserializePayloadIfNecessary(messageValues);
+						return new KeyValue<Object, Object>(null, messageValues.toMessage());
+					}
+					catch (Exception e) {
+						throw new IllegalArgumentException(e);
+					}
 				}
 			});
 		}
@@ -102,7 +107,7 @@ public class KStreamBoundElementFactory extends AbstractBindingTargetFactory<KSt
 
 	@Override
 	@SuppressWarnings("unchecked")
-	public KStream createOutput(String name) {
+	public KStream createOutput(final String name) {
 		return new KStreamDelegate() {
 			@Override
 			public void setDelegate(KStream delegate) {
@@ -110,10 +115,15 @@ public class KStreamBoundElementFactory extends AbstractBindingTargetFactory<KSt
 				if (StringUtils.hasText(bindingProperties.getContentType())) {
 					final MessageConverter messageConverter = compositeMessageConverterFactory
 							.getMessageConverterForType(MimeType.valueOf(bindingProperties.getContentType()));
-					delegate = delegate.map((k, v) -> {
-						Message<?> message = (Message<?>) v;
-						return new KeyValue<>(k, messageConverter.toMessage(message.getPayload(),
-								new MutableMessageHeaders(((Message<?>) v).getHeaders())));
+
+					delegate = delegate.map(new KeyValueMapper<Object, Object, KeyValue<Object, ? extends Message<?>>>() {
+						@Override
+						public KeyValue<Object, ? extends Message<?>> apply(Object k, Object v) {
+							Message<?> message = (Message<?>) v;
+							return new KeyValue<Object, Message<?>>(k, messageConverter.toMessage(message.getPayload(),
+									new MutableMessageHeaders(((Message<?>) v).getHeaders())));
+
+						}
 					});
 				}
 				super.setDelegate(delegate);
