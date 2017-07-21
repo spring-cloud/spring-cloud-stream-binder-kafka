@@ -13,20 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package org.springframework.cloud.stream.binder.kstream;
 
-import java.util.Arrays;
-import java.util.Date;
 import java.util.Map;
 
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.serialization.Serdes;
+import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.kstream.KStream;
-import org.apache.kafka.streams.kstream.TimeWindows;
+import org.apache.kafka.streams.state.QueryableStoreTypes;
+import org.apache.kafka.streams.state.ReadOnlyKeyValueStore;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
@@ -35,16 +34,16 @@ import org.junit.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
-import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.cloud.stream.annotation.EnableBinding;
 import org.springframework.cloud.stream.annotation.StreamListener;
 import org.springframework.cloud.stream.binder.kstream.annotations.KStreamProcessor;
 import org.springframework.context.ConfigurableApplicationContext;
+import org.springframework.context.annotation.Bean;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KStreamBuilderFactoryBean;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.support.serializer.JsonSerde;
 import org.springframework.kafka.test.rule.KafkaEmbedded;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.messaging.handler.annotation.SendTo;
@@ -52,24 +51,22 @@ import org.springframework.messaging.handler.annotation.SendTo;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- *
- * @author Marius Bogoevici
  * @author Soby Chacko
  */
-public class KStreamBinderWordCountIntegrationTests {
+public class KStreamInteractiveQueryIntegrationTests {
 
 	@ClassRule
-	public static KafkaEmbedded embeddedKafka = new KafkaEmbedded(1, true, "counts");
+	public static KafkaEmbedded embeddedKafka = new KafkaEmbedded(1, true, "counts-id");
 
 	private static Consumer<String, String> consumer;
 
 	@BeforeClass
 	public static void setUp() throws Exception {
-		Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("group", "false", embeddedKafka);
+		Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("group-id", "false", embeddedKafka);
 		consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 		DefaultKafkaConsumerFactory<String, String> cf = new DefaultKafkaConsumerFactory<>(consumerProps);
 		consumer = cf.createConsumer();
-		embeddedKafka.consumeFromAnEmbeddedTopic(consumer, "counts");
+		embeddedKafka.consumeFromAnEmbeddedTopic(consumer, "counts-id");
 	}
 
 	@AfterClass
@@ -78,14 +75,12 @@ public class KStreamBinderWordCountIntegrationTests {
 	}
 
 	@Test
-	public void testKstreamWordCountWithStringInputAndPojoOuput() throws Exception {
-		SpringApplication app = new SpringApplication(WordCountProcessorApplication.class);
+	public void testKstreamBinderWithPojoInputAndStringOuput() throws Exception {
+		SpringApplication app = new SpringApplication(ProductCountApplication.class);
 		app.setWebEnvironment(false);
-
 		ConfigurableApplicationContext context = app.run("--server.port=0",
-				"--spring.cloud.stream.bindings.input.destination=words",
-				"--spring.cloud.stream.bindings.output.destination=counts",
-				"--spring.cloud.stream.bindings.output.contentType=application/json",
+				"--spring.cloud.stream.bindings.input.destination=foos",
+				"--spring.cloud.stream.bindings.output.destination=counts-id",
 				"--spring.cloud.stream.kstream.binder.streamConfiguration.commit.interval.ms=1000",
 				"--spring.cloud.stream.kstream.binder.streamConfiguration.key.serde=org.apache.kafka.common.serialization.Serdes$StringSerde",
 				"--spring.cloud.stream.kstream.binder.streamConfiguration.value.serde=org.apache.kafka.common.serialization.Serdes$StringSerde",
@@ -94,137 +89,76 @@ public class KStreamBinderWordCountIntegrationTests {
 				"--spring.cloud.stream.bindings.input.consumer.headerMode=raw",
 				"--spring.cloud.stream.kstream.binder.brokers=" + embeddedKafka.getBrokersAsString(),
 				"--spring.cloud.stream.kstream.binder.zkNodes=" + embeddedKafka.getZookeeperConnectionString());
-		receiveAndValidate(context);
+		receiveAndValidateFoo(context);
 		context.close();
 	}
 
-	private void receiveAndValidate(ConfigurableApplicationContext context) throws Exception{
+	private void receiveAndValidateFoo(ConfigurableApplicationContext context) throws Exception{
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
 		DefaultKafkaProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<>(senderProps);
 		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf, true);
-		template.setDefaultTopic("words");
-		template.sendDefault("foobar");
-		ConsumerRecord<String, String> cr = KafkaTestUtils.getSingleRecord(consumer, "counts");
-		assertThat(cr.value().contains("\"word\":\"foobar\",\"count\":1")).isTrue();
+		template.setDefaultTopic("foos");
+		template.sendDefault("{\"id\":\"123\"}");
+		ConsumerRecord<String, String> cr = KafkaTestUtils.getSingleRecord(consumer, "counts-id");
+		assertThat(cr.value().contains("Count for product with ID 123: 1")).isTrue();
+
+		ProductCountApplication.Foo foo = context.getBean(ProductCountApplication.Foo.class);
+		assertThat(foo.getProductStock("123").equals(1L));
 	}
 
 	@EnableBinding(KStreamProcessor.class)
 	@EnableAutoConfiguration
-	@EnableConfigurationProperties(WordCountProcessorProperties.class)
-	public static class WordCountProcessorApplication {
+	public static class ProductCountApplication {
 
 		@Autowired
-		private WordCountProcessorProperties processorProperties;
-
-		@Autowired
-		private KStreamBuilderFactoryBean kafkaStreams;
+		private KStreamBuilderFactoryBean kStreamBuilderFactoryBean;
 
 		@StreamListener("input")
 		@SendTo("output")
-		public KStream<?, WordCount> process(KStream<?, String> input) {
+		public KStream<?, String> process(KStream<?, Product> input) {
+
 			return input
-					.flatMapValues(value -> Arrays.asList(value.toLowerCase().split("\\W+")))
-					.map((key, word) -> new KeyValue<>(word, word))
-					.groupByKey(Serdes.String(), Serdes.String())
-					.count(configuredTimeWindow(), processorProperties.getStoreName())
+					.filter((key, product) -> product.getId().equals("123"))
+					.map((k,v) -> new KeyValue<>(v.getId(), v))
+					.groupByKey(new Serdes.StringSerde(), new JsonSerde<>(Product.class))
+					.count("prod-id-count-store")
 					.toStream()
-					.map((w, c) -> new KeyValue<>(null, new WordCount(w.key(), c, new Date(w.window().start()), new Date(w.window().end()))));
+					.map((w,c) -> new KeyValue<>(null, ("Count for product with ID 123: " + c)));
 		}
 
-		/**
-		 * Constructs a {@link TimeWindows} property.
-		 *
-		 * @return
-		 */
-		private TimeWindows configuredTimeWindow() {
-			return processorProperties.getAdvanceBy() > 0
-					? TimeWindows.of(processorProperties.getWindowLength()).advanceBy(processorProperties.getAdvanceBy())
-					: TimeWindows.of(processorProperties.getWindowLength());
+		@Bean
+		public Foo foo(KStreamBuilderFactoryBean kStreamBuilderFactoryBean) {
+			return new Foo(kStreamBuilderFactoryBean);
 		}
+
+
+		static class Foo {
+			KStreamBuilderFactoryBean kStreamBuilderFactoryBean;
+
+			Foo(KStreamBuilderFactoryBean kStreamBuilderFactoryBean) {
+				this.kStreamBuilderFactoryBean = kStreamBuilderFactoryBean;
+			}
+
+			public Long getProductStock(String id) {
+				KafkaStreams streams = kStreamBuilderFactoryBean.getKafkaStreams();
+				ReadOnlyKeyValueStore<String, Long> keyValueStore =
+						streams.store("prod-id-count-store", QueryableStoreTypes.keyValueStore());
+				return keyValueStore.get(id);
+			}
+		}
+
 	}
 
-	@ConfigurationProperties(prefix = "kstream.word.count")
-	static class  WordCountProcessorProperties {
+	static class Product {
 
-		private int windowLength = 5000;
+		String id;
 
-		private int advanceBy = 0;
-
-		private String storeName = "WordCounts";
-
-		int getWindowLength() {
-			return windowLength;
+		public String getId() {
+			return id;
 		}
 
-		public void setWindowLength(int windowLength) {
-			this.windowLength = windowLength;
-		}
-
-		int getAdvanceBy() {
-			return advanceBy;
-		}
-
-		public void setAdvanceBy(int advanceBy) {
-			this.advanceBy = advanceBy;
-		}
-
-		String getStoreName() {
-			return storeName;
-		}
-
-		public void setStoreName(String storeName) {
-			this.storeName = storeName;
+		public void setId(String id) {
+			this.id = id;
 		}
 	}
-
-	static class WordCount {
-
-		private String word;
-
-		private long count;
-
-		private Date start;
-
-		private Date end;
-
-		WordCount(String word, long count, Date start, Date end) {
-			this.word = word;
-			this.count = count;
-			this.start = start;
-			this.end = end;
-		}
-
-		public String getWord() {
-			return word;
-		}
-
-		public void setWord(String word) {
-			this.word = word;
-		}
-
-		public long getCount() {
-			return count;
-		}
-
-		public void setCount(long count) {
-			this.count = count;
-		}
-
-		public Date getStart() {
-			return start;
-		}
-
-		public void setStart(Date start) {
-			this.start = start;
-		}
-
-		public Date getEnd() {
-			return end;
-		}
-
-		public void setEnd(Date end) {
-			this.end = end;
-		}
-	}
-
 }
