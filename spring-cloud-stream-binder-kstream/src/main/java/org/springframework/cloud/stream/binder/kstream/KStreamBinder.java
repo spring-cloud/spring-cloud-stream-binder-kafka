@@ -16,11 +16,16 @@
 
 package org.springframework.cloud.stream.binder.kstream;
 
+import org.apache.kafka.common.Configurable;
+import org.apache.kafka.common.serialization.Serde;
 import org.apache.kafka.common.serialization.Serdes;
+import org.apache.kafka.common.utils.Utils;
 import org.apache.kafka.streams.KeyValue;
+import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.kstream.KStream;
 import org.apache.kafka.streams.kstream.KeyValueMapper;
 
+import org.springframework.beans.BeanUtils;
 import org.springframework.cloud.stream.binder.AbstractBinder;
 import org.springframework.cloud.stream.binder.BinderHeaders;
 import org.springframework.cloud.stream.binder.Binding;
@@ -32,45 +37,59 @@ import org.springframework.cloud.stream.binder.ExtendedPropertiesBinder;
 import org.springframework.cloud.stream.binder.HeaderMode;
 import org.springframework.cloud.stream.binder.MessageValues;
 import org.springframework.cloud.stream.binder.kafka.properties.KafkaConsumerProperties;
-import org.springframework.cloud.stream.binder.kafka.properties.KafkaExtendedBindingProperties;
 import org.springframework.cloud.stream.binder.kafka.properties.KafkaProducerProperties;
 import org.springframework.cloud.stream.binder.kafka.provisioning.KafkaTopicProvisioner;
 import org.springframework.cloud.stream.binder.kstream.config.KStreamBinderProperties;
+import org.springframework.cloud.stream.binder.kstream.config.KStreamConsumerProperties;
+import org.springframework.cloud.stream.binder.kstream.config.KStreamExtendedBindingProperties;
+import org.springframework.cloud.stream.binder.kstream.config.KStreamProducerProperties;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageHeaders;
+import org.springframework.util.ClassUtils;
 import org.springframework.util.MimeType;
+import org.springframework.util.ObjectUtils;
+import org.springframework.util.ReflectionUtils;
+import org.springframework.util.StringUtils;
 
 /**
  * @author Marius Bogoevici
  */
 public class KStreamBinder extends
-		AbstractBinder<KStream<Object, Object>, ExtendedConsumerProperties<KafkaConsumerProperties>, ExtendedProducerProperties<KafkaProducerProperties>>
-		implements ExtendedPropertiesBinder<KStream<Object, Object>, KafkaConsumerProperties, KafkaProducerProperties> {
+		AbstractBinder<KStream<Object, Object>, ExtendedConsumerProperties<KStreamConsumerProperties>, ExtendedProducerProperties<KStreamProducerProperties>>
+		implements ExtendedPropertiesBinder<KStream<Object, Object>, KStreamConsumerProperties, KStreamProducerProperties> {
 
 	private String[] headers;
 
 	private final KafkaTopicProvisioner kafkaTopicProvisioner;
 
-	private final KafkaExtendedBindingProperties kafkaExtendedBindingProperties;
+	private final KStreamExtendedBindingProperties kStreamExtendedBindingProperties;
+
+	private final StreamsConfig streamsConfig;
 
 	public KStreamBinder(KStreamBinderProperties kStreamBinderProperties, KafkaTopicProvisioner kafkaTopicProvisioner,
-						KafkaExtendedBindingProperties kafkaExtendedBindingProperties) {
+			KStreamExtendedBindingProperties kStreamExtendedBindingProperties, StreamsConfig streamsConfig) {
 		this.headers = EmbeddedHeaderUtils.headersToEmbed(kStreamBinderProperties.getHeaders());
 		this.kafkaTopicProvisioner = kafkaTopicProvisioner;
-		this.kafkaExtendedBindingProperties = kafkaExtendedBindingProperties;
+		this.kStreamExtendedBindingProperties = kStreamExtendedBindingProperties;
+		this.streamsConfig = streamsConfig;
 	}
 
 	@Override
 	protected Binding<KStream<Object, Object>> doBindConsumer(String name, String group,
-			KStream<Object, Object> inputTarget, ExtendedConsumerProperties<KafkaConsumerProperties> properties) {
-		this.kafkaTopicProvisioner.provisionConsumerDestination(name, group, properties);
+			KStream<Object, Object> inputTarget, ExtendedConsumerProperties<KStreamConsumerProperties> properties) {
+
+		ExtendedConsumerProperties<KafkaConsumerProperties> extendedConsumerProperties = new ExtendedConsumerProperties<>(new KStreamConsumerProperties());
+		BeanUtils.copyProperties(properties, extendedConsumerProperties, "extension");
+		this.kafkaTopicProvisioner.provisionConsumerDestination(name, group, extendedConsumerProperties);
 		return new DefaultBinding<>(name, group, inputTarget, null);
 	}
 
 	@Override
 	protected Binding<KStream<Object, Object>> doBindProducer(String name, KStream<Object, Object> outboundBindTarget,
-			ExtendedProducerProperties<KafkaProducerProperties> properties) {
-		this.kafkaTopicProvisioner.provisionProducerDestination(name, properties);
+			ExtendedProducerProperties<KStreamProducerProperties> properties) {
+		ExtendedProducerProperties<KafkaProducerProperties> extendedProducerProperties = new ExtendedProducerProperties<>(new KStreamProducerProperties());
+		BeanUtils.copyProperties(properties, extendedProducerProperties, "extension");
+		this.kafkaTopicProvisioner.provisionProducerDestination(name , extendedProducerProperties);
 		if (HeaderMode.embeddedHeaders.equals(properties.getHeaderMode())) {
 			outboundBindTarget = outboundBindTarget.map(new KeyValueMapper<Object, Object, KeyValue<Object, Object>>() {
 				@Override
@@ -109,14 +128,32 @@ public class KStreamBinder extends
 						});
 			}
 		}
-		if (!properties.isUseNativeEncoding()) {
-			outboundBindTarget.map(new KeyValueMapper<Object, Object, KeyValue<byte[], byte[]>>() {
-				@Override
-				public KeyValue<byte[], byte[]> apply(Object k, Object v) {
-					return new KeyValue<>((byte[]) k, (byte[]) v);
+		if (!properties.isUseNativeEncoding() || StringUtils.hasText(properties.getExtension().getKeySerde()) || StringUtils.hasText(properties.getExtension().getValueSerde())) {
+			Serde<?> keySerde = Serdes.ByteArray();
+			Serde<?> valueSerde = Serdes.ByteArray();
+			try {
+				if (StringUtils.hasText(properties.getExtension().getKeySerde())) {
+					keySerde = Utils.newInstance(properties.getExtension().getKeySerde(), Serde.class);
+					if (keySerde instanceof Configurable) {
+						((Configurable) keySerde).configure(streamsConfig.originals());
+					}
 				}
-			}).to(Serdes.ByteArray(),
-					Serdes.ByteArray(), name);
+			}
+			catch (ClassNotFoundException e) {
+				throw new IllegalStateException("Serde class not found: ", e);
+			}
+			try {
+				if (StringUtils.hasText(properties.getExtension().getValueSerde())) {
+					valueSerde = Utils.newInstance(properties.getExtension().getValueSerde(), Serde.class);
+					if (valueSerde instanceof Configurable) {
+						((Configurable) valueSerde).configure(streamsConfig.originals());
+					}
+				}
+			}
+			catch (ClassNotFoundException e) {
+				throw new IllegalStateException("Serde class not found: ", e);
+			}
+			outboundBindTarget.to((Serde<Object>) keySerde, (Serde<Object>) valueSerde, name);
 		}
 		else {
 			outboundBindTarget.to(name);
@@ -143,13 +180,13 @@ public class KStreamBinder extends
 	}
 
 	@Override
-	public KafkaConsumerProperties getExtendedConsumerProperties(String channelName) {
-		return this.kafkaExtendedBindingProperties.getExtendedConsumerProperties(channelName);
+	public KStreamConsumerProperties getExtendedConsumerProperties(String channelName) {
+		return this.kStreamExtendedBindingProperties.getExtendedConsumerProperties(channelName);
 	}
 
 	@Override
-	public KafkaProducerProperties getExtendedProducerProperties(String channelName) {
-		return this.kafkaExtendedBindingProperties.getExtendedProducerProperties(channelName);
+	public KStreamProducerProperties getExtendedProducerProperties(String channelName) {
+		return this.kStreamExtendedBindingProperties.getExtendedProducerProperties(channelName);
 	}
 
 }

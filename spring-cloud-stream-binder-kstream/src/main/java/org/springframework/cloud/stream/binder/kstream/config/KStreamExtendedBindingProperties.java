@@ -16,12 +16,46 @@
 
 package org.springframework.cloud.stream.binder.kstream.config;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.cloud.stream.binder.kafka.properties.KafkaExtendedBindingProperties;
+import org.springframework.cloud.stream.binder.ExtendedBindingProperties;
 
 /**
  * @author Marius Bogoevici
  */
 @ConfigurationProperties("spring.cloud.stream.kstream")
-public class KStreamExtendedBindingProperties extends KafkaExtendedBindingProperties {
+public class KStreamExtendedBindingProperties
+		implements ExtendedBindingProperties<KStreamConsumerProperties, KStreamProducerProperties> {
+
+	private Map<String, KStreamBindingProperties> bindings = new HashMap<>();
+
+	public Map<String, KStreamBindingProperties> getBindings() {
+		return this.bindings;
+	}
+
+	public void setBindings(Map<String, KStreamBindingProperties> bindings) {
+		this.bindings = bindings;
+	}
+
+	@Override
+	public KStreamConsumerProperties getExtendedConsumerProperties(String channelName) {
+		if (this.bindings.containsKey(channelName) && this.bindings.get(channelName).getConsumer() != null) {
+			return this.bindings.get(channelName).getConsumer();
+		}
+		else {
+			return new KStreamConsumerProperties();
+		}
+	}
+
+	@Override
+	public KStreamProducerProperties getExtendedProducerProperties(String channelName) {
+		if (this.bindings.containsKey(channelName) && this.bindings.get(channelName).getProducer() != null) {
+			return this.bindings.get(channelName).getProducer();
+		}
+		else {
+			return new KStreamProducerProperties();
+		}
+	}
 }

@@ -19,6 +19,7 @@ package org.springframework.cloud.stream.binder.kstream.config;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.common.utils.AppInfoParser;
+import org.apache.kafka.streams.StreamsConfig;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
@@ -53,8 +54,11 @@ public class KStreamBinderConfiguration {
 	}
 
 	@Bean
-	public KStreamBinder kStreamBinder(KStreamBinderProperties kStreamBinderProperties, KafkaTopicProvisioner kafkaTopicProvisioner, KStreamExtendedBindingProperties kStreamExtendedBindingProperties) {
-		return new KStreamBinder(kStreamBinderProperties, kafkaTopicProvisioner, kStreamExtendedBindingProperties);
+	public KStreamBinder kStreamBinder(KStreamBinderProperties kStreamBinderProperties,
+			KafkaTopicProvisioner kafkaTopicProvisioner,
+			KStreamExtendedBindingProperties kStreamExtendedBindingProperties, StreamsConfig streamsConfig) {
+		return new KStreamBinder(kStreamBinderProperties, kafkaTopicProvisioner, kStreamExtendedBindingProperties,
+				streamsConfig);
 	}
 
 	@Bean(name = "adminUtilsOperation")
