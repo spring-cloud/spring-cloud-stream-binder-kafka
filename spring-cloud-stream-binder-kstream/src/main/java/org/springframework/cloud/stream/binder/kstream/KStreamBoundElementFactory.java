@@ -16,49 +16,40 @@
 
 package org.springframework.cloud.stream.binder.kstream;
 
-import java.io.UnsupportedEncodingException;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.aopalliance.intercept.MethodInterceptor;
 import org.aopalliance.intercept.MethodInvocation;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.kstream.KStream;
 import org.apache.kafka.streams.kstream.KStreamBuilder;
 import org.apache.kafka.streams.kstream.KeyValueMapper;
 
 import org.springframework.aop.framework.ProxyFactory;
-import org.springframework.cloud.stream.binder.BinderHeaders;
 import org.springframework.cloud.stream.binder.ConsumerProperties;
 import org.springframework.cloud.stream.binder.EmbeddedHeaderUtils;
 import org.springframework.cloud.stream.binder.HeaderMode;
 import org.springframework.cloud.stream.binder.MessageValues;
+import org.springframework.cloud.stream.binder.PayloadSerdeUtils;
 import org.springframework.cloud.stream.binder.StringConvertingContentTypeResolver;
 import org.springframework.cloud.stream.binding.AbstractBindingTargetFactory;
 import org.springframework.cloud.stream.config.BindingProperties;
 import org.springframework.cloud.stream.config.BindingServiceProperties;
 import org.springframework.cloud.stream.converter.CompositeMessageConverterFactory;
-import org.springframework.core.serializer.support.SerializationFailedException;
 import org.springframework.integration.codec.Codec;
 import org.springframework.integration.support.MutableMessageHeaders;
 import org.springframework.messaging.Message;
-import org.springframework.messaging.MessageHeaders;
 import org.springframework.messaging.converter.MessageConverter;
 import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.util.Assert;
-import org.springframework.util.ClassUtils;
 import org.springframework.util.MimeType;
-import org.springframework.util.MimeTypeUtils;
 import org.springframework.util.StringUtils;
 
 /**
  * @author Marius Bogoevici
  */
 public class KStreamBoundElementFactory extends AbstractBindingTargetFactory<KStream> {
-
-	private final Log logger = LogFactory.getLog(this.getClass());
 
 	private final KStreamBuilder kStreamBuilder;
 
@@ -122,86 +113,8 @@ public class KStreamBoundElementFactory extends AbstractBindingTargetFactory<KSt
 	}
 
 	private MessageValues deserializePayloadIfNecessary(MessageValues messageValues) {
-		Object originalPayload = messageValues.getPayload();
-		MimeType contentType = this.contentTypeResolver.resolve(messageValues);
-		Object payload = deserializePayload(originalPayload, contentType);
-		if (payload != null) {
-			messageValues.setPayload(payload);
-			Object originalContentType = messageValues.get(BinderHeaders.BINDER_ORIGINAL_CONTENT_TYPE);
-			// Reset content-type only if the original content type is not null (when
-			// receiving messages from
-			// non-SCSt applications).
-			if (originalContentType != null) {
-				messageValues.put(MessageHeaders.CONTENT_TYPE, originalContentType);
-				messageValues.remove(BinderHeaders.BINDER_ORIGINAL_CONTENT_TYPE);
-			}
-		}
-		return messageValues;
-	}
-
-	private Object deserializePayload(Object payload, MimeType contentType) {
-		if (payload instanceof byte[]) {
-			if (contentType == null || MimeTypeUtils.APPLICATION_OCTET_STREAM.equals(contentType)) {
-				return payload;
-			}
-			else {
-				return deserializePayload((byte[]) payload, contentType);
-			}
-		}
-		return payload;
-	}
-
-	private Object deserializePayload(byte[] bytes, MimeType contentType) {
-		if ("text".equalsIgnoreCase(contentType.getType()) || MimeTypeUtils.APPLICATION_JSON.equals(contentType)) {
-			try {
-				return new String(bytes, "UTF-8");
-			}
-			catch (UnsupportedEncodingException e) {
-				String errorMessage = "unable to deserialize [java.lang.String]. Encoding not supported. "
-						+ e.getMessage();
-				logger.error(errorMessage);
-				throw new SerializationFailedException(errorMessage, e);
-			}
-		}
-		else {
-			String className = JavaClassMimeTypeConversion.classNameFromMimeType(contentType);
-			try {
-				// Cache types to avoid unnecessary ClassUtils.forName calls.
-				Class<?> targetType = this.payloadTypeCache.get(className);
-				if (targetType == null) {
-					assert className != null;
-					targetType = ClassUtils.forName(className, null);
-					this.payloadTypeCache.put(className, targetType);
-				}
-				return this.codec.decode(bytes, targetType);
-			} // catch all exceptions that could occur during de-serialization
-			catch (Exception e) {
-				String errorMessage = "Unable to deserialize [" + className + "] using the contentType [" + contentType
-						+ "] " + e.getMessage();
-				logger.error(errorMessage);
-				throw new SerializationFailedException(errorMessage, e);
-			}
-		}
-	}
-
-	abstract static class JavaClassMimeTypeConversion {
-
-		static String classNameFromMimeType(MimeType mimeType) {
-			Assert.notNull(mimeType, "mimeType cannot be null.");
-			String className = mimeType.getParameter("type");
-			if (className == null) {
-				return null;
-			}
-			// unwrap quotes if any
-			className = className.replace("\"", "");
-
-			// restore trailing ';'
-			if (className.contains("[L")) {
-				className += ";";
-			}
-			return className;
-		}
-
+		return PayloadSerdeUtils.deserializePayloadIfNecessary(messageValues, this.contentTypeResolver,
+				this.payloadTypeCache, this.codec);
 	}
 
 	interface KStreamWrapper {
