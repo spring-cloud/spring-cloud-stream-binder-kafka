@@ -20,6 +20,8 @@ import java.io.UnsupportedEncodingException;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.aopalliance.intercept.MethodInterceptor;
+import org.aopalliance.intercept.MethodInvocation;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.streams.KeyValue;
@@ -27,6 +29,7 @@ import org.apache.kafka.streams.kstream.KStream;
 import org.apache.kafka.streams.kstream.KStreamBuilder;
 import org.apache.kafka.streams.kstream.KeyValueMapper;
 
+import org.springframework.aop.framework.ProxyFactory;
 import org.springframework.cloud.stream.binder.BinderHeaders;
 import org.springframework.cloud.stream.binder.ConsumerProperties;
 import org.springframework.cloud.stream.binder.EmbeddedHeaderUtils;
@@ -108,27 +111,14 @@ public class KStreamBoundElementFactory extends AbstractBindingTargetFactory<KSt
 	@Override
 	@SuppressWarnings("unchecked")
 	public KStream createOutput(final String name) {
-		return new KStreamDelegate() {
-			@Override
-			public void setDelegate(KStream delegate) {
-				BindingProperties bindingProperties = bindingServiceProperties.getBindingProperties(name);
-				if (StringUtils.hasText(bindingProperties.getContentType())) {
-					final MessageConverter messageConverter = compositeMessageConverterFactory
-							.getMessageConverterForType(MimeType.valueOf(bindingProperties.getContentType()));
-
-					delegate = delegate.map(new KeyValueMapper<Object, Object, KeyValue<Object, ? extends Message<?>>>() {
-						@Override
-						public KeyValue<Object, ? extends Message<?>> apply(Object k, Object v) {
-							Message<?> message = (Message<?>) v;
-							return new KeyValue<Object, Message<?>>(k, messageConverter.toMessage(message.getPayload(),
-									new MutableMessageHeaders(((Message<?>) v).getHeaders())));
-
-						}
-					});
-				}
-				super.setDelegate(delegate);
-			}
-		};
+		BindingProperties bindingProperties = bindingServiceProperties.getBindingProperties(name);
+		String contentType = bindingProperties.getContentType();
+		MessageConverter messageConverter = StringUtils.hasText(contentType) ? compositeMessageConverterFactory
+				.getMessageConverterForType(MimeType.valueOf(contentType)) : null;
+		KStreamWrapperHandler handler = new KStreamWrapperHandler(messageConverter);
+		ProxyFactory proxyFactory = new ProxyFactory(KStreamWrapper.class, KStream.class);
+		proxyFactory.addAdvice(handler);
+		return (KStream) proxyFactory.getProxy();
 	}
 
 	private MessageValues deserializePayloadIfNecessary(MessageValues messageValues) {
@@ -153,7 +143,8 @@ public class KStreamBoundElementFactory extends AbstractBindingTargetFactory<KSt
 		if (payload instanceof byte[]) {
 			if (contentType == null || MimeTypeUtils.APPLICATION_OCTET_STREAM.equals(contentType)) {
 				return payload;
-			} else {
+			}
+			else {
 				return deserializePayload((byte[]) payload, contentType);
 			}
 		}
@@ -164,12 +155,15 @@ public class KStreamBoundElementFactory extends AbstractBindingTargetFactory<KSt
 		if ("text".equalsIgnoreCase(contentType.getType()) || MimeTypeUtils.APPLICATION_JSON.equals(contentType)) {
 			try {
 				return new String(bytes, "UTF-8");
-			} catch (UnsupportedEncodingException e) {
-				String errorMessage = "unable to deserialize [java.lang.String]. Encoding not supported. " + e.getMessage();
+			}
+			catch (UnsupportedEncodingException e) {
+				String errorMessage = "unable to deserialize [java.lang.String]. Encoding not supported. "
+						+ e.getMessage();
 				logger.error(errorMessage);
 				throw new SerializationFailedException(errorMessage, e);
 			}
-		} else {
+		}
+		else {
 			String className = JavaClassMimeTypeConversion.classNameFromMimeType(contentType);
 			try {
 				// Cache types to avoid unnecessary ClassUtils.forName calls.
@@ -180,9 +174,10 @@ public class KStreamBoundElementFactory extends AbstractBindingTargetFactory<KSt
 					this.payloadTypeCache.put(className, targetType);
 				}
 				return this.codec.decode(bytes, targetType);
-			}// catch all exceptions that could occur during de-serialization
+			} // catch all exceptions that could occur during de-serialization
 			catch (Exception e) {
-				String errorMessage = "Unable to deserialize [" + className + "] using the contentType [" + contentType + "] " + e.getMessage();
+				String errorMessage = "Unable to deserialize [" + className + "] using the contentType [" + contentType
+						+ "] " + e.getMessage();
 				logger.error(errorMessage);
 				throw new SerializationFailedException(errorMessage, e);
 			}
@@ -207,5 +202,54 @@ public class KStreamBoundElementFactory extends AbstractBindingTargetFactory<KSt
 			return className;
 		}
 
+	}
+
+	interface KStreamWrapper {
+
+		void wrap(KStream<Object, Object> delegate);
+	}
+
+	static class KStreamWrapperHandler implements KStreamWrapper, MethodInterceptor {
+
+		private KStream<Object, Object> delegate;
+
+		private final MessageConverter messageConverter;
+
+		public KStreamWrapperHandler(MessageConverter messageConverter) {
+			this.messageConverter = messageConverter;
+		}
+
+		public void wrap(KStream<Object, Object> delegate) {
+			Assert.notNull(delegate, "delegate cannot be null");
+			Assert.isNull(this.delegate, "delegate already set to " + this.delegate);
+			if (messageConverter != null) {
+				KeyValueMapper<Object, Object, KeyValue<Object, Object>> keyValueMapper = new KeyValueMapper<Object, Object, KeyValue<Object, Object>>() {
+					@Override
+					public KeyValue<Object, Object> apply(Object k, Object v) {
+						Message<?> message = (Message<?>) v;
+						return new KeyValue<Object, Object>(k,
+								messageConverter.toMessage(message.getPayload(),
+										new MutableMessageHeaders(((Message<?>) v).getHeaders())));
+					}
+				};
+				delegate = delegate.map(keyValueMapper);
+			}
+			this.delegate = delegate;
+		}
+
+		@Override
+		public Object invoke(MethodInvocation methodInvocation) throws Throwable {
+			if (methodInvocation.getMethod().getDeclaringClass().equals(KStream.class)) {
+				Assert.notNull(delegate, "Trying to invoke " + methodInvocation
+						.getMethod() + "  but no delegate has been set.");
+				return methodInvocation.getMethod().invoke(delegate, methodInvocation.getArguments());
+			}
+			else if (methodInvocation.getMethod().getDeclaringClass().equals(KStreamWrapper.class)) {
+				return methodInvocation.getMethod().invoke(this, methodInvocation.getArguments());
+			}
+			else {
+				throw new IllegalStateException("Only KStream method invocations are permitted");
+			}
+		}
 	}
 }

@@ -14,7 +14,8 @@ import org.springframework.messaging.support.MessageBuilder;
 /**
  * @author Marius Bogoevici
  */
-public class KStreamStreamListenerResultAdapter implements StreamListenerResultAdapter<KStream, KStream> {
+public class KStreamStreamListenerResultAdapter implements StreamListenerResultAdapter<KStream, KStreamBoundElementFactory.KStreamWrapper> {
+
 	@Override
 	public boolean supports(Class<?> resultType, Class<?> boundElement) {
 		return KStream.class.isAssignableFrom(resultType) && KStream.class.isAssignableFrom(boundElement);
@@ -22,8 +23,8 @@ public class KStreamStreamListenerResultAdapter implements StreamListenerResultA
 
 	@Override
 	@SuppressWarnings("unchecked")
-	public Closeable adapt(KStream streamListenerResult, KStream boundElement) {
-		((KStreamDelegate<?, ?>) boundElement).setDelegate(streamListenerResult.map(new KeyValueMapper() {
+	public Closeable adapt(KStream streamListenerResult, KStreamBoundElementFactory.KStreamWrapper boundElement) {
+		boundElement.wrap(streamListenerResult.map(new KeyValueMapper() {
 			@Override
 			public Object apply(Object k, Object v) {
 				if (v instanceof Message<?>) {

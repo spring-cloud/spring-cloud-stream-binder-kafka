@@ -25,7 +25,6 @@ import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.kstream.KStream;
 import org.apache.kafka.streams.kstream.KeyValueMapper;
 
-import org.springframework.beans.BeanUtils;
 import org.springframework.cloud.stream.binder.AbstractBinder;
 import org.springframework.cloud.stream.binder.BinderHeaders;
 import org.springframework.cloud.stream.binder.Binding;
@@ -75,8 +74,8 @@ public class KStreamBinder extends
 	protected Binding<KStream<Object, Object>> doBindConsumer(String name, String group,
 			KStream<Object, Object> inputTarget, ExtendedConsumerProperties<KStreamConsumerProperties> properties) {
 
-		ExtendedConsumerProperties<KafkaConsumerProperties> extendedConsumerProperties = new ExtendedConsumerProperties<KafkaConsumerProperties>(new KStreamConsumerProperties());
-		BeanUtils.copyProperties(properties, extendedConsumerProperties, "extension");
+		ExtendedConsumerProperties<KafkaConsumerProperties> extendedConsumerProperties = new ExtendedConsumerProperties<KafkaConsumerProperties>(
+				new KafkaConsumerProperties());
 		this.kafkaTopicProvisioner.provisionConsumerDestination(name, group, extendedConsumerProperties);
 		return new DefaultBinding<>(name, group, inputTarget, null);
 	}
@@ -84,8 +83,8 @@ public class KStreamBinder extends
 	@Override
 	protected Binding<KStream<Object, Object>> doBindProducer(String name, KStream<Object, Object> outboundBindTarget,
 			ExtendedProducerProperties<KStreamProducerProperties> properties) {
-		ExtendedProducerProperties<KafkaProducerProperties> extendedProducerProperties = new ExtendedProducerProperties<KafkaProducerProperties>(new KStreamProducerProperties());
-		BeanUtils.copyProperties(properties, extendedProducerProperties, "extension");
+		ExtendedProducerProperties<KafkaProducerProperties> extendedProducerProperties = new ExtendedProducerProperties<KafkaProducerProperties>(
+				new KafkaProducerProperties());
 		this.kafkaTopicProvisioner.provisionProducerDestination(name , extendedProducerProperties);
 		if (HeaderMode.embeddedHeaders.equals(properties.getHeaderMode())) {
 			outboundBindTarget = outboundBindTarget.map(new KeyValueMapper<Object, Object, KeyValue<Object, Object>>() {

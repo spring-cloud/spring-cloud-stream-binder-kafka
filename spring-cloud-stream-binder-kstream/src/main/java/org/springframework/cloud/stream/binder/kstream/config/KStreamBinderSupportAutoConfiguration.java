@@ -34,7 +34,6 @@ import org.springframework.cloud.stream.config.BindingServiceProperties;
 import org.springframework.cloud.stream.converter.CompositeMessageConverterFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.integration.codec.Codec;
-import org.springframework.kafka.annotation.EnableKafkaStreams;
 import org.springframework.kafka.annotation.KafkaStreamsDefaultConfiguration;
 import org.springframework.kafka.core.KStreamBuilderFactoryBean;
 import org.springframework.util.ObjectUtils;
@@ -44,7 +43,6 @@ import org.springframework.util.ObjectUtils;
  */
 @EnableBinding
 @EnableConfigurationProperties(KStreamBinderProperties.class)
-@EnableKafkaStreams
 public class KStreamBinderSupportAutoConfiguration {
 
 	@Bean(name = KafkaStreamsDefaultConfiguration.DEFAULT_KSTREAM_BUILDER_BEAN_NAME)
@@ -60,8 +58,7 @@ public class KStreamBinderSupportAutoConfiguration {
 			throw new UnsatisfiedDependencyException(KafkaStreamsDefaultConfiguration.class.getName(),
 					KafkaStreamsDefaultConfiguration.DEFAULT_KSTREAM_BUILDER_BEAN_NAME, "streamsConfig",
 					"There is no '" + KafkaStreamsDefaultConfiguration.DEFAULT_STREAMS_CONFIG_BEAN_NAME
-							+ "' StreamsConfig bean in the application context.\n"
-							+ "Consider to declare one or don't use @EnableKafkaStreams.");
+							+ "' StreamsConfig bean in the application context.\n");
 		}
 	}
 

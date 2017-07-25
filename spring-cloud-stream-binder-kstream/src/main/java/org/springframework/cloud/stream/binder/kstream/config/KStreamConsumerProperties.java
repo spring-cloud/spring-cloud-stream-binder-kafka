@@ -16,12 +16,10 @@
 
 package org.springframework.cloud.stream.binder.kstream.config;
 
-import org.springframework.cloud.stream.binder.kafka.properties.KafkaConsumerProperties;
-
 /**
  * @author Marius Bogoevici
  */
-public class KStreamConsumerProperties extends KafkaConsumerProperties {
+public class KStreamConsumerProperties  {
 
 	private String keySerde;
 
