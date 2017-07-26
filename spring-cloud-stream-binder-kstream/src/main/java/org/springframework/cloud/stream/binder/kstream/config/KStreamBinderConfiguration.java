@@ -27,6 +27,7 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.cloud.stream.binder.kafka.admin.AdminUtilsOperation;
 import org.springframework.cloud.stream.binder.kafka.admin.Kafka09AdminUtilsOperation;
 import org.springframework.cloud.stream.binder.kafka.admin.Kafka10AdminUtilsOperation;
+import org.springframework.cloud.stream.binder.kafka.properties.KafkaBinderConfigurationProperties;
 import org.springframework.cloud.stream.binder.kafka.provisioning.KafkaTopicProvisioner;
 import org.springframework.cloud.stream.binder.kstream.KStreamBinder;
 import org.springframework.context.annotation.Bean;
@@ -49,15 +50,15 @@ public class KStreamBinderConfiguration {
 	private static final Log logger = LogFactory.getLog(KStreamBinderConfiguration.class);
 
 	@Bean
-	public KafkaTopicProvisioner provisioningProvider(KStreamBinderProperties kStreamBinderProperties) {
-		return new KafkaTopicProvisioner(kStreamBinderProperties, adminUtilsOperation);
+	public KafkaTopicProvisioner provisioningProvider(KafkaBinderConfigurationProperties binderConfigurationProperties) {
+		return new KafkaTopicProvisioner(binderConfigurationProperties, adminUtilsOperation);
 	}
 
 	@Bean
-	public KStreamBinder kStreamBinder(KStreamBinderProperties kStreamBinderProperties,
+	public KStreamBinder kStreamBinder(KafkaBinderConfigurationProperties binderConfigurationProperties,
 			KafkaTopicProvisioner kafkaTopicProvisioner,
 			KStreamExtendedBindingProperties kStreamExtendedBindingProperties, StreamsConfig streamsConfig) {
-		return new KStreamBinder(kStreamBinderProperties, kafkaTopicProvisioner, kStreamExtendedBindingProperties,
+		return new KStreamBinder(binderConfigurationProperties, kafkaTopicProvisioner, kStreamExtendedBindingProperties,
 				streamsConfig);
 	}
 

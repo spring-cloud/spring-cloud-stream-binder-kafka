@@ -31,7 +31,7 @@ import org.springframework.messaging.support.MessageBuilder;
  * @author Marius Bogoevici
  * @author Soby Chacko
  */
-public class KStreamListenerParameterAdapter implements StreamListenerParameterAdapter<KStream, KStream<?, ?>> {
+public class KStreamListenerParameterAdapter implements StreamListenerParameterAdapter<KStream<?,?>, KStream<?, ?>> {
 
 	private final MessageConverter messageConverter;
 

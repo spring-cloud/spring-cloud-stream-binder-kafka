@@ -35,10 +35,10 @@ import org.springframework.cloud.stream.binder.ExtendedProducerProperties;
 import org.springframework.cloud.stream.binder.ExtendedPropertiesBinder;
 import org.springframework.cloud.stream.binder.HeaderMode;
 import org.springframework.cloud.stream.binder.MessageValues;
+import org.springframework.cloud.stream.binder.kafka.properties.KafkaBinderConfigurationProperties;
 import org.springframework.cloud.stream.binder.kafka.properties.KafkaConsumerProperties;
 import org.springframework.cloud.stream.binder.kafka.properties.KafkaProducerProperties;
 import org.springframework.cloud.stream.binder.kafka.provisioning.KafkaTopicProvisioner;
-import org.springframework.cloud.stream.binder.kstream.config.KStreamBinderProperties;
 import org.springframework.cloud.stream.binder.kstream.config.KStreamConsumerProperties;
 import org.springframework.cloud.stream.binder.kstream.config.KStreamExtendedBindingProperties;
 import org.springframework.cloud.stream.binder.kstream.config.KStreamProducerProperties;
@@ -62,9 +62,9 @@ public class KStreamBinder extends
 
 	private final StreamsConfig streamsConfig;
 
-	public KStreamBinder(KStreamBinderProperties kStreamBinderProperties, KafkaTopicProvisioner kafkaTopicProvisioner,
+	public KStreamBinder(KafkaBinderConfigurationProperties binderConfigurationProperties, KafkaTopicProvisioner kafkaTopicProvisioner,
 			KStreamExtendedBindingProperties kStreamExtendedBindingProperties, StreamsConfig streamsConfig) {
-		this.headers = EmbeddedHeaderUtils.headersToEmbed(kStreamBinderProperties.getHeaders());
+		this.headers = EmbeddedHeaderUtils.headersToEmbed(binderConfigurationProperties.getHeaders());
 		this.kafkaTopicProvisioner = kafkaTopicProvisioner;
 		this.kStreamExtendedBindingProperties = kStreamExtendedBindingProperties;
 		this.streamsConfig = streamsConfig;

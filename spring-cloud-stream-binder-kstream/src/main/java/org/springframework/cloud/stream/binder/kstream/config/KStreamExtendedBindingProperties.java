@@ -40,9 +40,9 @@ public class KStreamExtendedBindingProperties
 	}
 
 	@Override
-	public KStreamConsumerProperties getExtendedConsumerProperties(String channelName) {
-		if (this.bindings.containsKey(channelName) && this.bindings.get(channelName).getConsumer() != null) {
-			return this.bindings.get(channelName).getConsumer();
+	public KStreamConsumerProperties getExtendedConsumerProperties(String binding) {
+		if (this.bindings.containsKey(binding) && this.bindings.get(binding).getConsumer() != null) {
+			return this.bindings.get(binding).getConsumer();
 		}
 		else {
 			return new KStreamConsumerProperties();
@@ -50,9 +50,9 @@ public class KStreamExtendedBindingProperties
 	}
 
 	@Override
-	public KStreamProducerProperties getExtendedProducerProperties(String channelName) {
-		if (this.bindings.containsKey(channelName) && this.bindings.get(channelName).getProducer() != null) {
-			return this.bindings.get(channelName).getProducer();
+	public KStreamProducerProperties getExtendedProducerProperties(String binding) {
+		if (this.bindings.containsKey(binding) && this.bindings.get(binding).getProducer() != null) {
+			return this.bindings.get(binding).getProducer();
 		}
 		else {
 			return new KStreamProducerProperties();
