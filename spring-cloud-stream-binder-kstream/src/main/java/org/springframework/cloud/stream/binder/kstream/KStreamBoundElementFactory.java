@@ -30,8 +30,8 @@ import org.springframework.aop.framework.ProxyFactory;
 import org.springframework.cloud.stream.binder.ConsumerProperties;
 import org.springframework.cloud.stream.binder.EmbeddedHeaderUtils;
 import org.springframework.cloud.stream.binder.HeaderMode;
+import org.springframework.cloud.stream.binder.MessageSerializationUtils;
 import org.springframework.cloud.stream.binder.MessageValues;
-import org.springframework.cloud.stream.binder.PayloadSerdeUtils;
 import org.springframework.cloud.stream.binder.StringConvertingContentTypeResolver;
 import org.springframework.cloud.stream.binding.AbstractBindingTargetFactory;
 import org.springframework.cloud.stream.config.BindingProperties;
@@ -113,7 +113,7 @@ public class KStreamBoundElementFactory extends AbstractBindingTargetFactory<KSt
 	}
 
 	private MessageValues deserializePayloadIfNecessary(MessageValues messageValues) {
-		return PayloadSerdeUtils.deserializePayloadIfNecessary(messageValues, this.contentTypeResolver,
+		return MessageSerializationUtils.deserializePayload(messageValues, this.contentTypeResolver,
 				this.payloadTypeCache, this.codec);
 	}
 
