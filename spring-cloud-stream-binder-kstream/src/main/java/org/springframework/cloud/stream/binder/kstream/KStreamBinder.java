@@ -81,6 +81,7 @@ public class KStreamBinder extends
 	}
 
 	@Override
+	@SuppressWarnings("unchecked")
 	protected Binding<KStream<Object, Object>> doBindProducer(String name, KStream<Object, Object> outboundBindTarget,
 			ExtendedProducerProperties<KStreamProducerProperties> properties) {
 		ExtendedProducerProperties<KafkaProducerProperties> extendedProducerProperties = new ExtendedProducerProperties<KafkaProducerProperties>(
