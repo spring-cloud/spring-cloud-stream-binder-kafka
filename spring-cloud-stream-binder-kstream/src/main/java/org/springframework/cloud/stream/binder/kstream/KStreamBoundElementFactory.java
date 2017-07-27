@@ -113,8 +113,7 @@ public class KStreamBoundElementFactory extends AbstractBindingTargetFactory<KSt
 	}
 
 	private MessageValues deserializePayloadIfNecessary(MessageValues messageValues) {
-		return MessageSerializationUtils.deserializePayload(messageValues, this.contentTypeResolver,
-				this.payloadTypeCache, this.codec);
+		return MessageSerializationUtils.deserializePayload(messageValues, this.contentTypeResolver, this.codec);
 	}
 
 	interface KStreamWrapper {
