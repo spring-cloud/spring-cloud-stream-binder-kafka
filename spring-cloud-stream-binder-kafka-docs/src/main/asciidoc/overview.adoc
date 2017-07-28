@@ -436,7 +436,7 @@ Spring Cloud Stream Kafka support also includes a binder specifically designed f
 Using this binder, applications can be written that leverage the Kafka Streams API.
 For more information on Kafka Streams, see https://kafka.apache.org/documentation/streams/developer-guide[Kafka Streams API Developer Manual]
 
-Kafka Streams support in Spring Cloud Stream is based on the foundations provided by the Spring Kafka project. For details on that support, see http://docs.spring.io/spring-kafka/docs/1.1.6.RELEASE/reference/html/_reference.html#kafka-streams[Kafaka Streams Support in Spring Kafka].
+Kafka Streams support in Spring Cloud Stream is based on the foundations provided by the Spring Kafka project. For details on that support, see http://docs.spring.io/spring-kafka/reference/html/_reference.html#kafka-streams[Kafaka Streams Support in Spring Kafka].
 
 Here are the maven coordinates for the Spring Cloud Stream KStream binder artifact.
 
