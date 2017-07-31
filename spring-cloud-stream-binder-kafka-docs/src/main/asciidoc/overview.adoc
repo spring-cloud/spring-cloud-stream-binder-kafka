@@ -498,8 +498,30 @@ You can autowire the `KStreamBuilderFactoryBean` instance provided by the KStrea
 
 === Kafka Streams properties
 
-The properties must be prefixed with `spring.cloud.stream.kstream.binder.`.
-
-streamConfiguration::
+configuration::
   Map with a key/value pair containing properties pertaining to Kafka Streams API.
+  This property must be prefixed with `spring.cloud.stream.kstream.binder.`.
+
+ Following are some examples of using this property.
+
+[source]
+----
+spring.cloud.stream.kstream.binder.configuration.key.serde=org.apache.kafka.common.serialization.Serdes$StringSerde
+spring.cloud.stream.kstream.binder.configuration.value.serde=org.apache.kafka.common.serialization.Serdes$StringSerde
+spring.cloud.stream.kstream.binder.configuration.commit.interval.ms=1000
+----
+
   For more information about all the properties that may go into streams configuration, see StreamsConfig JavaDocs.
+
+There can also be binding specific properties.
+
+For instance, you can use a different Serde for your input or output destination.
+
+[source]
+----
+spring.cloud.stream.kstream.bindings.output.producer.keySerde=org.apache.kafka.common.serialization.Serdes$IntegerSerde
+spring.cloud.stream.kstream.bindings.output.producer.valueSerde=org.apache.kafka.common.serialization.Serdes$LongSerde
+----
+
+
+
