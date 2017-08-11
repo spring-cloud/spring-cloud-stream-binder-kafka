@@ -4,8 +4,8 @@
 
 	<artifactId>spring-cloud-stream-binder-kafka</artifactId>
 	<packaging>jar</packaging>
-	<name>spring-cloud-stream-binder-kafka</name>
-	<description>Kafka binder implementation</description>
+	<name>spring-cloud-stream-binder-kafka11</name>
+	<description>Kafka binder implementation for the 0.11.x.x client</description>
 
 	<parent>
 		<groupId>org.springframework.cloud</groupId>
@@ -80,6 +80,7 @@
 		<dependency>
 			<groupId>org.springframework.kafka</groupId>
 			<artifactId>spring-kafka-test</artifactId>
+			<version>${spring-kafka.version}</version>
 			<scope>test</scope>
 		</dependency>
 		<dependency>

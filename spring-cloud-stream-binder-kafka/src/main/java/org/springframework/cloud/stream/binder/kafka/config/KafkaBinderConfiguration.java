@@ -34,7 +34,6 @@ import org.springframework.boot.autoconfigure.context.PropertyPlaceholderAutoCon
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.cloud.stream.binder.Binder;
 import org.springframework.cloud.stream.binder.kafka.KafkaBinderHealthIndicator;
-import org.springframework.cloud.stream.binder.kafka.KafkaBinderJaasInitializerListener;
 import org.springframework.cloud.stream.binder.kafka.KafkaBinderMetrics;
 import org.springframework.cloud.stream.binder.kafka.KafkaMessageChannelBinder;
 import org.springframework.cloud.stream.binder.kafka.admin.AdminUtilsOperation;
@@ -46,7 +45,6 @@ import org.springframework.cloud.stream.binder.kafka.properties.KafkaExtendedBin
 import org.springframework.cloud.stream.binder.kafka.provisioning.KafkaTopicProvisioner;
 import org.springframework.cloud.stream.config.codec.kryo.KryoCodecAutoConfiguration;
 import org.springframework.context.ApplicationContext;
-import org.springframework.context.ApplicationListener;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Condition;
 import org.springframework.context.annotation.ConditionContext;
@@ -57,6 +55,7 @@ import org.springframework.core.type.AnnotatedTypeMetadata;
 import org.springframework.integration.codec.Codec;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
+import org.springframework.kafka.security.jaas.KafkaJaasLoginModuleInitializer;
 import org.springframework.kafka.support.LoggingProducerListener;
 import org.springframework.kafka.support.ProducerListener;
 import org.springframework.util.ObjectUtils;
@@ -153,15 +152,15 @@ public class KafkaBinderConfiguration {
 	}
 
 	@Bean
-	public ApplicationListener<?> jaasInitializer() throws IOException {
-		return new KafkaBinderJaasInitializerListener();
+	public KafkaJaasLoginModuleInitializer jaasInitializer() throws IOException {
+		return new KafkaJaasLoginModuleInitializer();
 	}
 
 	static class Kafka10Present implements Condition {
 
 		@Override
 		public boolean matches(ConditionContext conditionContext, AnnotatedTypeMetadata annotatedTypeMetadata) {
-			return AppInfoParser.getVersion().startsWith("0.10");
+			return AppInfoParser.getVersion().startsWith("0.1");
 		}
 	}
 
