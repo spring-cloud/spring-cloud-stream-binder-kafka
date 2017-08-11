@@ -29,6 +29,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import org.I0Itec.zkclient.ZkClient;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 import org.apache.kafka.common.serialization.LongDeserializer;
 import org.apache.kafka.common.serialization.StringDeserializer;
@@ -158,6 +159,7 @@ public abstract class KafkaBinderTests extends
 		moduleInputChannel.subscribe(handler);
 		ExtendedProducerProperties<KafkaProducerProperties> producerProperties = createProducerProperties();
 		producerProperties.setPartitionCount(2);
+		producerProperties.getExtension().setHeaderPatterns(new String[] { MessageHeaders.CONTENT_TYPE });
 		ExtendedConsumerProperties<KafkaConsumerProperties> consumerProperties = createConsumerProperties();
 		consumerProperties.setMaxAttempts(withRetry ? 2 : 1);
 		consumerProperties.setBackOffInitialInterval(100);
@@ -1785,9 +1787,17 @@ public abstract class KafkaBinderTests extends
 		new DirectFieldAccessor(endpoint).setPropertyValue("kafkaTemplate",
 				new KafkaTemplate(mock(ProducerFactory.class)) {
 
-					@Override
+					@Override // SIK < 2.3
 					public ListenableFuture<SendResult> send(String topic, Object payload) {
 						sent.set(payload);
+						SettableListenableFuture<SendResult> future = new SettableListenableFuture<>();
+						future.setException(fooException);
+						return future;
+					}
+
+					@Override // SIK 2.3+
+					public ListenableFuture send(ProducerRecord record) {
+						sent.set(record.value());
 						SettableListenableFuture<SendResult> future = new SettableListenableFuture<>();
 						future.setException(fooException);
 						return future;

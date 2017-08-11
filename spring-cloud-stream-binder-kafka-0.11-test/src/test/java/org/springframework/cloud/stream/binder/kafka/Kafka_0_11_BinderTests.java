@@ -16,6 +16,8 @@
 
 package org.springframework.cloud.stream.binder.kafka;
 
+import static org.junit.Assert.assertTrue;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -23,10 +25,6 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.UUID;
 
-import io.confluent.kafka.schemaregistry.rest.SchemaRegistryConfig;
-import io.confluent.kafka.schemaregistry.rest.SchemaRegistryRestApplication;
-import kafka.utils.ZKStringSerializer$;
-import kafka.utils.ZkUtils;
 import org.I0Itec.zkclient.ZkClient;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.ByteArrayDeserializer;
@@ -58,19 +56,22 @@ import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.SubscribableChannel;
 import org.springframework.messaging.support.MessageBuilder;
 
-import static org.junit.Assert.assertTrue;
+import io.confluent.kafka.schemaregistry.rest.SchemaRegistryConfig;
+import io.confluent.kafka.schemaregistry.rest.SchemaRegistryRestApplication;
+import kafka.utils.ZKStringSerializer$;
+import kafka.utils.ZkUtils;
 
 /**
  * Integration tests for the {@link KafkaMessageChannelBinder}.
  *
- * This test specifically tests for the 0.10.2.x version of Kafka.
+ * This test specifically tests for the 0.11.x.x version of Kafka.
  *
  * @author Eric Bottard
  * @author Marius Bogoevici
  * @author Mark Fisher
  * @author Ilayaperumal Gopinathan
  */
-public class Kafka_0_10_2_BinderTests extends KafkaBinderTests {
+public class Kafka_0_11_BinderTests extends KafkaBinderTests {
 
 	private final String CLASS_UNDER_TEST_NAME = KafkaMessageChannelBinder.class.getSimpleName();
 
@@ -79,7 +80,7 @@ public class Kafka_0_10_2_BinderTests extends KafkaBinderTests {
 
 	private Kafka10TestBinder binder;
 
-	private Kafka10AdminUtilsOperation adminUtilsOperation = new Kafka10AdminUtilsOperation();
+	private final Kafka10AdminUtilsOperation adminUtilsOperation = new Kafka10AdminUtilsOperation();
 
 	@Override
 	protected void binderBindUnbindLatency() throws InterruptedException {
@@ -95,6 +96,7 @@ public class Kafka_0_10_2_BinderTests extends KafkaBinderTests {
 		return binder;
 	}
 
+	@Override
 	protected KafkaBinderConfigurationProperties createConfigurationProperties() {
 		KafkaBinderConfigurationProperties binderConfiguration = new KafkaBinderConfigurationProperties();
 		BrokerAddress[] brokerAddresses = embeddedKafka.getBrokerAddresses();
@@ -238,4 +240,15 @@ public class Kafka_0_10_2_BinderTests extends KafkaBinderTests {
 		producerBinding.unbind();
 		consumerBinding.unbind();
 	}
+
+	@Override
+	public void testSendAndReceiveWithExplicitConsumerGroupWithRawMode() {
+		// raw mode no longer needed
+	}
+
+	@Override
+	public void testSendAndReceiveWithRawModeAndStringPayload() {
+		// raw mode no longer needed
+	}
+
 }
