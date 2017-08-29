@@ -67,6 +67,7 @@ import org.springframework.util.ObjectUtils;
  * @author Mark Fisher
  * @author Ilayaperumal Gopinathan
  * @author Henryk Konsek
+ * @author Gary Russell
  */
 @Configuration
 @ConditionalOnMissingBean(Binder.class)
@@ -144,7 +145,7 @@ public class KafkaBinderConfiguration {
 	}
 
 	@Bean(name = "adminUtilsOperation")
-	@Conditional(Kafka10Present.class)
+	@Conditional(Kafka1xPresent.class)
 	@ConditionalOnClass(name = "kafka.admin.AdminUtils")
 	public AdminUtilsOperation kafka10AdminUtilsOperation() {
 		logger.info("AdminUtils selected: Kafka 0.10 AdminUtils");
@@ -156,7 +157,7 @@ public class KafkaBinderConfiguration {
 		return new KafkaJaasLoginModuleInitializer();
 	}
 
-	static class Kafka10Present implements Condition {
+	static class Kafka1xPresent implements Condition {
 
 		@Override
 		public boolean matches(ConditionContext conditionContext, AnnotatedTypeMetadata annotatedTypeMetadata) {

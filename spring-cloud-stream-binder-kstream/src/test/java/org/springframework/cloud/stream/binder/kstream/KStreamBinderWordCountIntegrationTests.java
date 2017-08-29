@@ -16,6 +16,8 @@
 
 package org.springframework.cloud.stream.binder.kstream;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
@@ -53,12 +55,11 @@ import org.springframework.kafka.test.rule.KafkaEmbedded;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.messaging.handler.annotation.SendTo;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 /**
  *
  * @author Marius Bogoevici
  * @author Soby Chacko
+ * @author Gary Russell
  */
 public class KStreamBinderWordCountIntegrationTests {
 
@@ -98,8 +99,12 @@ public class KStreamBinderWordCountIntegrationTests {
 				"--spring.cloud.stream.bindings.input.consumer.headerMode=raw",
 				"--spring.cloud.stream.kstream.binder.brokers=" + embeddedKafka.getBrokersAsString(),
 				"--spring.cloud.stream.kstream.binder.zkNodes=" + embeddedKafka.getZookeeperConnectionString());
-		receiveAndValidate(context);
-		context.close();
+		try {
+			receiveAndValidate(context);
+		}
+		finally {
+			context.close();
+		}
 	}
 
 	private void receiveAndValidate(ConfigurableApplicationContext context) throws Exception{

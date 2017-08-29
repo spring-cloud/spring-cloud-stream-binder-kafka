@@ -54,7 +54,7 @@ public class KStreamBinder extends
 		AbstractBinder<KStream<Object, Object>, ExtendedConsumerProperties<KStreamConsumerProperties>, ExtendedProducerProperties<KStreamProducerProperties>>
 		implements ExtendedPropertiesBinder<KStream<Object, Object>, KStreamConsumerProperties, KStreamProducerProperties> {
 
-	private String[] headers;
+	private final String[] headers;
 
 	private final KafkaTopicProvisioner kafkaTopicProvisioner;
 
@@ -93,7 +93,7 @@ public class KStreamBinder extends
 				public KeyValue<Object, Object> apply(Object k, Object v) {
 					if (v instanceof Message) {
 						try {
-							return new KeyValue<>(k, (Object)KStreamBinder.this.serializeAndEmbedHeadersIfApplicable((Message<?>) v));
+							return new KeyValue<>(k, KStreamBinder.this.serializeAndEmbedHeadersIfApplicable((Message<?>) v));
 						}
 						catch (Exception e) {
 							throw new IllegalArgumentException(e);
@@ -120,7 +120,7 @@ public class KStreamBinder extends
 						.map(new KeyValueMapper<Object, Object, KeyValue<Object, Object>>() {
 							@Override
 							public KeyValue<Object, Object> apply(Object k, Object v) {
-								return KeyValue.pair(k, ((Message<?>) v).getPayload());
+								return KeyValue.pair(k, ((Message<Object>) v).getPayload());
 							}
 						});
 			}
@@ -158,7 +158,7 @@ public class KStreamBinder extends
 		return new DefaultBinding<>(name, null, outboundBindTarget, null);
 	}
 
-	private byte[] serializeAndEmbedHeadersIfApplicable(Message<?> message) throws Exception {
+	private Object serializeAndEmbedHeadersIfApplicable(Message<?> message) throws Exception {
 		MessageValues transformed = serializePayloadIfNecessary(message);
 		byte[] payload;
 

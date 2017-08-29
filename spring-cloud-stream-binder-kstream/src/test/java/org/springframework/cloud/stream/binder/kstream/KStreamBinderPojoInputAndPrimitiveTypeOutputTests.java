@@ -16,6 +16,8 @@
 
 package org.springframework.cloud.stream.binder.kstream;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import java.util.Map;
 
 import org.apache.kafka.clients.consumer.Consumer;
@@ -47,11 +49,10 @@ import org.springframework.kafka.test.rule.KafkaEmbedded;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.messaging.handler.annotation.SendTo;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 /**
  *
  * @author Soby Chacko
+ * @author Gary Russell
  */
 public class KStreamBinderPojoInputAndPrimitiveTypeOutputTests {
 
@@ -92,8 +93,12 @@ public class KStreamBinderPojoInputAndPrimitiveTypeOutputTests {
 				"--spring.cloud.stream.bindings.input.consumer.headerMode=raw",
 				"--spring.cloud.stream.kstream.binder.brokers=" + embeddedKafka.getBrokersAsString(),
 				"--spring.cloud.stream.kstream.binder.zkNodes=" + embeddedKafka.getZookeeperConnectionString());
-		receiveAndValidateFoo(context);
-		context.close();
+		try {
+			receiveAndValidateFoo(context);
+		}
+		finally {
+			context.close();
+		}
 	}
 
 	private void receiveAndValidateFoo(ConfigurableApplicationContext context) throws Exception{
