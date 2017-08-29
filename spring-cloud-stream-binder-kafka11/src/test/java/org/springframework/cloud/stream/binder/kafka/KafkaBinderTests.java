@@ -1796,7 +1796,7 @@ public abstract class KafkaBinderTests extends
 					}
 
 					@Override // SIK 2.3+
-					public ListenableFuture send(ProducerRecord record) {
+					public ListenableFuture<SendResult> send(ProducerRecord record) {
 						sent.set(record.value());
 						SettableListenableFuture<SendResult> future = new SettableListenableFuture<>();
 						future.setException(fooException);
