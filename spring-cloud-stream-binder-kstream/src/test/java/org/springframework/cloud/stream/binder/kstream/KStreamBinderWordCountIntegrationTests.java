@@ -39,15 +39,14 @@ import org.junit.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
-import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.cloud.stream.annotation.EnableBinding;
 import org.springframework.cloud.stream.annotation.StreamListener;
 import org.springframework.cloud.stream.binder.kstream.annotations.KStreamProcessor;
+import org.springframework.cloud.stream.binder.kstream.config.KStreamApplicationSupportProperties;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
-import org.springframework.kafka.core.KStreamBuilderFactoryBean;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.test.rule.KafkaEmbedded;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
@@ -96,6 +95,9 @@ public class KStreamBinderWordCountIntegrationTests {
 				"--spring.cloud.stream.bindings.output.producer.headerMode=raw",
 				"--spring.cloud.stream.bindings.output.producer.useNativeEncoding=true",
 				"--spring.cloud.stream.bindings.input.consumer.headerMode=raw",
+				"--spring.cloud.stream.kstream.application.timeWindow.length=5000",
+				"--spring.cloud.stream.kstream.application.timeWindow.advanceBy=0",
+				"--spring.cloud.stream.kstream.application.storeName=WordCounts",
 				"--spring.cloud.stream.kstream.binder.brokers=" + embeddedKafka.getBrokersAsString(),
 				"--spring.cloud.stream.kstream.binder.zkNodes=" + embeddedKafka.getZookeeperConnectionString());
 		receiveAndValidate(context);
@@ -114,14 +116,11 @@ public class KStreamBinderWordCountIntegrationTests {
 
 	@EnableBinding(KStreamProcessor.class)
 	@EnableAutoConfiguration
-	@EnableConfigurationProperties(WordCountProcessorProperties.class)
+	@EnableConfigurationProperties(KStreamApplicationSupportProperties.class)
 	public static class WordCountProcessorApplication {
 
 		@Autowired
-		private WordCountProcessorProperties processorProperties;
-
-		@Autowired
-		private KStreamBuilderFactoryBean kafkaStreams;
+		private KStreamApplicationSupportProperties processorProperties;
 
 		@StreamListener("input")
 		@SendTo("output")
@@ -160,43 +159,9 @@ public class KStreamBinderWordCountIntegrationTests {
 		 * @return
 		 */
 		private TimeWindows configuredTimeWindow() {
-			return processorProperties.getAdvanceBy() > 0
-					? TimeWindows.of(processorProperties.getWindowLength()).advanceBy(processorProperties.getAdvanceBy())
-					: TimeWindows.of(processorProperties.getWindowLength());
-		}
-	}
-
-	@ConfigurationProperties(prefix = "kstream.word.count")
-	static class  WordCountProcessorProperties {
-
-		private int windowLength = 5000;
-
-		private int advanceBy = 0;
-
-		private String storeName = "WordCounts";
-
-		int getWindowLength() {
-			return windowLength;
-		}
-
-		public void setWindowLength(int windowLength) {
-			this.windowLength = windowLength;
-		}
-
-		int getAdvanceBy() {
-			return advanceBy;
-		}
-
-		public void setAdvanceBy(int advanceBy) {
-			this.advanceBy = advanceBy;
-		}
-
-		String getStoreName() {
-			return storeName;
-		}
-
-		public void setStoreName(String storeName) {
-			this.storeName = storeName;
+			return processorProperties.getTimeWindow().getAdvanceBy() > 0
+					? TimeWindows.of(processorProperties.getTimeWindow().getLength()).advanceBy(processorProperties.getTimeWindow().getAdvanceBy())
+					: TimeWindows.of(processorProperties.getTimeWindow().getLength());
 		}
 	}
 
