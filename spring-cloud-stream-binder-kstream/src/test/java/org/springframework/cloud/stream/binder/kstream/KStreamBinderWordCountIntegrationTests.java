@@ -95,9 +95,8 @@ public class KStreamBinderWordCountIntegrationTests {
 				"--spring.cloud.stream.bindings.output.producer.headerMode=raw",
 				"--spring.cloud.stream.bindings.output.producer.useNativeEncoding=true",
 				"--spring.cloud.stream.bindings.input.consumer.headerMode=raw",
-				"--spring.cloud.stream.kstream.application.timeWindow.length=5000",
-				"--spring.cloud.stream.kstream.application.timeWindow.advanceBy=0",
-				"--spring.cloud.stream.kstream.application.storeName=WordCounts",
+				"--spring.cloud.stream.kstream.timeWindow.length=5000",
+				"--spring.cloud.stream.kstream.timeWindow.advanceBy=0",
 				"--spring.cloud.stream.kstream.binder.brokers=" + embeddedKafka.getBrokersAsString(),
 				"--spring.cloud.stream.kstream.binder.zkNodes=" + embeddedKafka.getZookeeperConnectionString());
 		receiveAndValidate(context);
@@ -120,7 +119,7 @@ public class KStreamBinderWordCountIntegrationTests {
 	public static class WordCountProcessorApplication {
 
 		@Autowired
-		private KStreamApplicationSupportProperties processorProperties;
+		private TimeWindows timeWindows;
 
 		@StreamListener("input")
 		@SendTo("output")
@@ -142,7 +141,7 @@ public class KStreamBinderWordCountIntegrationTests {
 						}
 					})
 					.groupByKey(Serdes.String(), Serdes.String())
-					.count(configuredTimeWindow(), processorProperties.getStoreName())
+					.count(timeWindows, "WordCounts")
 					.toStream()
 					.map(new KeyValueMapper<Windowed<String>, Long, KeyValue<Object, WordCount>>() {
 
@@ -153,16 +152,6 @@ public class KStreamBinderWordCountIntegrationTests {
 					});
 		}
 
-		/**
-		 * Constructs a {@link TimeWindows} property.
-		 *
-		 * @return
-		 */
-		private TimeWindows configuredTimeWindow() {
-			return processorProperties.getTimeWindow().getAdvanceBy() > 0
-					? TimeWindows.of(processorProperties.getTimeWindow().getLength()).advanceBy(processorProperties.getTimeWindow().getAdvanceBy())
-					: TimeWindows.of(processorProperties.getTimeWindow().getLength());
-		}
 	}
 
 	static class WordCount {

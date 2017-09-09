@@ -26,20 +26,10 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *
  * @author Soby Chacko
  */
-@ConfigurationProperties("spring.cloud.stream.kstream.application")
+@ConfigurationProperties("spring.cloud.stream.kstream")
 public class KStreamApplicationSupportProperties {
 
-	private String storeName;
-
 	private TimeWindow timeWindow;
-
-	public String getStoreName() {
-		return storeName;
-	}
-
-	public void setStoreName(String storeName) {
-		this.storeName = storeName;
-	}
 
 	public TimeWindow getTimeWindow() {
 		return timeWindow;
