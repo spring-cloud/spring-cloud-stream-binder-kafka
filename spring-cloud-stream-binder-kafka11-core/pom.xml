@@ -4,7 +4,7 @@
     <parent>
         <groupId>org.springframework.cloud</groupId>
         <artifactId>spring-cloud-stream-binder-kafka11-parent</artifactId>
-        <version>1.3.0.RC1</version>
+        <version>1.3.0.BUILD-SNAPSHOT</version>
     </parent>
     <artifactId>spring-cloud-stream-binder-kafka11-core</artifactId>
     <description>Spring Cloud Stream Kafka Binder Core for the 0.11.x.x client</description>
