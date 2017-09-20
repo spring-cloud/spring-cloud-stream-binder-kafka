@@ -102,7 +102,7 @@ import static org.mockito.Mockito.mock;
  * @author Henryk Konsek
  * @author Gary Russell
  */
-public abstract class KafkaBinderTests extends
+public abstract class AbstractKafkaBinderTests extends
 		PartitionCapableBinderTests<AbstractKafkaTestBinder, ExtendedConsumerProperties<KafkaConsumerProperties>, ExtendedProducerProperties<KafkaProducerProperties>> {
 
 	@Rule
@@ -1843,7 +1843,7 @@ public abstract class KafkaBinderTests extends
 		@Override
 		public void handleMessage(Message<?> message) throws MessagingException {
 			invocationCount++;
-			Long offset = message.getHeaders().get(KafkaBinderTests.this.getKafkaOffsetHeaderKey(), Long.class);
+			Long offset = message.getHeaders().get(AbstractKafkaBinderTests.this.getKafkaOffsetHeaderKey(), Long.class);
 			// using the offset as key allows to ensure that we don't store duplicate
 			// messages on retry
 			if (!receivedMessages.containsKey(offset)) {

@@ -37,10 +37,10 @@ import org.springframework.kafka.support.ProducerListener;
  * @author Gary Russell
  * @author Soby Chacko
  */
-public class Kafka11TestBinder extends AbstractKafkaTestBinder {
+public class KafkaTestBinder extends AbstractKafkaTestBinder {
 
 	@SuppressWarnings({ "rawtypes", "unchecked" })
-	public Kafka11TestBinder(KafkaBinderConfigurationProperties binderConfiguration) {
+	public KafkaTestBinder(KafkaBinderConfigurationProperties binderConfiguration) {
 		try {
 			AdminUtilsOperation adminUtilsOperation = new Kafka11AdminUtilsOperation();
 			KafkaTopicProvisioner provisioningProvider =

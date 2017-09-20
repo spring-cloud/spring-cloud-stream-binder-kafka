@@ -74,14 +74,14 @@ import static org.junit.Assert.assertTrue;
  * @author Mark Fisher
  * @author Ilayaperumal Gopinathan
  */
-public class Kafka_0_11_BinderTests extends KafkaBinderTests {
+public class KafkaBinderTests extends AbstractKafkaBinderTests {
 
 	private final String CLASS_UNDER_TEST_NAME = KafkaMessageChannelBinder.class.getSimpleName();
 
 	@ClassRule
 	public static KafkaEmbedded embeddedKafka = new KafkaEmbedded(1, true, 10);
 
-	private Kafka11TestBinder binder;
+	private KafkaTestBinder binder;
 
 	private final Kafka11AdminUtilsOperation adminUtilsOperation = new Kafka11AdminUtilsOperation();
 
@@ -91,10 +91,10 @@ public class Kafka_0_11_BinderTests extends KafkaBinderTests {
 	}
 
 	@Override
-	protected Kafka11TestBinder getBinder() {
+	protected KafkaTestBinder getBinder() {
 		if (binder == null) {
 			KafkaBinderConfigurationProperties binderConfiguration = createConfigurationProperties();
-			binder = new Kafka11TestBinder(binderConfiguration);
+			binder = new KafkaTestBinder(binderConfiguration);
 		}
 		return binder;
 	}
@@ -144,7 +144,7 @@ public class Kafka_0_11_BinderTests extends KafkaBinderTests {
 
 	@Override
 	protected Binder getBinder(KafkaBinderConfigurationProperties kafkaBinderConfigurationProperties) {
-		return new Kafka11TestBinder(kafkaBinderConfigurationProperties);
+		return new KafkaTestBinder(kafkaBinderConfigurationProperties);
 	}
 
 	@Before
