@@ -183,6 +183,10 @@ public class Kafka_0_11_BinderTests extends KafkaBinderTests {
 		return new DefaultKafkaConsumerFactory<>(props, keyDecoder, valueDecoder);
 	}
 
+	private Properties getSchemaRegistryProperties() {
+		return new Properties();
+	}
+
 	@Test
 	@SuppressWarnings("unchecked")
 	public void testCustomAvroSerialization() throws Exception {
@@ -191,6 +195,8 @@ public class Kafka_0_11_BinderTests extends KafkaBinderTests {
 				configurationProperties.getZkSessionTimeout(), configurationProperties.getZkConnectionTimeout(),
 				ZKStringSerializer$.MODULE$);
 		final ZkUtils zkUtils = new ZkUtils(zkClient, null, false);
+
+
 		Map<String, Object> schemaRegistryProps = new HashMap<>();
 		schemaRegistryProps.put("kafkastore.connection.url", configurationProperties.getZkConnectionString());
 		schemaRegistryProps.put("listeners", "http://0.0.0.0:8082");

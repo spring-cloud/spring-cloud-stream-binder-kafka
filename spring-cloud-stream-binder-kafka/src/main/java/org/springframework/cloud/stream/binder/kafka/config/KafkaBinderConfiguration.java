@@ -40,7 +40,6 @@ import org.springframework.cloud.stream.binder.kafka.properties.JaasLoginModuleC
 import org.springframework.cloud.stream.binder.kafka.properties.KafkaBinderConfigurationProperties;
 import org.springframework.cloud.stream.binder.kafka.properties.KafkaExtendedBindingProperties;
 import org.springframework.cloud.stream.binder.kafka.provisioning.KafkaTopicProvisioner;
-import org.springframework.cloud.stream.config.codec.kryo.KryoCodecAutoConfiguration;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Condition;
@@ -67,7 +66,7 @@ import org.springframework.util.ObjectUtils;
  */
 @Configuration
 @ConditionalOnMissingBean(Binder.class)
-@Import({ KryoCodecAutoConfiguration.class, PropertyPlaceholderAutoConfiguration.class})
+@Import({ PropertyPlaceholderAutoConfiguration.class})
 @EnableConfigurationProperties({ KafkaBinderConfigurationProperties.class, KafkaExtendedBindingProperties.class })
 public class KafkaBinderConfiguration {
 

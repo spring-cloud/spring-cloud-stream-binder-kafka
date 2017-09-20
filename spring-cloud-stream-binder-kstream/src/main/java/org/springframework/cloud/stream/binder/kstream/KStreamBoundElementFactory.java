@@ -39,6 +39,7 @@ import org.springframework.cloud.stream.config.BindingServiceProperties;
 import org.springframework.cloud.stream.converter.CompositeMessageConverterFactory;
 import org.springframework.integration.support.MutableMessageHeaders;
 import org.springframework.messaging.Message;
+import org.springframework.messaging.MessageHeaders;
 import org.springframework.messaging.converter.MessageConverter;
 import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.util.Assert;
@@ -61,7 +62,7 @@ public class KStreamBoundElementFactory extends AbstractBindingTargetFactory<KSt
 	private CompositeMessageConverterFactory compositeMessageConverterFactory;
 
 	public KStreamBoundElementFactory(KStreamBuilder streamBuilder, BindingServiceProperties bindingServiceProperties,
-			CompositeMessageConverterFactory compositeMessageConverterFactory) {
+									CompositeMessageConverterFactory compositeMessageConverterFactory) {
 		super(KStream.class);
 		this.bindingServiceProperties = bindingServiceProperties;
 		this.kStreamBuilder = streamBuilder;
@@ -72,6 +73,22 @@ public class KStreamBoundElementFactory extends AbstractBindingTargetFactory<KSt
 	public KStream createInput(String name) {
 		KStream<Object, Object> stream = kStreamBuilder.stream(bindingServiceProperties.getBindingDestination(name));
 		ConsumerProperties properties = bindingServiceProperties.getConsumerProperties(name);
+		stream = stream.map(new KeyValueMapper<Object, Object, KeyValue<Object, Object>>() {
+			@Override
+			public KeyValue<Object, Object> apply(Object key, Object value) {
+
+				BindingProperties bindingProperties = bindingServiceProperties.getBindingProperties(name);
+				String contentType = bindingProperties.getContentType();
+				if (!StringUtils.isEmpty(contentType)) {
+
+					Message<Object> message = MessageBuilder.withPayload(value)
+							.setHeader(MessageHeaders.CONTENT_TYPE, contentType).build();
+					return new KeyValue<>(key, message);
+				}
+				return new KeyValue<>(key, value);
+			}
+		});
+
 		if (HeaderMode.embeddedHeaders.equals(properties.getHeaderMode())) {
 
 			stream = stream.map(new KeyValueMapper<Object, Object, KeyValue<Object, Object>>() {
@@ -102,7 +119,7 @@ public class KStreamBoundElementFactory extends AbstractBindingTargetFactory<KSt
 		String contentType = bindingProperties.getContentType();
 		MessageConverter messageConverter = StringUtils.hasText(contentType) ? compositeMessageConverterFactory
 				.getMessageConverterForType(MimeType.valueOf(contentType)) : null;
-		KStreamWrapperHandler handler = new KStreamWrapperHandler(messageConverter);
+		KStreamWrapperHandler handler = new KStreamWrapperHandler(messageConverter, bindingServiceProperties, name);
 		ProxyFactory proxyFactory = new ProxyFactory(KStreamWrapper.class, KStream.class);
 		proxyFactory.addAdvice(handler);
 		return (KStream) proxyFactory.getProxy();
@@ -122,9 +139,15 @@ public class KStreamBoundElementFactory extends AbstractBindingTargetFactory<KSt
 		private KStream<Object, Object> delegate;
 
 		private final MessageConverter messageConverter;
+		private final BindingServiceProperties bindingServiceProperties;
+		private String name;
 
-		public KStreamWrapperHandler(MessageConverter messageConverter) {
+		public KStreamWrapperHandler(MessageConverter messageConverter,
+									BindingServiceProperties bindingServiceProperties,
+									String name) {
 			this.messageConverter = messageConverter;
+			this.bindingServiceProperties = bindingServiceProperties;
+			this.name = name;
 		}
 
 		public void wrap(KStream<Object, Object> delegate) {
@@ -135,9 +158,15 @@ public class KStreamBoundElementFactory extends AbstractBindingTargetFactory<KSt
 					@Override
 					public KeyValue<Object, Object> apply(Object k, Object v) {
 						Message<?> message = (Message<?>) v;
+						BindingProperties bindingProperties = bindingServiceProperties.getBindingProperties(name);
+						String contentType = bindingProperties.getContentType();
+						MutableMessageHeaders messageHeaders = new MutableMessageHeaders(((Message<?>) v).getHeaders());
+						if (!StringUtils.isEmpty(contentType)) {
+							messageHeaders.put(MessageHeaders.CONTENT_TYPE, contentType);
+						}
 						return new KeyValue<Object, Object>(k,
 								messageConverter.toMessage(message.getPayload(),
-										new MutableMessageHeaders(((Message<?>) v).getHeaders())));
+										messageHeaders));
 					}
 				};
 				delegate = delegate.map(keyValueMapper);

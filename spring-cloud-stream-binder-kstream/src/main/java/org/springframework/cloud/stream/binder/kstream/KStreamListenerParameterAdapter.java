@@ -59,6 +59,9 @@ public class KStreamListenerParameterAdapter implements StreamListenerParameterA
 					return new KeyValue<>(o, o2);
 				}
 				else if (o2 instanceof Message) {
+					if (valueClass.isAssignableFrom(((Message) o2).getPayload().getClass())) {
+						return new KeyValue<>(o, ((Message) o2).getPayload());
+					}
 					return new KeyValue<>(o, messageConverter.fromMessage((Message) o2, valueClass));
 				}
 				else if(o2 instanceof String || o2 instanceof byte[]) {

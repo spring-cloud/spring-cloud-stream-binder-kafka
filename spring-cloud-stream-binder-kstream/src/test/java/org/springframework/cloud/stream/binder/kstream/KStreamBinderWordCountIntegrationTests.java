@@ -16,8 +16,6 @@
 
 package org.springframework.cloud.stream.binder.kstream;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
@@ -53,6 +51,8 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.test.rule.KafkaEmbedded;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.messaging.handler.annotation.SendTo;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  *
@@ -95,6 +95,7 @@ public class KStreamBinderWordCountIntegrationTests {
 				"--spring.cloud.stream.kstream.binder.configuration.value.serde=org.apache.kafka.common.serialization.Serdes$StringSerde",
 				"--spring.cloud.stream.bindings.output.producer.headerMode=raw",
 				"--spring.cloud.stream.bindings.output.producer.useNativeEncoding=true",
+				"--spring.cloud.stream.kstream.bindings.output.producer.valueSerde=org.apache.kafka.common.serialization.Serdes$ByteArraySerde",
 				"--spring.cloud.stream.bindings.input.consumer.headerMode=raw",
 				"--spring.cloud.stream.kstream.timeWindow.length=5000",
 				"--spring.cloud.stream.kstream.timeWindow.advanceBy=0",
@@ -146,7 +147,7 @@ public class KStreamBinderWordCountIntegrationTests {
 						}
 					})
 					.groupByKey(Serdes.String(), Serdes.String())
-					.count(timeWindows, "WordCounts")
+					.count(timeWindows, "foo-WordCounts")
 					.toStream()
 					.map(new KeyValueMapper<Windowed<String>, Long, KeyValue<Object, WordCount>>() {
 
