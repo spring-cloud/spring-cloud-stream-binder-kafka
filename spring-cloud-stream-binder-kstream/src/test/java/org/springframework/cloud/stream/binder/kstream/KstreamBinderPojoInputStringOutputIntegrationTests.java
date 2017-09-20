@@ -23,10 +23,7 @@ import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.kstream.KStream;
-import org.apache.kafka.streams.kstream.KeyValueMapper;
-import org.apache.kafka.streams.kstream.Predicate;
 import org.apache.kafka.streams.kstream.TimeWindows;
-import org.apache.kafka.streams.kstream.Windowed;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
@@ -118,30 +115,12 @@ public class KstreamBinderPojoInputStringOutputIntegrationTests {
 		public KStream<Integer, String> process(KStream<Object, Product> input) {
 
 			return input
-					.filter(new Predicate<Object, Product>() {
-
-						@Override
-						public boolean test(Object key, Product product) {
-							return product.getId() == 123;
-						}
-					})
-					.map(new KeyValueMapper<Object, Product, KeyValue<Product, Product>>() {
-
-						@Override
-						public KeyValue<Product, Product> apply(Object key, Product value) {
-							return new KeyValue<>(value, value);
-						}
-					})
+					.filter((key, product) -> product.getId() == 123)
+					.map((key, value) -> new KeyValue<>(value, value))
 					.groupByKey(new JsonSerde<>(Product.class), new JsonSerde<>(Product.class))
 					.count(TimeWindows.of(5000), "id-count-store")
 					.toStream()
-					.map(new KeyValueMapper<Windowed<Product>, Long, KeyValue<Integer, String>>() {
-
-						@Override
-						public KeyValue<Integer, String> apply(Windowed<Product> key, Long value) {
-							return new KeyValue<>(key.key().id, "Count for product with ID 123: " + value);
-						}
-					});
+					.map((key, value) -> new KeyValue<>(key.key().id, "Count for product with ID 123: " + value));
 		}
 	}
 

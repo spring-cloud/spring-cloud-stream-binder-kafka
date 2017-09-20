@@ -187,24 +187,12 @@ public abstract class KafkaBinderTests extends
 		final AtomicReference<Message<?>> boundErrorChannelMessage = new AtomicReference<>();
 		final AtomicReference<Message<?>> globalErrorChannelMessage = new AtomicReference<>();
 		final AtomicBoolean hasRecovererInCallStack = new AtomicBoolean(!withRetry);
-		boundErrorChannel.subscribe(new MessageHandler() {
-
-			@Override
-			public void handleMessage(Message<?> message) throws MessagingException {
-				boundErrorChannelMessage.set(message);
-				String stackTrace = Arrays.toString(new RuntimeException().getStackTrace());
-				hasRecovererInCallStack.set(stackTrace.contains("ErrorMessageSendingRecoverer"));
-			}
-
+		boundErrorChannel.subscribe(message -> {
+			boundErrorChannelMessage.set(message);
+			String stackTrace = Arrays.toString(new RuntimeException().getStackTrace());
+			hasRecovererInCallStack.set(stackTrace.contains("ErrorMessageSendingRecoverer"));
 		});
-		globalErrorChannel.subscribe(new MessageHandler() {
-
-			@Override
-			public void handleMessage(Message<?> message) throws MessagingException {
-				globalErrorChannelMessage.set(message);
-			}
-
-		});
+		globalErrorChannel.subscribe(globalErrorChannelMessage::set);
 
 		Binding<MessageChannel> dlqConsumerBinding = binder.bindConsumer(
 				"error.dlqTest." + uniqueBindingId + ".0.testGroup", null, dlqChannel, dlqConsumerProperties);
@@ -969,7 +957,7 @@ public abstract class KafkaBinderTests extends
 				@Override
 				public boolean matches(Message<?> value) {
 					try {
-						return om.readValue((byte[])value.getPayload(), Integer.class).equals(2);
+						return om.readValue((byte[]) value.getPayload(), Integer.class).equals(2);
 					}
 					catch (IOException e) {
 						//

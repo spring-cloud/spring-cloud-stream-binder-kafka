@@ -23,7 +23,6 @@ import org.apache.kafka.common.utils.Utils;
 import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.kstream.KStream;
-import org.apache.kafka.streams.kstream.KeyValueMapper;
 
 import org.springframework.cloud.stream.binder.AbstractBinder;
 import org.springframework.cloud.stream.binder.BinderHeaders;
@@ -91,41 +90,28 @@ public class KStreamBinder extends
 				new KafkaProducerProperties());
 		this.kafkaTopicProvisioner.provisionProducerDestination(name, extendedProducerProperties);
 		if (HeaderMode.embeddedHeaders.equals(properties.getHeaderMode())) {
-			outboundBindTarget = outboundBindTarget.map(new KeyValueMapper<Object, Object, KeyValue<Object, Object>>() {
-				@Override
-				public KeyValue<Object, Object> apply(Object k, Object v) {
-					if (v instanceof Message) {
-						try {
-							return new KeyValue<>(k, KStreamBinder.this.serializeAndEmbedHeadersIfApplicable((Message<?>) v));
-						}
-						catch (Exception e) {
-							throw new IllegalArgumentException(e);
-						}
+			outboundBindTarget = outboundBindTarget.map((k, v) -> {
+				if (v instanceof Message) {
+					try {
+						return new KeyValue<>(k, KStreamBinder.this.serializeAndEmbedHeadersIfApplicable((Message<?>) v));
 					}
-					else {
-						throw new IllegalArgumentException("Wrong type of message " + v);
+					catch (Exception e) {
+						throw new IllegalArgumentException(e);
 					}
+				}
+				else {
+					throw new IllegalArgumentException("Wrong type of message " + v);
 				}
 			});
 		}
 		else {
 			if (!properties.isUseNativeEncoding()) {
 				outboundBindTarget = outboundBindTarget
-						.map(new KeyValueMapper<Object, Object, KeyValue<Object, Object>>() {
-							@Override
-							public KeyValue<Object, Object> apply(Object k, Object v) {
-								return KeyValue.pair(k, (Object) KStreamBinder.this.serializePayloadIfNecessary((Message<?>) v));
-							}
-						});
+						.map((k, v) -> KeyValue.pair(k, (Object) KStreamBinder.this.serializePayloadIfNecessary((Message<?>) v)));
 			}
 			else {
 				outboundBindTarget = outboundBindTarget
-						.map(new KeyValueMapper<Object, Object, KeyValue<Object, Object>>() {
-							@Override
-							public KeyValue<Object, Object> apply(Object k, Object v) {
-								return KeyValue.pair(k, ((Message<Object>) v).getPayload());
-							}
-						});
+						.map((k, v) -> KeyValue.pair(k, ((Message<Object>) v).getPayload()));
 			}
 		}
 		if (!properties.isUseNativeEncoding() || StringUtils.hasText(properties.getExtension().getKeySerde()) || StringUtils.hasText(properties.getExtension().getValueSerde())) {

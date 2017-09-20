@@ -18,7 +18,6 @@ package org.springframework.cloud.stream.binder.kstream;
 
 import java.util.Arrays;
 import java.util.Date;
-import java.util.List;
 import java.util.Map;
 
 import org.apache.kafka.clients.consumer.Consumer;
@@ -27,10 +26,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.kstream.KStream;
-import org.apache.kafka.streams.kstream.KeyValueMapper;
 import org.apache.kafka.streams.kstream.TimeWindows;
-import org.apache.kafka.streams.kstream.ValueMapper;
-import org.apache.kafka.streams.kstream.Windowed;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
@@ -132,30 +128,12 @@ public class KStreamBinderWordCountIntegrationTests {
 		public KStream<?, WordCount> process(KStream<Object, String> input) {
 
 			return input
-					.flatMapValues(new ValueMapper<String, Iterable<String>>() {
-
-						@Override
-						public List<String> apply(String value) {
-							return Arrays.asList(value.toLowerCase().split("\\W+"));
-						}
-					})
-					.map(new KeyValueMapper<Object, String, KeyValue<String, String>>() {
-
-						@Override
-						public KeyValue<String, String> apply(Object key, String value) {
-							return new KeyValue<>(value, value);
-						}
-					})
+					.flatMapValues(value -> Arrays.asList(value.toLowerCase().split("\\W+")))
+					.map((key, value) -> new KeyValue<>(value, value))
 					.groupByKey(Serdes.String(), Serdes.String())
 					.count(timeWindows, "foo-WordCounts")
 					.toStream()
-					.map(new KeyValueMapper<Windowed<String>, Long, KeyValue<Object, WordCount>>() {
-
-						@Override
-						public KeyValue<Object, WordCount> apply(Windowed<String> key, Long value) {
-							return new KeyValue<>(null, new WordCount(key.key(), value, new Date(key.window().start()), new Date(key.window().end())));
-						}
-					});
+					.map((key, value) -> new KeyValue<>(null, new WordCount(key.key(), value, new Date(key.window().start()), new Date(key.window().end()))));
 		}
 
 	}

@@ -16,9 +16,6 @@
 
 package org.springframework.cloud.stream.binder.kstream;
 
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-
 import org.aopalliance.intercept.MethodInterceptor;
 import org.aopalliance.intercept.MethodInvocation;
 import org.apache.kafka.streams.KeyValue;
@@ -57,8 +54,6 @@ public class KStreamBoundElementFactory extends AbstractBindingTargetFactory<KSt
 
 	private final StringConvertingContentTypeResolver contentTypeResolver = new StringConvertingContentTypeResolver();
 
-	private volatile Map<String, Class<?>> payloadTypeCache = new ConcurrentHashMap<>();
-
 	private CompositeMessageConverterFactory compositeMessageConverterFactory;
 
 	public KStreamBoundElementFactory(KStreamBuilder streamBuilder, BindingServiceProperties bindingServiceProperties,
@@ -73,39 +68,33 @@ public class KStreamBoundElementFactory extends AbstractBindingTargetFactory<KSt
 	public KStream createInput(String name) {
 		KStream<Object, Object> stream = kStreamBuilder.stream(bindingServiceProperties.getBindingDestination(name));
 		ConsumerProperties properties = bindingServiceProperties.getConsumerProperties(name);
-		stream = stream.map(new KeyValueMapper<Object, Object, KeyValue<Object, Object>>() {
-			@Override
-			public KeyValue<Object, Object> apply(Object key, Object value) {
+		stream = stream.map((key, value) -> {
 
-				BindingProperties bindingProperties = bindingServiceProperties.getBindingProperties(name);
-				String contentType = bindingProperties.getContentType();
-				if (!StringUtils.isEmpty(contentType)) {
+			BindingProperties bindingProperties = bindingServiceProperties.getBindingProperties(name);
+			String contentType = bindingProperties.getContentType();
+			if (!StringUtils.isEmpty(contentType)) {
 
-					Message<Object> message = MessageBuilder.withPayload(value)
-							.setHeader(MessageHeaders.CONTENT_TYPE, contentType).build();
-					return new KeyValue<>(key, message);
-				}
-				return new KeyValue<>(key, value);
+				Message<Object> message = MessageBuilder.withPayload(value)
+						.setHeader(MessageHeaders.CONTENT_TYPE, contentType).build();
+				return new KeyValue<>(key, message);
 			}
+			return new KeyValue<>(key, value);
 		});
 
 		if (HeaderMode.embeddedHeaders.equals(properties.getHeaderMode())) {
 
-			stream = stream.map(new KeyValueMapper<Object, Object, KeyValue<Object, Object>>() {
-				@Override
-				public KeyValue<Object, Object> apply(Object key, Object value) {
-					if (!(value instanceof byte[])) {
-						return new KeyValue<>(key, value);
-					}
-					try {
-						MessageValues messageValues = EmbeddedHeaderUtils
-								.extractHeaders(MessageBuilder.withPayload((byte[]) value).build(), true);
-						messageValues = deserializePayloadIfNecessary(messageValues);
-						return new KeyValue<Object, Object>(null, messageValues.toMessage());
-					}
-					catch (Exception e) {
-						throw new IllegalArgumentException(e);
-					}
+			stream = stream.map((key, value) -> {
+				if (!(value instanceof byte[])) {
+					return new KeyValue<>(key, value);
+				}
+				try {
+					MessageValues messageValues = EmbeddedHeaderUtils
+							.extractHeaders(MessageBuilder.withPayload((byte[]) value).build(), true);
+					messageValues = deserializePayloadIfNecessary(messageValues);
+					return new KeyValue<Object, Object>(null, messageValues.toMessage());
+				}
+				catch (Exception e) {
+					throw new IllegalArgumentException(e);
 				}
 			});
 		}
@@ -154,20 +143,17 @@ public class KStreamBoundElementFactory extends AbstractBindingTargetFactory<KSt
 			Assert.notNull(delegate, "delegate cannot be null");
 			Assert.isNull(this.delegate, "delegate already set to " + this.delegate);
 			if (messageConverter != null) {
-				KeyValueMapper<Object, Object, KeyValue<Object, Object>> keyValueMapper = new KeyValueMapper<Object, Object, KeyValue<Object, Object>>() {
-					@Override
-					public KeyValue<Object, Object> apply(Object k, Object v) {
-						Message<?> message = (Message<?>) v;
-						BindingProperties bindingProperties = bindingServiceProperties.getBindingProperties(name);
-						String contentType = bindingProperties.getContentType();
-						MutableMessageHeaders messageHeaders = new MutableMessageHeaders(((Message<?>) v).getHeaders());
-						if (!StringUtils.isEmpty(contentType)) {
-							messageHeaders.put(MessageHeaders.CONTENT_TYPE, contentType);
-						}
-						return new KeyValue<Object, Object>(k,
-								messageConverter.toMessage(message.getPayload(),
-										messageHeaders));
+				KeyValueMapper<Object, Object, KeyValue<Object, Object>> keyValueMapper = (k, v) -> {
+					Message<?> message = (Message<?>) v;
+					BindingProperties bindingProperties = bindingServiceProperties.getBindingProperties(name);
+					String contentType = bindingProperties.getContentType();
+					MutableMessageHeaders messageHeaders = new MutableMessageHeaders(((Message<?>) v).getHeaders());
+					if (!StringUtils.isEmpty(contentType)) {
+						messageHeaders.put(MessageHeaders.CONTENT_TYPE, contentType);
 					}
+					return new KeyValue<>(k,
+							messageConverter.toMessage(message.getPayload(),
+									messageHeaders));
 				};
 				delegate = delegate.map(keyValueMapper);
 			}

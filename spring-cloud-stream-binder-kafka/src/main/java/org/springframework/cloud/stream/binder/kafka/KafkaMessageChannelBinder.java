@@ -25,7 +25,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.Callable;
 
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -73,11 +72,9 @@ import org.springframework.kafka.support.SendResult;
 import org.springframework.kafka.support.TopicPartitionInitialOffset;
 import org.springframework.kafka.support.converter.MessagingMessageConverter;
 import org.springframework.kafka.transaction.KafkaTransactionManager;
-import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.MessageHandler;
 import org.springframework.messaging.MessageHeaders;
-import org.springframework.messaging.MessagingException;
 import org.springframework.util.Assert;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.ObjectUtils;
@@ -166,16 +163,11 @@ public class KafkaMessageChannelBinder extends
 		Collection<PartitionInfo> partitions = provisioningProvider.getPartitionsForTopic(
 				producerProperties.getPartitionCount(),
 				false,
-				new Callable<Collection<PartitionInfo>>() {
-
-					@Override
-					public Collection<PartitionInfo> call() throws Exception {
-						Producer<byte[], byte[]> producer = producerFB.createProducer();
-						List<PartitionInfo> thePartitions = producer.partitionsFor(destination.getName());
-						producer.close();
-						return thePartitions;
-					}
-
+				() -> {
+					Producer<byte[], byte[]> producer = producerFB.createProducer();
+					List<PartitionInfo> thePartitions = producer.partitionsFor(destination.getName());
+					producer.close();
+					return thePartitions;
 				});
 		this.topicsInUse.put(destination.getName(), new TopicInformation(null, partitions));
 		if (producerProperties.getPartitionCount() < partitions.size()) {
@@ -271,12 +263,7 @@ public class KafkaMessageChannelBinder extends
 
 		Collection<PartitionInfo> allPartitions = provisioningProvider.getPartitionsForTopic(partitionCount,
 				extendedConsumerProperties.getExtension().isAutoRebalanceEnabled(),
-				new Callable<Collection<PartitionInfo>>() {
-					@Override
-					public Collection<PartitionInfo> call() throws Exception {
-						return consumerFactory.createConsumer().partitionsFor(destination.getName());
-					}
-				});
+				() -> consumerFactory.createConsumer().partitionsFor(destination.getName()));
 
 		Collection<PartitionInfo> listenedPartitions;
 
@@ -369,46 +356,42 @@ public class KafkaMessageChannelBinder extends
 					? this.transactionManager.getProducerFactory()
 					: getProducerFactory(null, new ExtendedProducerProperties<>(new KafkaProducerProperties()));
 			final KafkaTemplate<byte[], byte[]> kafkaTemplate = new KafkaTemplate<>(producerFactory);
-			return new MessageHandler() {
+			return message -> {
+				final ConsumerRecord<?, ?> record = message.getHeaders()
+						.get(KafkaHeaders.RAW_DATA, ConsumerRecord.class);
+				final byte[] key = record.key() != null ? Utils.toArray(ByteBuffer.wrap((byte[]) record.key()))
+						: null;
+				final byte[] payload = record.value() != null
+						? Utils.toArray(ByteBuffer.wrap((byte[]) record.value())) : null;
+				String dlqName = StringUtils.hasText(extendedConsumerProperties.getExtension().getDlqName())
+						? extendedConsumerProperties.getExtension().getDlqName()
+						: "error." + destination.getName() + "." + group;
+				ProducerRecord<byte[], byte[]> producerRecord = new ProducerRecord<>(dlqName, record.partition(),
+						key, payload, record.headers());
+				ListenableFuture<SendResult<byte[], byte[]>> sentDlq = kafkaTemplate.send(producerRecord);
+				sentDlq.addCallback(new ListenableFutureCallback<SendResult<byte[], byte[]>>() {
+					StringBuilder sb = new StringBuilder().append(" a message with key='")
+							.append(toDisplayString(ObjectUtils.nullSafeToString(key), 50)).append("'")
+							.append(" and payload='")
+							.append(toDisplayString(ObjectUtils.nullSafeToString(payload), 50))
+							.append("'").append(" received from ")
+							.append(record.partition());
 
-				@Override
-				public void handleMessage(Message<?> message) throws MessagingException {
-					final ConsumerRecord<?, ?> record = message.getHeaders()
-							.get(KafkaHeaders.RAW_DATA, ConsumerRecord.class);
-					final byte[] key = record.key() != null ? Utils.toArray(ByteBuffer.wrap((byte[]) record.key()))
-							: null;
-					final byte[] payload = record.value() != null
-							? Utils.toArray(ByteBuffer.wrap((byte[]) record.value())) : null;
-					String dlqName = StringUtils.hasText(extendedConsumerProperties.getExtension().getDlqName())
-							? extendedConsumerProperties.getExtension().getDlqName()
-							: "error." + destination.getName() + "." + group;
-					ProducerRecord<byte[], byte[]> producerRecord = new ProducerRecord<>(dlqName, record.partition(),
-							key, payload, record.headers());
-					ListenableFuture<SendResult<byte[], byte[]>> sentDlq = kafkaTemplate.send(producerRecord);
-					sentDlq.addCallback(new ListenableFutureCallback<SendResult<byte[], byte[]>>() {
-						StringBuilder sb = new StringBuilder().append(" a message with key='")
-								.append(toDisplayString(ObjectUtils.nullSafeToString(key), 50)).append("'")
-								.append(" and payload='")
-								.append(toDisplayString(ObjectUtils.nullSafeToString(payload), 50))
-								.append("'").append(" received from ")
-								.append(record.partition());
+					@Override
+					public void onFailure(Throwable ex) {
+						KafkaMessageChannelBinder.this.logger.error(
+								"Error sending to DLQ " + sb.toString(), ex);
+					}
 
-						@Override
-						public void onFailure(Throwable ex) {
-							KafkaMessageChannelBinder.this.logger.error(
-									"Error sending to DLQ " + sb.toString(), ex);
+					@Override
+					public void onSuccess(SendResult<byte[], byte[]> result) {
+						if (KafkaMessageChannelBinder.this.logger.isDebugEnabled()) {
+							KafkaMessageChannelBinder.this.logger.debug(
+									"Sent to DLQ " + sb.toString());
 						}
+					}
 
-						@Override
-						public void onSuccess(SendResult<byte[], byte[]> result) {
-							if (KafkaMessageChannelBinder.this.logger.isDebugEnabled()) {
-								KafkaMessageChannelBinder.this.logger.debug(
-										"Sent to DLQ " + sb.toString());
-							}
-						}
-
-					});
-				}
+				});
 			};
 		}
 		return null;
