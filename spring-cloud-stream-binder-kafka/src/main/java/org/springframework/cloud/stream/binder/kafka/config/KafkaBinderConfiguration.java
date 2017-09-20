@@ -148,14 +148,6 @@ public class KafkaBinderConfiguration {
 		}
 	}
 
-	static class Kafka09Present implements Condition {
-
-		@Override
-		public boolean matches(ConditionContext conditionContext, AnnotatedTypeMetadata annotatedTypeMetadata) {
-			return AppInfoParser.getVersion().startsWith("0.9");
-		}
-	}
-
 	public static class JaasConfigurationProperties {
 
 		private JaasLoginModuleConfiguration kafka;
