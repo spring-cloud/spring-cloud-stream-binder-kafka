@@ -18,7 +18,7 @@ package org.springframework.cloud.stream.binder.kafka;
 
 import org.springframework.cloud.stream.binder.ExtendedConsumerProperties;
 import org.springframework.cloud.stream.binder.kafka.admin.AdminUtilsOperation;
-import org.springframework.cloud.stream.binder.kafka.admin.Kafka10AdminUtilsOperation;
+import org.springframework.cloud.stream.binder.kafka.admin.Kafka11AdminUtilsOperation;
 import org.springframework.cloud.stream.binder.kafka.properties.KafkaBinderConfigurationProperties;
 import org.springframework.cloud.stream.binder.kafka.properties.KafkaConsumerProperties;
 import org.springframework.cloud.stream.binder.kafka.provisioning.KafkaTopicProvisioner;
@@ -37,12 +37,12 @@ import org.springframework.kafka.support.ProducerListener;
  * @author Gary Russell
  * @author Soby Chacko
  */
-public class Kafka10TestBinder extends AbstractKafkaTestBinder {
+public class Kafka11TestBinder extends AbstractKafkaTestBinder {
 
 	@SuppressWarnings({ "rawtypes", "unchecked" })
-	public Kafka10TestBinder(KafkaBinderConfigurationProperties binderConfiguration) {
+	public Kafka11TestBinder(KafkaBinderConfigurationProperties binderConfiguration) {
 		try {
-			AdminUtilsOperation adminUtilsOperation = new Kafka10AdminUtilsOperation();
+			AdminUtilsOperation adminUtilsOperation = new Kafka11AdminUtilsOperation();
 			KafkaTopicProvisioner provisioningProvider =
 					new KafkaTopicProvisioner(binderConfiguration, adminUtilsOperation);
 			provisioningProvider.afterPropertiesSet();
@@ -63,7 +63,6 @@ public class Kafka10TestBinder extends AbstractKafkaTestBinder {
 
 			};
 
-			binder.setCodec(AbstractKafkaTestBinder.getCodec());
 			ProducerListener producerListener = new LoggingProducerListener();
 			binder.setProducerListener(producerListener);
 			AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext(Config.class);

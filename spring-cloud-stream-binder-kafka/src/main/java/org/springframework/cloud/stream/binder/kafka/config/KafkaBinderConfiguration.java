@@ -27,18 +27,15 @@ import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 import org.apache.kafka.common.utils.AppInfoParser;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.actuate.endpoint.PublicMetrics;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.context.PropertyPlaceholderAutoConfiguration;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.cloud.stream.binder.Binder;
 import org.springframework.cloud.stream.binder.kafka.KafkaBinderHealthIndicator;
-import org.springframework.cloud.stream.binder.kafka.KafkaBinderMetrics;
 import org.springframework.cloud.stream.binder.kafka.KafkaMessageChannelBinder;
 import org.springframework.cloud.stream.binder.kafka.admin.AdminUtilsOperation;
-import org.springframework.cloud.stream.binder.kafka.admin.Kafka09AdminUtilsOperation;
-import org.springframework.cloud.stream.binder.kafka.admin.Kafka10AdminUtilsOperation;
+import org.springframework.cloud.stream.binder.kafka.admin.Kafka11AdminUtilsOperation;
 import org.springframework.cloud.stream.binder.kafka.properties.JaasLoginModuleConfiguration;
 import org.springframework.cloud.stream.binder.kafka.properties.KafkaBinderConfigurationProperties;
 import org.springframework.cloud.stream.binder.kafka.properties.KafkaExtendedBindingProperties;
@@ -52,7 +49,6 @@ import org.springframework.context.annotation.Conditional;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 import org.springframework.core.type.AnnotatedTypeMetadata;
-import org.springframework.integration.codec.Codec;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.security.jaas.KafkaJaasLoginModuleInitializer;
@@ -78,9 +74,6 @@ public class KafkaBinderConfiguration {
 	protected static final Log logger = LogFactory.getLog(KafkaBinderConfiguration.class);
 
 	@Autowired
-	private Codec codec;
-
-	@Autowired
 	private KafkaBinderConfigurationProperties configurationProperties;
 
 	@Autowired
@@ -104,7 +97,6 @@ public class KafkaBinderConfiguration {
 	KafkaMessageChannelBinder kafkaMessageChannelBinder() {
 		KafkaMessageChannelBinder kafkaMessageChannelBinder = new KafkaMessageChannelBinder(
 				this.configurationProperties, provisioningProvider());
-		kafkaMessageChannelBinder.setCodec(this.codec);
 		kafkaMessageChannelBinder.setProducerListener(producerListener);
 		kafkaMessageChannelBinder.setExtendedBindingProperties(this.kafkaExtendedBindingProperties);
 		return kafkaMessageChannelBinder;
@@ -131,25 +123,17 @@ public class KafkaBinderConfiguration {
 		return new KafkaBinderHealthIndicator(kafkaMessageChannelBinder, consumerFactory);
 	}
 
-	@Bean
-	public PublicMetrics kafkaBinderMetrics(KafkaMessageChannelBinder kafkaMessageChannelBinder) {
-		return new KafkaBinderMetrics(kafkaMessageChannelBinder, configurationProperties);
-	}
-
-	@Bean(name = "adminUtilsOperation")
-	@Conditional(Kafka09Present.class)
-	@ConditionalOnClass(name = "kafka.admin.AdminUtils")
-	public AdminUtilsOperation kafka09AdminUtilsOperation() {
-		logger.info("AdminUtils selected: Kafka 0.9 AdminUtils");
-		return new Kafka09AdminUtilsOperation();
-	}
+//	@Bean
+//	public PublicMetrics kafkaBinderMetrics(KafkaMessageChannelBinder kafkaMessageChannelBinder) {
+//		return new KafkaBinderMetrics(kafkaMessageChannelBinder, configurationProperties);
+//	}
 
 	@Bean(name = "adminUtilsOperation")
 	@Conditional(Kafka1xPresent.class)
 	@ConditionalOnClass(name = "kafka.admin.AdminUtils")
 	public AdminUtilsOperation kafka10AdminUtilsOperation() {
 		logger.info("AdminUtils selected: Kafka 0.10 AdminUtils");
-		return new Kafka10AdminUtilsOperation();
+		return new Kafka11AdminUtilsOperation();
 	}
 
 	@Bean

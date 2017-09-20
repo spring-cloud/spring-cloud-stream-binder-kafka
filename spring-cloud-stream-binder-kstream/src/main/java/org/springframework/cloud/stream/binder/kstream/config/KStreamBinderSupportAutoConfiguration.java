@@ -33,7 +33,6 @@ import org.springframework.cloud.stream.binder.kstream.KStreamStreamListenerResu
 import org.springframework.cloud.stream.config.BindingServiceProperties;
 import org.springframework.cloud.stream.converter.CompositeMessageConverterFactory;
 import org.springframework.context.annotation.Bean;
-import org.springframework.integration.codec.Codec;
 import org.springframework.kafka.annotation.KafkaStreamsDefaultConfiguration;
 import org.springframework.kafka.core.KStreamBuilderFactoryBean;
 import org.springframework.util.ObjectUtils;
@@ -93,9 +92,9 @@ public class KStreamBinderSupportAutoConfiguration {
 
 	@Bean
 	public KStreamBoundElementFactory kStreamBindableTargetFactory(KStreamBuilder kStreamBuilder,
-			BindingServiceProperties bindingServiceProperties, Codec codec,
+			BindingServiceProperties bindingServiceProperties,
 			CompositeMessageConverterFactory compositeMessageConverterFactory) {
-		return new KStreamBoundElementFactory(kStreamBuilder, bindingServiceProperties, codec,
+		return new KStreamBoundElementFactory(kStreamBuilder, bindingServiceProperties,
 				compositeMessageConverterFactory);
 	}
 

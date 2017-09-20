@@ -25,8 +25,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.cloud.stream.binder.kafka.admin.AdminUtilsOperation;
-import org.springframework.cloud.stream.binder.kafka.admin.Kafka09AdminUtilsOperation;
-import org.springframework.cloud.stream.binder.kafka.admin.Kafka10AdminUtilsOperation;
+import org.springframework.cloud.stream.binder.kafka.admin.Kafka11AdminUtilsOperation;
 import org.springframework.cloud.stream.binder.kafka.properties.KafkaBinderConfigurationProperties;
 import org.springframework.cloud.stream.binder.kafka.provisioning.KafkaTopicProvisioner;
 import org.springframework.cloud.stream.binder.kstream.KStreamBinder;
@@ -64,19 +63,11 @@ public class KStreamBinderConfiguration {
 	}
 
 	@Bean(name = "adminUtilsOperation")
-	@Conditional(Kafka09Present.class)
-	@ConditionalOnClass(name = "kafka.admin.AdminUtils")
-	public AdminUtilsOperation kafka09AdminUtilsOperation() {
-		logger.info("AdminUtils selected: Kafka 0.9 AdminUtils");
-		return new Kafka09AdminUtilsOperation();
-	}
-
-	@Bean(name = "adminUtilsOperation")
 	@Conditional(Kafka1xPresent.class)
 	@ConditionalOnClass(name = "kafka.admin.AdminUtils")
 	public AdminUtilsOperation kafka10AdminUtilsOperation() {
 		logger.info("AdminUtils selected: Kafka 0.10 AdminUtils");
-		return new Kafka10AdminUtilsOperation();
+		return new Kafka11AdminUtilsOperation();
 	}
 
 	static class Kafka1xPresent implements Condition {

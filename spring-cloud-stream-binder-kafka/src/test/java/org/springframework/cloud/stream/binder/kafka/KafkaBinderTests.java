@@ -16,6 +16,7 @@
 
 package org.springframework.cloud.stream.binder.kafka;
 
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -27,6 +28,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import kafka.utils.ZKStringSerializer$;
+import kafka.utils.ZkUtils;
 import org.I0Itec.zkclient.ZkClient;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.ProducerRecord;
@@ -83,6 +87,7 @@ import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.retry.backoff.FixedBackOffPolicy;
 import org.springframework.retry.policy.SimpleRetryPolicy;
 import org.springframework.retry.support.RetryTemplate;
+import org.springframework.util.MimeTypeUtils;
 import org.springframework.util.concurrent.ListenableFuture;
 import org.springframework.util.concurrent.SettableListenableFuture;
 
@@ -90,9 +95,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.fail;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
-
-import kafka.utils.ZKStringSerializer$;
-import kafka.utils.ZkUtils;
 
 /**
  * @author Soby Chacko
@@ -208,12 +210,12 @@ public abstract class KafkaBinderTests extends
 				"error.dlqTest." + uniqueBindingId + ".0.testGroup", null, dlqChannel, dlqConsumerProperties);
 		binderBindUnbindLatency();
 		String testMessagePayload = "test." + UUID.randomUUID().toString();
-		Message<String> testMessage = MessageBuilder.withPayload(testMessagePayload).build();
+		Message<byte[]> testMessage = MessageBuilder.withPayload(testMessagePayload.getBytes()).build();
 		moduleOutputChannel.send(testMessage);
 
 		Message<?> receivedMessage = receive(dlqChannel, 3);
 		assertThat(receivedMessage).isNotNull();
-		assertThat(receivedMessage.getPayload()).isEqualTo(testMessagePayload);
+		assertThat(receivedMessage.getPayload()).isEqualTo(testMessagePayload.getBytes());
 		assertThat(handler.getInvocationCount()).isEqualTo(consumerProperties.getMaxAttempts());
 		binderBindUnbindLatency();
 
@@ -249,7 +251,7 @@ public abstract class KafkaBinderTests extends
 				"testGroup", moduleInputChannel, consumerProperties);
 
 		String testMessagePayload = "test." + UUID.randomUUID().toString();
-		Message<String> testMessage = MessageBuilder.withPayload(testMessagePayload).build();
+		Message<byte[]> testMessage = MessageBuilder.withPayload(testMessagePayload.getBytes()).build();
 		moduleOutputChannel.send(testMessage);
 
 		assertThat(handler.getLatch().await((int) (timeoutMultiplier * 1000), TimeUnit.MILLISECONDS));
@@ -257,7 +259,7 @@ public abstract class KafkaBinderTests extends
 		assertThat(handler.getReceivedMessages().entrySet()).hasSize(1);
 		Message<?> receivedMessage = handler.getReceivedMessages().entrySet().iterator().next().getValue();
 		assertThat(receivedMessage).isNotNull();
-		assertThat(receivedMessage.getPayload()).isEqualTo(testMessagePayload);
+		assertThat(receivedMessage.getPayload()).isEqualTo(testMessagePayload.getBytes());
 		assertThat(handler.getInvocationCount()).isEqualTo(consumerProperties.getMaxAttempts());
 		consumerBinding.unbind();
 
@@ -267,13 +269,13 @@ public abstract class KafkaBinderTests extends
 				successfulInputChannel, consumerProperties);
 		binderBindUnbindLatency();
 		String testMessage2Payload = "test." + UUID.randomUUID().toString();
-		Message<String> testMessage2 = MessageBuilder.withPayload(testMessage2Payload).build();
+		Message<byte[]> testMessage2 = MessageBuilder.withPayload(testMessage2Payload.getBytes()).build();
 		moduleOutputChannel.send(testMessage2);
 
 		Message<?> firstReceived = receive(successfulInputChannel);
-		assertThat(firstReceived.getPayload()).isEqualTo(testMessagePayload);
+		assertThat(firstReceived.getPayload()).isEqualTo(testMessagePayload.getBytes());
 		Message<?> secondReceived = receive(successfulInputChannel);
-		assertThat(secondReceived.getPayload()).isEqualTo(testMessage2Payload);
+		assertThat(secondReceived.getPayload()).isEqualTo(testMessage2Payload.getBytes());
 		consumerBinding.unbind();
 		producerBinding.unbind();
 	}
@@ -306,18 +308,18 @@ public abstract class KafkaBinderTests extends
 				"error.retryTest." + uniqueBindingId + ".0.testGroup", null, dlqChannel, dlqConsumerProperties);
 
 		String testMessagePayload = "test." + UUID.randomUUID().toString();
-		Message<String> testMessage = MessageBuilder.withPayload(testMessagePayload).build();
+		Message<byte[]> testMessage = MessageBuilder.withPayload(testMessagePayload.getBytes()).build();
 		moduleOutputChannel.send(testMessage);
 
 		Message<?> dlqMessage = receive(dlqChannel, 3);
 		assertThat(dlqMessage).isNotNull();
-		assertThat(dlqMessage.getPayload()).isEqualTo(testMessagePayload);
+		assertThat(dlqMessage.getPayload()).isEqualTo(testMessagePayload.getBytes());
 
 		// first attempt fails
 		assertThat(handler.getReceivedMessages().entrySet()).hasSize(1);
 		Message<?> handledMessage = handler.getReceivedMessages().entrySet().iterator().next().getValue();
 		assertThat(handledMessage).isNotNull();
-		assertThat(handledMessage.getPayload()).isEqualTo(testMessagePayload);
+		assertThat(handledMessage.getPayload()).isEqualTo(testMessagePayload.getBytes());
 		assertThat(handler.getInvocationCount()).isEqualTo(consumerProperties.getMaxAttempts());
 		binderBindUnbindLatency();
 		dlqConsumerBinding.unbind();
@@ -328,11 +330,11 @@ public abstract class KafkaBinderTests extends
 		consumerBinding = binder.bindConsumer("retryTest." + uniqueBindingId + ".0", "testGroup",
 				successfulInputChannel, consumerProperties);
 		String testMessage2Payload = "test." + UUID.randomUUID().toString();
-		Message<String> testMessage2 = MessageBuilder.withPayload(testMessage2Payload).build();
+		Message<byte[]> testMessage2 = MessageBuilder.withPayload(testMessage2Payload.getBytes()).build();
 		moduleOutputChannel.send(testMessage2);
 
 		Message<?> receivedMessage = receive(successfulInputChannel);
-		assertThat(receivedMessage.getPayload()).isEqualTo(testMessage2Payload);
+		assertThat(receivedMessage.getPayload()).isEqualTo(testMessage2Payload.getBytes());
 
 		binderBindUnbindLatency();
 		consumerBinding.unbind();
@@ -369,18 +371,18 @@ public abstract class KafkaBinderTests extends
 				dlqConsumerProperties);
 
 		String testMessagePayload = "test." + UUID.randomUUID().toString();
-		Message<String> testMessage = MessageBuilder.withPayload(testMessagePayload).build();
+		Message<byte[]> testMessage = MessageBuilder.withPayload(testMessagePayload.getBytes()).build();
 		moduleOutputChannel.send(testMessage);
 
 		Message<?> dlqMessage = receive(dlqChannel, 3);
 		assertThat(dlqMessage).isNotNull();
-		assertThat(dlqMessage.getPayload()).isEqualTo(testMessagePayload);
+		assertThat(dlqMessage.getPayload()).isEqualTo(testMessagePayload.getBytes());
 
 		// first attempt fails
 		assertThat(handler.getReceivedMessages().entrySet()).hasSize(1);
 		Message<?> handledMessage = handler.getReceivedMessages().entrySet().iterator().next().getValue();
 		assertThat(handledMessage).isNotNull();
-		assertThat(handledMessage.getPayload()).isEqualTo(testMessagePayload);
+		assertThat(handledMessage.getPayload()).isEqualTo(testMessagePayload.getBytes());
 		assertThat(handler.getInvocationCount()).isEqualTo(consumerProperties.getMaxAttempts());
 		binderBindUnbindLatency();
 		dlqConsumerBinding.unbind();
@@ -391,11 +393,11 @@ public abstract class KafkaBinderTests extends
 		consumerBinding = binder.bindConsumer("retryTest." + uniqueBindingId + ".0", "testGroup",
 				successfulInputChannel, consumerProperties);
 		String testMessage2Payload = "test." + UUID.randomUUID().toString();
-		Message<String> testMessage2 = MessageBuilder.withPayload(testMessage2Payload).build();
+		Message<byte[]> testMessage2 = MessageBuilder.withPayload(testMessage2Payload.getBytes()).build();
 		moduleOutputChannel.send(testMessage2);
 
 		Message<?> receivedMessage = receive(successfulInputChannel);
-		assertThat(receivedMessage.getPayload()).isEqualTo(testMessage2Payload);
+		assertThat(receivedMessage.getPayload()).isEqualTo(testMessage2Payload.getBytes());
 
 		binderBindUnbindLatency();
 		consumerBinding.unbind();
@@ -951,20 +953,28 @@ public abstract class KafkaBinderTests extends
 			}
 		};
 
+		ObjectMapper om = new ObjectMapper();
+
 		if (usesExplicitRouting()) {
-			assertThat(receive0.getPayload()).isEqualTo(0);
-			assertThat(receive1.getPayload()).isEqualTo(1);
-			assertThat(receive2.getPayload()).isEqualTo(2);
+			assertThat(om.readValue((byte[])receive0.getPayload(), Integer.class)).isEqualTo(0);
+			assertThat(om.readValue((byte[])receive1.getPayload(), Integer.class)).isEqualTo(1);
+			assertThat(om.readValue((byte[])receive2.getPayload(), Integer.class)).isEqualTo(2);
 			assertThat(receive2).has(correlationHeadersForPayload2);
 		}
 		else {
 			List<Message<?>> receivedMessages = Arrays.asList(receive0, receive1, receive2);
-			assertThat(receivedMessages).extracting("payload").containsExactlyInAnyOrder(0, 1, 2);
+			assertThat(receivedMessages).extracting("payload").containsExactlyInAnyOrder(new byte[]{48}, new byte[]{49}, new byte[]{50});
 			Condition<Message<?>> payloadIs2 = new Condition<Message<?>>() {
 
 				@Override
 				public boolean matches(Message<?> value) {
-					return value.getPayload().equals(2);
+					try {
+						return om.readValue((byte[])value.getPayload(), Integer.class).equals(2);
+					}
+					catch (IOException e) {
+						//
+					}
+					return false;
 				}
 			};
 			assertThat(receivedMessages).filteredOn(payloadIs2).areExactly(1, correlationHeadersForPayload2);
@@ -1040,11 +1050,12 @@ public abstract class KafkaBinderTests extends
 		assertThat(receive2).isNotNull();
 		Message<?> receive3 = receive(input3);
 		assertThat(receive3).isNotNull();
+		ObjectMapper om = new ObjectMapper();
 
-		assertThat(receive0.getPayload()).isEqualTo(0);
-		assertThat(receive1.getPayload()).isEqualTo(1);
-		assertThat(receive2.getPayload()).isEqualTo(2);
-		assertThat(receive3.getPayload()).isEqualTo(3);
+		assertThat(om.readValue((byte[])receive0.getPayload(), Integer.class)).isEqualTo(0);
+		assertThat(om.readValue((byte[])receive1.getPayload(), Integer.class)).isEqualTo(1);
+		assertThat(om.readValue((byte[])receive2.getPayload(), Integer.class)).isEqualTo(2);
+		assertThat(om.readValue((byte[])receive3.getPayload(), Integer.class)).isEqualTo(3);
 
 		input0Binding.unbind();
 		input1Binding.unbind();
@@ -1456,6 +1467,7 @@ public abstract class KafkaBinderTests extends
 		}
 	}
 
+	//TODO: We need to evaluate this test as built in serialization has different meaning in 2.0
 	@Test
 	@SuppressWarnings("unchecked")
 	public void testBuiltinSerialization() throws Exception {
@@ -1463,7 +1475,9 @@ public abstract class KafkaBinderTests extends
 		Binding<?> consumerBinding = null;
 		try {
 			String testPayload = new String("test");
-			Message<?> message = MessageBuilder.withPayload(testPayload).build();
+			Message<?> message = MessageBuilder.withPayload(testPayload.getBytes())
+					.setHeader(MessageHeaders.CONTENT_TYPE, MimeTypeUtils.TEXT_PLAIN_VALUE.getBytes())
+					.build();
 			SubscribableChannel moduleOutputChannel = new DirectChannel();
 			String testTopicName = "existing" + System.currentTimeMillis();
 			KafkaBinderConfigurationProperties configurationProperties = createConfigurationProperties();
@@ -1486,8 +1500,8 @@ public abstract class KafkaBinderTests extends
 			moduleOutputChannel.send(message);
 			Message<?> inbound = receive(moduleInputChannel, 5);
 			assertThat(inbound).isNotNull();
-			assertThat(inbound.getPayload()).isEqualTo("test");
-			assertThat(inbound.getHeaders()).containsEntry("contentType", "text/plain");
+			assertThat(inbound.getPayload()).isEqualTo("test".getBytes());
+			assertThat(inbound.getHeaders()).containsEntry("contentType", "text/plain".getBytes());
 		}
 		finally {
 			if (producerBinding != null) {
@@ -1756,7 +1770,7 @@ public abstract class KafkaBinderTests extends
 		producerProps.setHeaderMode(HeaderMode.raw);
 		producerProps.setErrorChannelEnabled(true);
 		Binding<MessageChannel> producerBinding = binder.bindProducer("ec.0", moduleOutputChannel, producerProps);
-		final Message<?> message = MessageBuilder.withPayload("bad").setHeader(MessageHeaders.CONTENT_TYPE, "foo/bar")
+		final Message<?> message = MessageBuilder.withPayload("bad").setHeader(MessageHeaders.CONTENT_TYPE, "application/json")
 				.build();
 		SubscribableChannel ec = binder.getApplicationContext().getBean("ec.0.errors", SubscribableChannel.class);
 		final AtomicReference<Message<?>> errorMessage = new AtomicReference<>();
@@ -1811,7 +1825,8 @@ public abstract class KafkaBinderTests extends
 		assertThat(errorMessage.get().getPayload()).isInstanceOf(KafkaSendFailureException.class);
 		KafkaSendFailureException exception = (KafkaSendFailureException) errorMessage.get().getPayload();
 		assertThat(exception.getCause()).isSameAs(fooException);
-		assertThat(new String(((byte[] )exception.getFailedMessage().getPayload()))).isEqualTo(message.getPayload());
+		ObjectMapper om = new ObjectMapper();
+		assertThat(om.readValue((byte[] )exception.getFailedMessage().getPayload(), String.class)).isEqualTo(message.getPayload());
 		assertThat(exception.getRecord().value()).isSameAs(sent.get());
 		producerBinding.unbind();
 	}

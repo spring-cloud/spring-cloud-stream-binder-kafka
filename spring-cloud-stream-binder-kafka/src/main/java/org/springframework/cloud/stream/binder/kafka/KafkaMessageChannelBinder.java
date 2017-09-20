@@ -67,9 +67,11 @@ import org.springframework.kafka.listener.AbstractMessageListenerContainer;
 import org.springframework.kafka.listener.ConcurrentMessageListenerContainer;
 import org.springframework.kafka.listener.config.ContainerProperties;
 import org.springframework.kafka.support.DefaultKafkaHeaderMapper;
+import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.ProducerListener;
 import org.springframework.kafka.support.SendResult;
 import org.springframework.kafka.support.TopicPartitionInitialOffset;
+import org.springframework.kafka.support.converter.MessagingMessageConverter;
 import org.springframework.kafka.transaction.KafkaTransactionManager;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
@@ -98,7 +100,7 @@ import org.springframework.util.concurrent.ListenableFutureCallback;
  */
 public class KafkaMessageChannelBinder extends
 		AbstractMessageChannelBinder<ExtendedConsumerProperties<KafkaConsumerProperties>,
-			ExtendedProducerProperties<KafkaProducerProperties>, KafkaTopicProvisioner>
+					ExtendedProducerProperties<KafkaProducerProperties>, KafkaTopicProvisioner>
 		implements ExtendedPropertiesBinder<MessageChannel, KafkaConsumerProperties, KafkaProducerProperties> {
 
 	private final KafkaBinderConfigurationProperties configurationProperties;
@@ -211,7 +213,8 @@ public class KafkaMessageChannelBinder extends
 			if (!patterns.contains("!" + MessageHeaders.ID)) {
 				patterns.add(0, "!" + MessageHeaders.ID);
 			}
-			handler.setHeaderMapper(new DefaultKafkaHeaderMapper(patterns.toArray(new String[patterns.size()])));
+			DefaultKafkaHeaderMapper headerMapper = new DefaultKafkaHeaderMapper(patterns.toArray(new String[patterns.size()]));
+			handler.setHeaderMapper(headerMapper);
 		}
 		return handler;
 	}
@@ -332,6 +335,14 @@ public class KafkaMessageChannelBinder extends
 		}
 		final KafkaMessageDrivenChannelAdapter<?, ?> kafkaMessageDrivenChannelAdapter = new KafkaMessageDrivenChannelAdapter<>(
 				messageListenerContainer);
+		MessagingMessageConverter messageConverter = new MessagingMessageConverter();
+		DefaultKafkaHeaderMapper headerMapper = new DefaultKafkaHeaderMapper();
+		String[] trustedPackages = extendedConsumerProperties.getExtension().getTrustedPackages();
+		if (!StringUtils.isEmpty(trustedPackages)) {
+			headerMapper.addTrustedPackages(trustedPackages);
+		}
+		messageConverter.setHeaderMapper(headerMapper);
+		kafkaMessageDrivenChannelAdapter.setMessageConverter(messageConverter);
 		kafkaMessageDrivenChannelAdapter.setBeanFactory(this.getBeanFactory());
 		ErrorInfrastructure errorInfrastructure = registerErrorInfrastructure(destination, consumerGroup,
 				extendedConsumerProperties);
@@ -363,7 +374,7 @@ public class KafkaMessageChannelBinder extends
 				@Override
 				public void handleMessage(Message<?> message) throws MessagingException {
 					final ConsumerRecord<?, ?> record = message.getHeaders()
-							.get(KafkaMessageDrivenChannelAdapter.KAFKA_RAW_DATA, ConsumerRecord.class);
+							.get(KafkaHeaders.RAW_DATA, ConsumerRecord.class);
 					final byte[] key = record.key() != null ? Utils.toArray(ByteBuffer.wrap((byte[]) record.key()))
 							: null;
 					final byte[] payload = record.value() != null

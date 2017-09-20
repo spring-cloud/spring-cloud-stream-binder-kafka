@@ -37,7 +37,6 @@ import org.springframework.cloud.stream.binding.AbstractBindingTargetFactory;
 import org.springframework.cloud.stream.config.BindingProperties;
 import org.springframework.cloud.stream.config.BindingServiceProperties;
 import org.springframework.cloud.stream.converter.CompositeMessageConverterFactory;
-import org.springframework.integration.codec.Codec;
 import org.springframework.integration.support.MutableMessageHeaders;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.converter.MessageConverter;
@@ -55,8 +54,6 @@ public class KStreamBoundElementFactory extends AbstractBindingTargetFactory<KSt
 
 	private final BindingServiceProperties bindingServiceProperties;
 
-	private volatile Codec codec;
-
 	private final StringConvertingContentTypeResolver contentTypeResolver = new StringConvertingContentTypeResolver();
 
 	private volatile Map<String, Class<?>> payloadTypeCache = new ConcurrentHashMap<>();
@@ -64,11 +61,10 @@ public class KStreamBoundElementFactory extends AbstractBindingTargetFactory<KSt
 	private CompositeMessageConverterFactory compositeMessageConverterFactory;
 
 	public KStreamBoundElementFactory(KStreamBuilder streamBuilder, BindingServiceProperties bindingServiceProperties,
-			Codec codec, CompositeMessageConverterFactory compositeMessageConverterFactory) {
+			CompositeMessageConverterFactory compositeMessageConverterFactory) {
 		super(KStream.class);
 		this.bindingServiceProperties = bindingServiceProperties;
 		this.kStreamBuilder = streamBuilder;
-		this.codec = codec;
 		this.compositeMessageConverterFactory = compositeMessageConverterFactory;
 	}
 
@@ -113,7 +109,7 @@ public class KStreamBoundElementFactory extends AbstractBindingTargetFactory<KSt
 	}
 
 	private MessageValues deserializePayloadIfNecessary(MessageValues messageValues) {
-		return MessageSerializationUtils.deserializePayload(messageValues, this.contentTypeResolver, this.codec);
+		return MessageSerializationUtils.deserializePayload(messageValues, this.contentTypeResolver);
 	}
 
 	interface KStreamWrapper {

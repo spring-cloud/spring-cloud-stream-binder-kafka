@@ -4,8 +4,8 @@
 
 	<artifactId>spring-cloud-stream-binder-kafka</artifactId>
 	<packaging>jar</packaging>
-	<name>spring-cloud-stream-binder-kafka11</name>
-	<description>Kafka binder implementation for the 0.11.x.x client</description>
+	<name>spring-cloud-stream-binder-kafka</name>
+	<description>Kafka binder implementation</description>
 
 	<parent>
 		<groupId>org.springframework.cloud</groupId>
@@ -17,7 +17,6 @@
 		<dependency>
 			<groupId>org.springframework.cloud</groupId>
 			<artifactId>spring-cloud-stream-binder-kafka-core</artifactId>
-			<version>2.0.0.BUILD-SNAPSHOT</version>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -27,10 +26,6 @@
 		<dependency>
 			<groupId>org.springframework.cloud</groupId>
 			<artifactId>spring-cloud-stream</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>org.springframework.cloud</groupId>
-			<artifactId>spring-cloud-stream-codec</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -53,24 +48,23 @@
 		<dependency>
 			<groupId>org.springframework.kafka</groupId>
 			<artifactId>spring-kafka</artifactId>
-			<version>${spring-kafka.version}</version>
 		</dependency>
 <!-- begin temporary -->
-		<dependency>
-			<groupId>org.springframework.integration</groupId>
-			<artifactId>spring-integration-core</artifactId>
-			<version>4.3.12.BUILD-SNAPSHOT</version>
-		</dependency>
-		<dependency>
-			<groupId>org.springframework.integration</groupId>
-			<artifactId>spring-integration-jmx</artifactId>
-			<version>4.3.12.BUILD-SNAPSHOT</version>
-		</dependency>
-		<dependency>
-			<groupId>org.springframework.integration</groupId>
-			<artifactId>spring-integration-test</artifactId>
-			<version>4.3.12.BUILD-SNAPSHOT</version>
-		</dependency>
+		<!--<dependency>-->
+			<!--<groupId>org.springframework.integration</groupId>-->
+			<!--<artifactId>spring-integration-core</artifactId>-->
+			<!--<version>4.3.12.BUILD-SNAPSHOT</version>-->
+		<!--</dependency>-->
+		<!--<dependency>-->
+			<!--<groupId>org.springframework.integration</groupId>-->
+			<!--<artifactId>spring-integration-jmx</artifactId>-->
+			<!--<version>4.3.12.BUILD-SNAPSHOT</version>-->
+		<!--</dependency>-->
+		<!--<dependency>-->
+			<!--<groupId>org.springframework.integration</groupId>-->
+			<!--<artifactId>spring-integration-test</artifactId>-->
+			<!--<version>4.3.12.BUILD-SNAPSHOT</version>-->
+		<!--</dependency>-->
 <!-- end temporary -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
