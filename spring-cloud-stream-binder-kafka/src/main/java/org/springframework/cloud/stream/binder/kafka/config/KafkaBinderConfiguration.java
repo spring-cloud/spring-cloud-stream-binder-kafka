@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
+import io.micrometer.core.instrument.binder.MeterBinder;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -33,6 +34,7 @@ import org.springframework.boot.autoconfigure.context.PropertyPlaceholderAutoCon
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.cloud.stream.binder.Binder;
 import org.springframework.cloud.stream.binder.kafka.KafkaBinderHealthIndicator;
+import org.springframework.cloud.stream.binder.kafka.KafkaBinderMetrics;
 import org.springframework.cloud.stream.binder.kafka.KafkaMessageChannelBinder;
 import org.springframework.cloud.stream.binder.kafka.admin.AdminUtilsOperation;
 import org.springframework.cloud.stream.binder.kafka.admin.Kafka11AdminUtilsOperation;
@@ -122,10 +124,10 @@ public class KafkaBinderConfiguration {
 		return new KafkaBinderHealthIndicator(kafkaMessageChannelBinder, consumerFactory);
 	}
 
-//	@Bean
-//	public PublicMetrics kafkaBinderMetrics(KafkaMessageChannelBinder kafkaMessageChannelBinder) {
-//		return new KafkaBinderMetrics(kafkaMessageChannelBinder, configurationProperties);
-//	}
+	@Bean
+	public MeterBinder kafkaBinderMetrics(KafkaMessageChannelBinder kafkaMessageChannelBinder) {
+		return new KafkaBinderMetrics(kafkaMessageChannelBinder, configurationProperties);
+	}
 
 	@Bean(name = "adminUtilsOperation")
 	@Conditional(Kafka1xPresent.class)
