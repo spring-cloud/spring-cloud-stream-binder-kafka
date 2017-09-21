@@ -23,7 +23,9 @@ import java.util.Map;
  * @author Marius Bogoevici
  * @author Ilayaperumal Gopinathan
  *
- * <p>Thanks to Laszlo Szabo for providing the initial patch for generic property support.</p>
+ * <p>
+ * Thanks to Laszlo Szabo for providing the initial patch for generic property support.
+ * </p>
  */
 public class KafkaConsumerProperties {
 
@@ -33,8 +35,6 @@ public class KafkaConsumerProperties {
 
 	private Boolean autoCommitOnError;
 
-	private boolean resetOffsets;
-
 	private StartOffset startOffset;
 
 	private boolean enableDlq;
@@ -42,6 +42,8 @@ public class KafkaConsumerProperties {
 	private String dlqName;
 
 	private int recoveryInterval = 5000;
+
+	private String[] trustedPackages;
 
 	private Map<String, String> configuration = new HashMap<>();
 
@@ -51,14 +53,6 @@ public class KafkaConsumerProperties {
 
 	public void setAutoCommitOffset(boolean autoCommitOffset) {
 		this.autoCommitOffset = autoCommitOffset;
-	}
-
-	public boolean isResetOffsets() {
-		return this.resetOffsets;
-	}
-
-	public void setResetOffsets(boolean resetOffsets) {
-		this.resetOffsets = resetOffsets;
 	}
 
 	public StartOffset getStartOffset() {
@@ -102,7 +96,8 @@ public class KafkaConsumerProperties {
 	}
 
 	public enum StartOffset {
-		earliest(-2L), latest(-1L);
+		earliest(-2L),
+		latest(-1L);
 
 		private final long referencePoint;
 
@@ -129,5 +124,13 @@ public class KafkaConsumerProperties {
 
 	public void setDlqName(String dlqName) {
 		this.dlqName = dlqName;
+	}
+
+	public String[] getTrustedPackages() {
+		return trustedPackages;
+	}
+
+	public void setTrustedPackages(String[] trustedPackages) {
+		this.trustedPackages = trustedPackages;
 	}
 }

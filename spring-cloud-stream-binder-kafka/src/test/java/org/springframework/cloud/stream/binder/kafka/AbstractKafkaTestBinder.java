@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-2016 the original author or authors.
+ * Copyright 2014-2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,48 +15,33 @@
  */
 package org.springframework.cloud.stream.binder.kafka;
 
-import java.util.List;
-
-import com.esotericsoftware.kryo.Kryo;
-import com.esotericsoftware.kryo.Registration;
-
 import org.springframework.cloud.stream.binder.AbstractTestBinder;
 import org.springframework.cloud.stream.binder.ExtendedConsumerProperties;
 import org.springframework.cloud.stream.binder.ExtendedProducerProperties;
 import org.springframework.cloud.stream.binder.kafka.properties.KafkaConsumerProperties;
 import org.springframework.cloud.stream.binder.kafka.properties.KafkaProducerProperties;
-import org.springframework.integration.codec.Codec;
-import org.springframework.integration.codec.kryo.KryoRegistrar;
-import org.springframework.integration.codec.kryo.PojoCodec;
-import org.springframework.integration.tuple.TupleKryoRegistrar;
+import org.springframework.context.ApplicationContext;
 
 /**
  * @author Soby Chacko
+ * @author Gary Russell
  */
 public abstract class AbstractKafkaTestBinder extends
 		AbstractTestBinder<KafkaMessageChannelBinder, ExtendedConsumerProperties<KafkaConsumerProperties>, ExtendedProducerProperties<KafkaProducerProperties>> {
+
+	private ApplicationContext applicationContext;
 
 	@Override
 	public void cleanup() {
 		// do nothing - the rule will take care of that
 	}
 
-	protected static Codec getCodec() {
-		return new PojoCodec(new TupleRegistrar());
+	protected final void setApplicationContext(ApplicationContext context) {
+		this.applicationContext = context;
 	}
 
-	private static class TupleRegistrar implements KryoRegistrar {
-		private final TupleKryoRegistrar delegate = new TupleKryoRegistrar();
-
-		@Override
-		public void registerTypes(Kryo kryo) {
-			this.delegate.registerTypes(kryo);
-		}
-
-		@Override
-		public List<Registration> getRegistrations() {
-			return this.delegate.getRegistrations();
-		}
+	public ApplicationContext getApplicationContext() {
+		return this.applicationContext;
 	}
 
 }
