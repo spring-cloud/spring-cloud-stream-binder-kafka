@@ -24,12 +24,6 @@ import org.apache.kafka.streams.kstream.KStreamBuilder;
 import org.apache.kafka.streams.kstream.KeyValueMapper;
 
 import org.springframework.aop.framework.ProxyFactory;
-import org.springframework.cloud.stream.binder.ConsumerProperties;
-import org.springframework.cloud.stream.binder.EmbeddedHeaderUtils;
-import org.springframework.cloud.stream.binder.HeaderMode;
-import org.springframework.cloud.stream.binder.MessageSerializationUtils;
-import org.springframework.cloud.stream.binder.MessageValues;
-import org.springframework.cloud.stream.binder.StringConvertingContentTypeResolver;
 import org.springframework.cloud.stream.binding.AbstractBindingTargetFactory;
 import org.springframework.cloud.stream.config.BindingProperties;
 import org.springframework.cloud.stream.config.BindingServiceProperties;
@@ -52,8 +46,6 @@ public class KStreamBoundElementFactory extends AbstractBindingTargetFactory<KSt
 
 	private final BindingServiceProperties bindingServiceProperties;
 
-	private final StringConvertingContentTypeResolver contentTypeResolver = new StringConvertingContentTypeResolver();
-
 	private CompositeMessageConverterFactory compositeMessageConverterFactory;
 
 	public KStreamBoundElementFactory(KStreamBuilder streamBuilder, BindingServiceProperties bindingServiceProperties,
@@ -67,7 +59,6 @@ public class KStreamBoundElementFactory extends AbstractBindingTargetFactory<KSt
 	@Override
 	public KStream createInput(String name) {
 		KStream<Object, Object> stream = kStreamBuilder.stream(bindingServiceProperties.getBindingDestination(name));
-		ConsumerProperties properties = bindingServiceProperties.getConsumerProperties(name);
 		stream = stream.map((key, value) -> {
 
 			BindingProperties bindingProperties = bindingServiceProperties.getBindingProperties(name);
@@ -80,24 +71,6 @@ public class KStreamBoundElementFactory extends AbstractBindingTargetFactory<KSt
 			}
 			return new KeyValue<>(key, value);
 		});
-
-		if (HeaderMode.embeddedHeaders.equals(properties.getHeaderMode())) {
-
-			stream = stream.map((key, value) -> {
-				if (!(value instanceof byte[])) {
-					return new KeyValue<>(key, value);
-				}
-				try {
-					MessageValues messageValues = EmbeddedHeaderUtils
-							.extractHeaders(MessageBuilder.withPayload((byte[]) value).build(), true);
-					messageValues = deserializePayloadIfNecessary(messageValues);
-					return new KeyValue<Object, Object>(null, messageValues.toMessage());
-				}
-				catch (Exception e) {
-					throw new IllegalArgumentException(e);
-				}
-			});
-		}
 		return stream;
 	}
 
@@ -112,10 +85,6 @@ public class KStreamBoundElementFactory extends AbstractBindingTargetFactory<KSt
 		ProxyFactory proxyFactory = new ProxyFactory(KStreamWrapper.class, KStream.class);
 		proxyFactory.addAdvice(handler);
 		return (KStream) proxyFactory.getProxy();
-	}
-
-	private MessageValues deserializePayloadIfNecessary(MessageValues messageValues) {
-		return MessageSerializationUtils.deserializePayload(messageValues, this.contentTypeResolver);
 	}
 
 	interface KStreamWrapper {

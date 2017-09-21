@@ -42,7 +42,7 @@ import org.springframework.cloud.stream.binder.Binding;
 import org.springframework.cloud.stream.binder.ExtendedConsumerProperties;
 import org.springframework.cloud.stream.binder.ExtendedProducerProperties;
 import org.springframework.cloud.stream.binder.Spy;
-import org.springframework.cloud.stream.binder.kafka.admin.Kafka11AdminUtilsOperation;
+import org.springframework.cloud.stream.binder.kafka.admin.KafkaAdminUtilsOperation;
 import org.springframework.cloud.stream.binder.kafka.properties.KafkaBinderConfigurationProperties;
 import org.springframework.cloud.stream.binder.kafka.properties.KafkaConsumerProperties;
 import org.springframework.cloud.stream.binder.kafka.properties.KafkaProducerProperties;
@@ -67,8 +67,6 @@ import static org.junit.Assert.assertTrue;
 /**
  * Integration tests for the {@link KafkaMessageChannelBinder}.
  *
- * This test specifically tests for the 0.11.x.x version of Kafka.
- *
  * @author Eric Bottard
  * @author Marius Bogoevici
  * @author Mark Fisher
@@ -83,7 +81,7 @@ public class KafkaBinderTests extends AbstractKafkaBinderTests {
 
 	private KafkaTestBinder binder;
 
-	private final Kafka11AdminUtilsOperation adminUtilsOperation = new Kafka11AdminUtilsOperation();
+	private final KafkaAdminUtilsOperation adminUtilsOperation = new KafkaAdminUtilsOperation();
 
 	@Override
 	protected void binderBindUnbindLatency() throws InterruptedException {
@@ -181,10 +179,6 @@ public class KafkaBinderTests extends AbstractKafkaBinderTests {
 		Deserializer<byte[]> keyDecoder = new ByteArrayDeserializer();
 
 		return new DefaultKafkaConsumerFactory<>(props, keyDecoder, valueDecoder);
-	}
-
-	private Properties getSchemaRegistryProperties() {
-		return new Properties();
 	}
 
 	@Test

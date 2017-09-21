@@ -25,7 +25,6 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.ByteArrayDeserializer;
-import org.apache.kafka.common.utils.AppInfoParser;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
@@ -37,19 +36,15 @@ import org.springframework.cloud.stream.binder.kafka.KafkaBinderHealthIndicator;
 import org.springframework.cloud.stream.binder.kafka.KafkaBinderMetrics;
 import org.springframework.cloud.stream.binder.kafka.KafkaMessageChannelBinder;
 import org.springframework.cloud.stream.binder.kafka.admin.AdminUtilsOperation;
-import org.springframework.cloud.stream.binder.kafka.admin.Kafka11AdminUtilsOperation;
+import org.springframework.cloud.stream.binder.kafka.admin.KafkaAdminUtilsOperation;
 import org.springframework.cloud.stream.binder.kafka.properties.JaasLoginModuleConfiguration;
 import org.springframework.cloud.stream.binder.kafka.properties.KafkaBinderConfigurationProperties;
 import org.springframework.cloud.stream.binder.kafka.properties.KafkaExtendedBindingProperties;
 import org.springframework.cloud.stream.binder.kafka.provisioning.KafkaTopicProvisioner;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Condition;
-import org.springframework.context.annotation.ConditionContext;
-import org.springframework.context.annotation.Conditional;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
-import org.springframework.core.type.AnnotatedTypeMetadata;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.security.jaas.KafkaJaasLoginModuleInitializer;
@@ -130,24 +125,14 @@ public class KafkaBinderConfiguration {
 	}
 
 	@Bean(name = "adminUtilsOperation")
-	@Conditional(Kafka1xPresent.class)
 	@ConditionalOnClass(name = "kafka.admin.AdminUtils")
 	public AdminUtilsOperation kafka10AdminUtilsOperation() {
-		logger.info("AdminUtils selected: Kafka 0.10 AdminUtils");
-		return new Kafka11AdminUtilsOperation();
+		return new KafkaAdminUtilsOperation();
 	}
 
 	@Bean
 	public KafkaJaasLoginModuleInitializer jaasInitializer() throws IOException {
 		return new KafkaJaasLoginModuleInitializer();
-	}
-
-	static class Kafka1xPresent implements Condition {
-
-		@Override
-		public boolean matches(ConditionContext conditionContext, AnnotatedTypeMetadata annotatedTypeMetadata) {
-			return AppInfoParser.getVersion().startsWith("0.1");
-		}
 	}
 
 	public static class JaasConfigurationProperties {

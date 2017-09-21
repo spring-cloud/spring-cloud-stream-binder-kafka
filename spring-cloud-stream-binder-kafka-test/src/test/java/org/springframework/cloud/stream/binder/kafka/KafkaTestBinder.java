@@ -18,7 +18,7 @@ package org.springframework.cloud.stream.binder.kafka;
 
 import org.springframework.cloud.stream.binder.ExtendedConsumerProperties;
 import org.springframework.cloud.stream.binder.kafka.admin.AdminUtilsOperation;
-import org.springframework.cloud.stream.binder.kafka.admin.Kafka11AdminUtilsOperation;
+import org.springframework.cloud.stream.binder.kafka.admin.KafkaAdminUtilsOperation;
 import org.springframework.cloud.stream.binder.kafka.properties.KafkaBinderConfigurationProperties;
 import org.springframework.cloud.stream.binder.kafka.properties.KafkaConsumerProperties;
 import org.springframework.cloud.stream.binder.kafka.provisioning.KafkaTopicProvisioner;
@@ -42,7 +42,7 @@ public class KafkaTestBinder extends AbstractKafkaTestBinder {
 	@SuppressWarnings({ "rawtypes", "unchecked" })
 	public KafkaTestBinder(KafkaBinderConfigurationProperties binderConfiguration) {
 		try {
-			AdminUtilsOperation adminUtilsOperation = new Kafka11AdminUtilsOperation();
+			AdminUtilsOperation adminUtilsOperation = new KafkaAdminUtilsOperation();
 			KafkaTopicProvisioner provisioningProvider =
 					new KafkaTopicProvisioner(binderConfiguration, adminUtilsOperation);
 			provisioningProvider.afterPropertiesSet();

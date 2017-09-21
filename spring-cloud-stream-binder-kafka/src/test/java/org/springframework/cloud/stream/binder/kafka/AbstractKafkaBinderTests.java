@@ -590,8 +590,6 @@ public abstract class AbstractKafkaBinderTests extends
 		Binder binder = getBinder(createConfigurationProperties());
 		GenericApplicationContext context = new GenericApplicationContext();
 		context.refresh();
-		// binder.setApplicationContext(context);
-		// binder.afterPropertiesSet();
 		DirectChannel output = new DirectChannel();
 		QueueChannel input1 = new QueueChannel();
 
