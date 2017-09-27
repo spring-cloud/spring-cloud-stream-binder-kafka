@@ -16,8 +16,6 @@
 
 package org.springframework.cloud.stream.binder.kafka;
 
-import static org.junit.Assert.assertTrue;
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -25,6 +23,10 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.UUID;
 
+import io.confluent.kafka.schemaregistry.rest.SchemaRegistryConfig;
+import io.confluent.kafka.schemaregistry.rest.SchemaRegistryRestApplication;
+import kafka.utils.ZKStringSerializer$;
+import kafka.utils.ZkUtils;
 import org.I0Itec.zkclient.ZkClient;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.ByteArrayDeserializer;
@@ -36,6 +38,7 @@ import org.junit.ClassRule;
 import org.junit.Test;
 
 import org.springframework.cloud.stream.binder.Binder;
+import org.springframework.cloud.stream.binder.BinderHeaders;
 import org.springframework.cloud.stream.binder.Binding;
 import org.springframework.cloud.stream.binder.ExtendedConsumerProperties;
 import org.springframework.cloud.stream.binder.ExtendedProducerProperties;
@@ -44,6 +47,7 @@ import org.springframework.cloud.stream.binder.kafka.admin.Kafka10AdminUtilsOper
 import org.springframework.cloud.stream.binder.kafka.properties.KafkaBinderConfigurationProperties;
 import org.springframework.cloud.stream.binder.kafka.properties.KafkaConsumerProperties;
 import org.springframework.cloud.stream.binder.kafka.properties.KafkaProducerProperties;
+import org.springframework.cloud.stream.config.BindingProperties;
 import org.springframework.integration.channel.DirectChannel;
 import org.springframework.integration.channel.QueueChannel;
 import org.springframework.kafka.core.ConsumerFactory;
@@ -53,13 +57,12 @@ import org.springframework.kafka.test.core.BrokerAddress;
 import org.springframework.kafka.test.rule.KafkaEmbedded;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
+import org.springframework.messaging.MessageHeaders;
 import org.springframework.messaging.SubscribableChannel;
 import org.springframework.messaging.support.MessageBuilder;
+import org.springframework.util.MimeTypeUtils;
 
-import io.confluent.kafka.schemaregistry.rest.SchemaRegistryConfig;
-import io.confluent.kafka.schemaregistry.rest.SchemaRegistryRestApplication;
-import kafka.utils.ZKStringSerializer$;
-import kafka.utils.ZkUtils;
+import static org.junit.Assert.assertTrue;
 
 /**
  * Integration tests for the {@link KafkaMessageChannelBinder}.
@@ -179,6 +182,44 @@ public class Kafka_0_11_BinderTests extends KafkaBinderTests {
 
 		return new DefaultKafkaConsumerFactory<>(props, keyDecoder, valueDecoder);
 	}
+
+	@Test
+	public void testTrustedPackages() throws Exception {
+		Binder binder = getBinder();
+
+		BindingProperties producerBindingProperties = createProducerBindingProperties(createProducerProperties());
+		DirectChannel moduleOutputChannel = createBindableChannel("output", producerBindingProperties);
+		QueueChannel moduleInputChannel = new QueueChannel();
+		Binding<MessageChannel> producerBinding = binder.bindProducer("bar.0", moduleOutputChannel,
+				producerBindingProperties.getProducer());
+		ExtendedConsumerProperties<KafkaConsumerProperties> consumerProperties = createConsumerProperties();
+		consumerProperties.getExtension().setTrustedPackages(new String[]{"org.springframework.util"});
+		Binding<MessageChannel> consumerBinding = binder.bindConsumer("bar.0", "testSendAndReceiveNoOriginalContentType", moduleInputChannel,
+				consumerProperties);
+		binderBindUnbindLatency();
+
+		//Message<?> message = MessageBuilder.withPayload("foo").build();
+
+		Message<?> message = org.springframework.integration.support.MessageBuilder.withPayload("foo")
+				.setHeader(MessageHeaders.CONTENT_TYPE, MimeTypeUtils.TEXT_PLAIN).setHeader("foo", MimeTypeUtils.TEXT_PLAIN)
+						.build();
+
+		moduleOutputChannel.send(message);
+		Message<?> inbound = receive(moduleInputChannel);
+		Assertions.assertThat(inbound).isNotNull();
+		Assertions.assertThat(inbound.getPayload()).isEqualTo("foo");
+		Assertions.assertThat(inbound.getHeaders().get(BinderHeaders.BINDER_ORIGINAL_CONTENT_TYPE)).isNull();
+		Assertions.assertThat(inbound.getHeaders().get(MessageHeaders.CONTENT_TYPE)).isEqualTo(MimeTypeUtils.TEXT_PLAIN_VALUE);
+		Assertions.assertThat(inbound.getHeaders().get("foo")).isNotNull();
+		Object foo = inbound.getHeaders().get("foo");
+		String actual = new String((byte[]) foo);
+		Assertions.assertThat(actual).doesNotContain("NonTrustedHeaderType");
+		Assertions.assertThat(actual).contains("text", "plain");
+		producerBinding.unbind();
+		consumerBinding.unbind();
+	}
+
+	class Foo{}
 
 	@Test
 	@SuppressWarnings("unchecked")

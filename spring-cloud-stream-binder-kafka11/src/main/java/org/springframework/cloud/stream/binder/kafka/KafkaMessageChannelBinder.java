@@ -70,6 +70,7 @@ import org.springframework.kafka.support.DefaultKafkaHeaderMapper;
 import org.springframework.kafka.support.ProducerListener;
 import org.springframework.kafka.support.SendResult;
 import org.springframework.kafka.support.TopicPartitionInitialOffset;
+import org.springframework.kafka.support.converter.MessagingMessageConverter;
 import org.springframework.kafka.transaction.KafkaTransactionManager;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
@@ -332,6 +333,15 @@ public class KafkaMessageChannelBinder extends
 		}
 		final KafkaMessageDrivenChannelAdapter<?, ?> kafkaMessageDrivenChannelAdapter = new KafkaMessageDrivenChannelAdapter<>(
 				messageListenerContainer);
+		MessagingMessageConverter messageConverter = new MessagingMessageConverter();
+		DefaultKafkaHeaderMapper headerMapper = new DefaultKafkaHeaderMapper();
+		String[] trustedPackages = extendedConsumerProperties.getExtension().getTrustedPackages();
+		if (!StringUtils.isEmpty(trustedPackages)) {
+			headerMapper.addTrustedPackages(trustedPackages);
+		}
+		messageConverter.setHeaderMapper(headerMapper);
+		kafkaMessageDrivenChannelAdapter.setMessageConverter(messageConverter);
+
 		kafkaMessageDrivenChannelAdapter.setBeanFactory(this.getBeanFactory());
 		ErrorInfrastructure errorInfrastructure = registerErrorInfrastructure(destination, consumerGroup,
 				extendedConsumerProperties);
