@@ -22,7 +22,8 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedList;
-import java.util.List;import java.util.Map;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.Callable;
 
@@ -37,6 +38,7 @@ import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
 import org.apache.kafka.common.utils.Utils;
 
+import org.springframework.beans.factory.DisposableBean;
 import org.springframework.cloud.stream.binder.AbstractMessageChannelBinder;
 import org.springframework.cloud.stream.binder.Binder;
 import org.springframework.cloud.stream.binder.BinderHeaders;
@@ -172,7 +174,7 @@ public class KafkaMessageChannelBinder extends
 						Producer<byte[], byte[]> producer = producerFB.createProducer();
 						List<PartitionInfo> partitionsFor = producer.partitionsFor(destination.getName());
 						producer.close();
-						producerFB.destroy();
+						((DisposableBean) producerFB).destroy();
 						return partitionsFor;
 					}
 
