@@ -163,6 +163,7 @@ public class KafkaMessageChannelBinder extends
 						Producer<byte[], byte[]> producer = producerFB.createProducer();
 						List<PartitionInfo> partitionsFor = producer.partitionsFor(destination.getName());
 						producer.close();
+						producerFB.destroy();
 						return partitionsFor;
 					}
 
