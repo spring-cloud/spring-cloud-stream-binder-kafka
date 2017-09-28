@@ -22,11 +22,11 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
+import java.util.List;import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.Callable;
 
+import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.Producer;
@@ -170,9 +170,10 @@ public class KafkaMessageChannelBinder extends
 					@Override
 					public Collection<PartitionInfo> call() throws Exception {
 						Producer<byte[], byte[]> producer = producerFB.createProducer();
-						List<PartitionInfo> thePartitions = producer.partitionsFor(destination.getName());
+						List<PartitionInfo> partitionsFor = producer.partitionsFor(destination.getName());
 						producer.close();
-						return thePartitions;
+						producerFB.destroy();
+						return partitionsFor;
 					}
 
 				});
@@ -270,10 +271,15 @@ public class KafkaMessageChannelBinder extends
 		Collection<PartitionInfo> allPartitions = provisioningProvider.getPartitionsForTopic(partitionCount,
 				extendedConsumerProperties.getExtension().isAutoRebalanceEnabled(),
 				new Callable<Collection<PartitionInfo>>() {
+
 					@Override
 					public Collection<PartitionInfo> call() throws Exception {
-						return consumerFactory.createConsumer().partitionsFor(destination.getName());
+						Consumer<?, ?> consumer = consumerFactory.createConsumer();
+						List<PartitionInfo> partitionsFor = consumer.partitionsFor(destination.getName());
+						consumer.close();
+						return partitionsFor;
 					}
+
 				});
 
 		Collection<PartitionInfo> listenedPartitions;
