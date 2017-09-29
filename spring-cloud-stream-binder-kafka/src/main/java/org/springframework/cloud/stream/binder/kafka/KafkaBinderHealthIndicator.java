@@ -19,10 +19,12 @@ package org.springframework.cloud.stream.binder.kafka;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.clients.consumer.Consumer;
@@ -67,10 +69,9 @@ public class KafkaBinderHealthIndicator implements HealthIndicator {
 
 	@Override
 	public Health health() {
-		final CountDownLatch latch = new CountDownLatch(1);
 		final AtomicReference<Health> health = new AtomicReference<>();
 		ExecutorService exec = Executors.newSingleThreadExecutor();
-		exec.execute(new Runnable() {
+		Future<?> future = exec.submit(new Runnable() {
 
 			@Override
 			public void run() {
@@ -97,25 +98,24 @@ public class KafkaBinderHealthIndicator implements HealthIndicator {
 				catch (Exception e) {
 					health.set(Health.down(e).build());
 				}
-				finally {
-					latch.countDown();
-				}
 			}
 
 		});
 		try {
-			if (!latch.await(this.timeout, TimeUnit.SECONDS)) {
-				return Health.down()
-						.withDetail("Failed to retrieve partition information in", this.timeout + " seconds")
-						.build();
-			}
-			else {
-				return health.get();
-			}
+			future.get(this.timeout, TimeUnit.SECONDS);
+			return health.get();
 		}
 		catch (InterruptedException e) {
 			return Health.down()
 					.withDetail("Interrupted while waiting for partition information in", this.timeout + " seconds")
+					.build();
+		}
+		catch (ExecutionException e) {
+			return Health.down(e).build();
+		}
+		catch (TimeoutException e) {
+			return Health.down()
+					.withDetail("Failed to retrieve partition information in", this.timeout + " seconds")
 					.build();
 		}
 		finally {
