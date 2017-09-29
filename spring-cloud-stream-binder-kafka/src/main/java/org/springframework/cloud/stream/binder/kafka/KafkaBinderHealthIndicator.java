@@ -106,6 +106,7 @@ public class KafkaBinderHealthIndicator implements HealthIndicator {
 			return health.get();
 		}
 		catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
 			return Health.down()
 					.withDetail("Interrupted while waiting for partition information in", this.timeout + " seconds")
 					.build();
