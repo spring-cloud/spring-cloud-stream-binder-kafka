@@ -69,6 +69,7 @@ import org.springframework.util.ObjectUtils;
  * @author Soby Chacko
  * @author Mark Fisher
  * @author Ilayaperumal Gopinathan
+ * @author Gary Russell
  */
 @Configuration
 @ConditionalOnMissingBean(Binder.class)
@@ -129,7 +130,10 @@ public class KafkaBinderConfiguration {
 			props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, this.configurationProperties.getKafkaConnectionString());
 		}
 		ConsumerFactory<?, ?> consumerFactory = new DefaultKafkaConsumerFactory<>(props);
-		return new KafkaBinderHealthIndicator(kafkaMessageChannelBinder, consumerFactory);
+		KafkaBinderHealthIndicator indicator = new KafkaBinderHealthIndicator(kafkaMessageChannelBinder,
+				consumerFactory);
+		indicator.setTimeout(this.configurationProperties.getHealthTimeout());
+		return indicator;
 	}
 
 	@Bean(name = "adminUtilsOperation")

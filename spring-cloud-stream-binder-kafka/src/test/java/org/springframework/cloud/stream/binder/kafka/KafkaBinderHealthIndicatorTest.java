@@ -17,6 +17,7 @@ package org.springframework.cloud.stream.binder.kafka;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.verify;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -30,12 +31,16 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.mockito.invocation.InvocationOnMock;
+import org.mockito.stubbing.Answer;
+
 import org.springframework.boot.actuate.health.Health;
 import org.springframework.boot.actuate.health.Status;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 
 /**
  * @author Barry Commins
+ * @author Gary Russell
  */
 public class KafkaBinderHealthIndicatorTest {
 
@@ -58,7 +63,8 @@ public class KafkaBinderHealthIndicatorTest {
 		MockitoAnnotations.initMocks(this);
 		given(consumerFactory.createConsumer()).willReturn(consumer);
 		given(binder.getTopicsInUse()).willReturn(topicsInUse);
-		indicator = new KafkaBinderHealthIndicator(binder, consumerFactory);
+		this.indicator = new KafkaBinderHealthIndicator(binder, consumerFactory);
+		this.indicator.setTimeout(10);
 	}
 
 	@Test
@@ -68,6 +74,7 @@ public class KafkaBinderHealthIndicatorTest {
 		given(consumer.partitionsFor(TEST_TOPIC)).willReturn(partitions);
 		Health health = indicator.health();
 		assertThat(health.getStatus()).isEqualTo(Status.UP);
+		verify(this.consumer).close();
 	}
 
 	@Test
@@ -75,6 +82,25 @@ public class KafkaBinderHealthIndicatorTest {
 		final List<PartitionInfo> partitions = partitions(new Node(-1, null, 0));
 		topicsInUse.put(TEST_TOPIC, partitions);
 		given(consumer.partitionsFor(TEST_TOPIC)).willReturn(partitions);
+		Health health = indicator.health();
+		assertThat(health.getStatus()).isEqualTo(Status.DOWN);
+	}
+
+	@Test(timeout = 5000)
+	public void kafkaBinderDoesNotAnswer() {
+		final List<PartitionInfo> partitions = partitions(new Node(-1, null, 0));
+		topicsInUse.put(TEST_TOPIC, partitions);
+		given(consumer.partitionsFor(TEST_TOPIC)).willAnswer(new Answer<Object>() {
+
+			@Override
+			public Object answer(InvocationOnMock invocation) throws Throwable {
+				final int fiveMinutes = 1000 * 60 * 5;
+				Thread.sleep(fiveMinutes);
+				return partitions;
+			}
+
+		});
+		this.indicator.setTimeout(1);
 		Health health = indicator.health();
 		assertThat(health.getStatus()).isEqualTo(Status.DOWN);
 	}
