@@ -19,13 +19,13 @@ package org.springframework.cloud.stream.binder.kafka;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.common.PartitionInfo;
@@ -69,12 +69,11 @@ public class KafkaBinderHealthIndicator implements HealthIndicator {
 
 	@Override
 	public Health health() {
-		final AtomicReference<Health> health = new AtomicReference<>();
 		ExecutorService exec = Executors.newSingleThreadExecutor();
-		Future<?> future = exec.submit(new Runnable() {
+		Future<Health> future = exec.submit(new Callable<Health>() {
 
 			@Override
-			public void run() {
+			public Health call() {
 				try (Consumer<?, ?> metadataConsumer = consumerFactory.createConsumer()) {
 					Set<String> downMessages = new HashSet<>();
 					for (String topic : KafkaBinderHealthIndicator.this.binder.getTopicsInUse().keySet()) {
@@ -87,23 +86,22 @@ public class KafkaBinderHealthIndicator implements HealthIndicator {
 						}
 					}
 					if (downMessages.isEmpty()) {
-						health.set(Health.up().build());
+						return Health.up().build();
 					}
 					else {
-						health.set(Health.down()
+						return Health.down()
 							.withDetail("Following partitions in use have no leaders: ", downMessages.toString())
-							.build());
+							.build();
 					}
 				}
 				catch (Exception e) {
-					health.set(Health.down(e).build());
+					return Health.down(e).build();
 				}
 			}
 
 		});
 		try {
-			future.get(this.timeout, TimeUnit.SECONDS);
-			return health.get();
+			return future.get(this.timeout, TimeUnit.SECONDS);
 		}
 		catch (InterruptedException e) {
 			Thread.currentThread().interrupt();
