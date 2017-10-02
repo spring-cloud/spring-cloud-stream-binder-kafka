@@ -25,8 +25,10 @@ import java.util.UUID;
 
 import io.confluent.kafka.schemaregistry.rest.SchemaRegistryConfig;
 import io.confluent.kafka.schemaregistry.rest.SchemaRegistryRestApplication;
+
 import kafka.utils.ZKStringSerializer$;
 import kafka.utils.ZkUtils;
+
 import org.I0Itec.zkclient.ZkClient;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.ByteArrayDeserializer;
@@ -60,6 +62,7 @@ import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.MessageHeaders;
 import org.springframework.messaging.SubscribableChannel;
 import org.springframework.messaging.support.MessageBuilder;
+import org.springframework.util.MimeType;
 import org.springframework.util.MimeTypeUtils;
 
 import static org.junit.Assert.assertTrue;
@@ -183,6 +186,7 @@ public class Kafka_0_11_BinderTests extends KafkaBinderTests {
 		return new DefaultKafkaConsumerFactory<>(props, keyDecoder, valueDecoder);
 	}
 
+	@SuppressWarnings({ "rawtypes", "unchecked" })
 	@Test
 	public void testTrustedPackages() throws Exception {
 		Binder binder = getBinder();
@@ -194,27 +198,24 @@ public class Kafka_0_11_BinderTests extends KafkaBinderTests {
 				producerBindingProperties.getProducer());
 		ExtendedConsumerProperties<KafkaConsumerProperties> consumerProperties = createConsumerProperties();
 		consumerProperties.getExtension().setTrustedPackages(new String[]{"org.springframework.util"});
-		Binding<MessageChannel> consumerBinding = binder.bindConsumer("bar.0", "testSendAndReceiveNoOriginalContentType", moduleInputChannel,
-				consumerProperties);
+		Binding<MessageChannel> consumerBinding = binder.bindConsumer("bar.0",
+				"testSendAndReceiveNoOriginalContentType", moduleInputChannel, consumerProperties);
 		binderBindUnbindLatency();
 
-		//Message<?> message = MessageBuilder.withPayload("foo").build();
-
 		Message<?> message = org.springframework.integration.support.MessageBuilder.withPayload("foo")
-				.setHeader(MessageHeaders.CONTENT_TYPE, MimeTypeUtils.TEXT_PLAIN).setHeader("foo", MimeTypeUtils.TEXT_PLAIN)
-						.build();
+			.setHeader(MessageHeaders.CONTENT_TYPE, MimeTypeUtils.TEXT_PLAIN).setHeader("foo", MimeTypeUtils.TEXT_PLAIN)
+			.build();
 
 		moduleOutputChannel.send(message);
 		Message<?> inbound = receive(moduleInputChannel);
 		Assertions.assertThat(inbound).isNotNull();
 		Assertions.assertThat(inbound.getPayload()).isEqualTo("foo");
 		Assertions.assertThat(inbound.getHeaders().get(BinderHeaders.BINDER_ORIGINAL_CONTENT_TYPE)).isNull();
-		Assertions.assertThat(inbound.getHeaders().get(MessageHeaders.CONTENT_TYPE)).isEqualTo(MimeTypeUtils.TEXT_PLAIN_VALUE);
-		Assertions.assertThat(inbound.getHeaders().get("foo")).isNotNull();
-		Object foo = inbound.getHeaders().get("foo");
-		String actual = new String((byte[]) foo);
-		Assertions.assertThat(actual).doesNotContain("NonTrustedHeaderType");
-		Assertions.assertThat(actual).contains("text", "plain");
+		Assertions.assertThat(inbound.getHeaders().get(MessageHeaders.CONTENT_TYPE))
+				.isEqualTo(MimeTypeUtils.TEXT_PLAIN_VALUE);
+		Assertions.assertThat(inbound.getHeaders().get("foo")).isInstanceOf(MimeType.class);
+		MimeType actual = (MimeType) inbound.getHeaders().get("foo");
+		Assertions.assertThat(actual).isEqualTo(MimeTypeUtils.TEXT_PLAIN);
 		producerBinding.unbind();
 		consumerBinding.unbind();
 	}
