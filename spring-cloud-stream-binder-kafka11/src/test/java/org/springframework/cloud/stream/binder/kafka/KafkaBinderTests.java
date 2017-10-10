@@ -16,6 +16,11 @@
 
 package org.springframework.cloud.stream.binder.kafka;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.fail;
+import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.mock;
+
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -28,9 +33,12 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.I0Itec.zkclient.ZkClient;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.serialization.ByteArrayDeserializer;
+import org.apache.kafka.common.serialization.ByteArraySerializer;
 import org.apache.kafka.common.serialization.LongDeserializer;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
@@ -85,11 +93,6 @@ import org.springframework.retry.policy.SimpleRetryPolicy;
 import org.springframework.retry.support.RetryTemplate;
 import org.springframework.util.concurrent.ListenableFuture;
 import org.springframework.util.concurrent.SettableListenableFuture;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.fail;
-import static org.junit.Assert.assertTrue;
-import static org.mockito.Mockito.mock;
 
 import kafka.utils.ZKStringSerializer$;
 import kafka.utils.ZkUtils;
@@ -1445,6 +1448,59 @@ public abstract class KafkaBinderTests extends
 			assertThat(inbound).isNotNull();
 			assertThat(inbound.getPayload()).isEqualTo(10);
 			assertThat(inbound.getHeaders()).doesNotContainKey("contentType");
+		}
+		finally {
+			if (producerBinding != null) {
+				producerBinding.unbind();
+			}
+			if (consumerBinding != null) {
+				consumerBinding.unbind();
+			}
+		}
+	}
+
+	@Test
+	@SuppressWarnings("unchecked")
+	public void testNativeSerializationWithCustomSerializerDeserializerBytesPayload() throws Exception {
+		Binding<?> producerBinding = null;
+		Binding<?> consumerBinding = null;
+		try {
+			byte[] testPayload = new byte[1];
+			Message<?> message = MessageBuilder.withPayload(testPayload)
+					.setHeader(MessageHeaders.CONTENT_TYPE, "something/funky")
+					.build();
+			SubscribableChannel moduleOutputChannel = new DirectChannel();
+			String testTopicName = "existing" + System.currentTimeMillis();
+			KafkaBinderConfigurationProperties configurationProperties = createConfigurationProperties();
+			final ZkClient zkClient;
+			zkClient = new ZkClient(configurationProperties.getZkConnectionString(),
+					configurationProperties.getZkSessionTimeout(), configurationProperties.getZkConnectionTimeout(),
+					ZKStringSerializer$.MODULE$);
+			final ZkUtils zkUtils = new ZkUtils(zkClient, null, false);
+			invokeCreateTopic(zkUtils, testTopicName, 1, 1, new Properties());
+			configurationProperties.setAutoAddPartitions(true);
+			Binder binder = getBinder(configurationProperties);
+			QueueChannel moduleInputChannel = new QueueChannel();
+			ExtendedProducerProperties<KafkaProducerProperties> producerProperties = createProducerProperties();
+			producerProperties.setUseNativeEncoding(true);
+			producerProperties.getExtension()
+					.getConfiguration()
+					.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, ByteArraySerializer.class.getName());
+			producerBinding = binder.bindProducer(testTopicName, moduleOutputChannel, producerProperties);
+			ExtendedConsumerProperties<KafkaConsumerProperties> consumerProperties = createConsumerProperties();
+			consumerProperties.getExtension().setAutoRebalanceEnabled(false);
+			consumerProperties.getExtension()
+					.getConfiguration()
+					.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class.getName());
+			consumerBinding = binder.bindConsumer(testTopicName, "test", moduleInputChannel, consumerProperties);
+			// Let the consumer actually bind to the producer before sending a msg
+			binderBindUnbindLatency();
+			moduleOutputChannel.send(message);
+			Message<?> inbound = receive(moduleInputChannel, 500);
+			assertThat(inbound).isNotNull();
+			assertThat(inbound.getPayload()).isEqualTo(new byte[1]);
+			assertThat(inbound.getHeaders()).containsKey("contentType");
+			assertThat(inbound.getHeaders().get(MessageHeaders.CONTENT_TYPE)).isEqualTo("something/funky");
 		}
 		finally {
 			if (producerBinding != null) {
