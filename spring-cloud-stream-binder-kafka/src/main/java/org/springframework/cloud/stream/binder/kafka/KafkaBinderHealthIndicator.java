@@ -118,8 +118,7 @@ public class KafkaBinderHealthIndicator implements HealthIndicator {
 			return Health.down(e).build();
 		}
 		catch (TimeoutException e) {
-			return Health.down()
-					.withDetail("Failed to retrieve partition information in", this.timeout + " seconds")
+			return Health.down().withDetail("Failed to retrieve partition information in", this.timeout + " seconds")
 					.build();
 		}
 		finally {
