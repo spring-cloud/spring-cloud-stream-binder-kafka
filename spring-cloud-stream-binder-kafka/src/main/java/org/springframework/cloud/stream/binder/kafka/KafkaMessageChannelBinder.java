@@ -213,16 +213,21 @@ public class KafkaMessageChannelBinder extends
 		if (errorChannel != null) {
 			handler.setSendFailureChannel(errorChannel);
 		}
-		KafkaHeaderMapper mapper;
+		KafkaHeaderMapper mapper = null;
 		if (this.configurationProperties.getHeaderMapperBeanName() != null) {
 			mapper = getApplicationContext().getBean(this.configurationProperties.getHeaderMapperBeanName(),
 					KafkaHeaderMapper.class);
 		}
+		/*
+		 *  Even if the user configures a bean, we must not use it if the header
+		 *  mode is not the default (headers); setting the mapper to null
+		 *  disables populating headers in the message handler.
+		 */
 		if (producerProperties.getHeaderMode() != null
 				&& !HeaderMode.headers.equals(producerProperties.getHeaderMode())) {
 			mapper = null;
 		}
-		else {
+		else if (mapper == null) {
 			String[] headerPatterns = producerProperties.getExtension().getHeaderPatterns();
 			if (headerPatterns != null && headerPatterns.length > 0) {
 				List<String> patterns = new LinkedList<>(Arrays.asList(headerPatterns));
