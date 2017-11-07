@@ -17,6 +17,7 @@
 package org.springframework.cloud.stream.binder.kafka;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -258,7 +259,6 @@ public class KafkaBinderTests extends
 
 		BindingProperties producerBindingProperties = createProducerBindingProperties(createProducerProperties());
 		DirectChannel moduleOutputChannel = createBindableChannel("output", producerBindingProperties);
-		//QueueChannel moduleInputChannel = new QueueChannel();
 
 		ExtendedConsumerProperties<KafkaConsumerProperties> consumerProperties = createConsumerProperties();
 		consumerProperties.getExtension().setTrustedPackages(new String[]{"org.springframework.util"});
@@ -278,8 +278,6 @@ public class KafkaBinderTests extends
 				.build();
 
 		moduleOutputChannel.send(message);
-		//Message<?> inbound = receive(moduleInputChannel);
-
 		CountDownLatch latch = new CountDownLatch(1);
 		AtomicReference<Message<String>> inboundMessageRef = new AtomicReference<>();
 		moduleInputChannel.subscribe(message1 -> {
@@ -331,8 +329,6 @@ public class KafkaBinderTests extends
 		Message<?> message = org.springframework.integration.support.MessageBuilder.withPayload("foo")
 				.setHeader(MessageHeaders.CONTENT_TYPE, MimeTypeUtils.TEXT_PLAIN).build();
 		moduleOutputChannel.send(message);
-		//Message<?> inbound = receive(moduleInputChannel);
-
 		CountDownLatch latch = new CountDownLatch(1);
 		AtomicReference<Message<String>> inboundMessageRef = new AtomicReference<>();
 		moduleInputChannel.subscribe(message1 -> {
@@ -1274,10 +1270,10 @@ public class KafkaBinderTests extends
 
 		Message<?> receivedMessage1 = receive(inbound1);
 		assertThat(receivedMessage1).isNotNull();
-		assertThat(new String((byte[]) receivedMessage1.getPayload())).isEqualTo(testPayload);
+		assertThat(new String((byte[]) receivedMessage1.getPayload(), StandardCharsets.UTF_8)).isEqualTo(testPayload);
 		Message<?> receivedMessage2 = receive(inbound2);
 		assertThat(receivedMessage2).isNotNull();
-		assertThat(new String((byte[]) receivedMessage2.getPayload())).isEqualTo(testPayload);
+		assertThat(new String((byte[]) receivedMessage2.getPayload(), StandardCharsets.UTF_8)).isEqualTo(testPayload);
 
 		consumerBinding1.unbind();
 		consumerBinding2.unbind();
@@ -1485,11 +1481,11 @@ public class KafkaBinderTests extends
 
 		Message<byte[]> receivedMessage1 = (Message<byte[]>) receive(input1);
 		assertThat(receivedMessage1).isNotNull();
-		assertThat(new String(receivedMessage1.getPayload())).isEqualTo(testPayload1);
+		assertThat(new String(receivedMessage1.getPayload(), StandardCharsets.UTF_8)).isEqualTo(testPayload1);
 
 		Message<byte[]> receivedMessage2 = (Message<byte[]>) receive(input2);
 		assertThat(receivedMessage2).isNotNull();
-		assertThat(new String(receivedMessage2.getPayload())).isEqualTo(testPayload1);
+		assertThat(new String(receivedMessage2.getPayload(), StandardCharsets.UTF_8)).isEqualTo(testPayload1);
 
 		binding2.unbind();
 
@@ -1504,14 +1500,14 @@ public class KafkaBinderTests extends
 
 		receivedMessage1 = (Message<byte[]>) receive(input1);
 		assertThat(receivedMessage1).isNotNull();
-		assertThat(new String(receivedMessage1.getPayload())).isEqualTo(testPayload2);
+		assertThat(new String(receivedMessage1.getPayload(), StandardCharsets.UTF_8)).isEqualTo(testPayload2);
 		receivedMessage1 = (Message<byte[]>) receive(input1);
 		assertThat(receivedMessage1).isNotNull();
-		assertThat(new String(receivedMessage1.getPayload())).isNotNull();
+		assertThat(new String(receivedMessage1.getPayload(), StandardCharsets.UTF_8)).isNotNull();
 
 		receivedMessage2 = (Message<byte[]>) receive(input2);
 		assertThat(receivedMessage2).isNotNull();
-		assertThat(new String(receivedMessage2.getPayload())).isEqualTo(testPayload3);
+		assertThat(new String(receivedMessage2.getPayload(), StandardCharsets.UTF_8)).isEqualTo(testPayload3);
 
 		producerBinding.unbind();
 		binding1.unbind();
@@ -2164,7 +2160,7 @@ public class KafkaBinderTests extends
 		Assert.isTrue(latch.await(5, TimeUnit.SECONDS), "Failed to receive message");
 
 		assertThat(inboundMessageRef.get()).isNotNull();
-		assertThat(new String(inboundMessageRef.get().getPayload())).isEqualTo("testSendAndReceiveWithRawMode");
+		assertThat(new String(inboundMessageRef.get().getPayload(), StandardCharsets.UTF_8)).isEqualTo("testSendAndReceiveWithRawMode");
 		producerBinding.unbind();
 		consumerBinding.unbind();
 	}
@@ -2213,17 +2209,17 @@ public class KafkaBinderTests extends
 		moduleOutputChannel3.send(message);
 		Message<?> inbound = receive(moduleInputChannel, 10_000);
 		assertThat(inbound).isNotNull();
-		assertThat(new String((byte[]) inbound.getPayload())).isEqualTo("testSendAndReceiveWithMixedMode");
+		assertThat(new String((byte[]) inbound.getPayload(), StandardCharsets.UTF_8)).isEqualTo("testSendAndReceiveWithMixedMode");
 		assertThat(inbound.getHeaders().get("foo")).isEqualTo("bar");
 		assertThat(inbound.getHeaders().get(BinderHeaders.NATIVE_HEADERS_PRESENT)).isNull();
 		inbound = receive(moduleInputChannel);
 		assertThat(inbound).isNotNull();
-		assertThat(new String((byte[]) inbound.getPayload())).isEqualTo("testSendAndReceiveWithMixedMode");
+		assertThat(new String((byte[]) inbound.getPayload(), StandardCharsets.UTF_8)).isEqualTo("testSendAndReceiveWithMixedMode");
 		assertThat(inbound.getHeaders().get("foo")).isEqualTo("bar");
 		assertThat(inbound.getHeaders().get(BinderHeaders.NATIVE_HEADERS_PRESENT)).isEqualTo(Boolean.TRUE);
 		inbound = receive(moduleInputChannel);
 		assertThat(inbound).isNotNull();
-		assertThat(new String((byte[]) inbound.getPayload())).isEqualTo("testSendAndReceiveWithMixedMode");
+		assertThat(new String((byte[]) inbound.getPayload(), StandardCharsets.UTF_8)).isEqualTo("testSendAndReceiveWithMixedMode");
 		assertThat(inbound.getHeaders().get("foo")).isNull();
 		assertThat(inbound.getHeaders().get(BinderHeaders.NATIVE_HEADERS_PRESENT)).isNull();
 
@@ -2311,7 +2307,7 @@ public class KafkaBinderTests extends
 		assertThat(errorMessage.get().getPayload()).isInstanceOf(KafkaSendFailureException.class);
 		KafkaSendFailureException exception = (KafkaSendFailureException) errorMessage.get().getPayload();
 		assertThat(exception.getCause()).isSameAs(fooException);
-		assertThat(new String((byte[])exception.getFailedMessage().getPayload())).isEqualTo(message.getPayload());
+		assertThat(new String((byte[])exception.getFailedMessage().getPayload(), StandardCharsets.UTF_8)).isEqualTo(message.getPayload());
 		assertThat(exception.getRecord().value()).isSameAs(sent.get());
 		producerBinding.unbind();
 	}
