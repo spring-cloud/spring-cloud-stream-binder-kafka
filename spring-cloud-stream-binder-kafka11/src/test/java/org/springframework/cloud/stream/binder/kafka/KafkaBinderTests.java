@@ -16,11 +16,6 @@
 
 package org.springframework.cloud.stream.binder.kafka;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.fail;
-import static org.junit.Assert.assertTrue;
-import static org.mockito.Mockito.mock;
-
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -32,6 +27,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
+import kafka.utils.ZKStringSerializer$;
+import kafka.utils.ZkUtils;
 import org.I0Itec.zkclient.ZkClient;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
@@ -58,11 +55,13 @@ import org.springframework.cloud.stream.binder.PartitionTestSupport;
 import org.springframework.cloud.stream.binder.TestUtils;
 import org.springframework.cloud.stream.binder.kafka.properties.KafkaBinderConfigurationProperties;
 import org.springframework.cloud.stream.binder.kafka.properties.KafkaConsumerProperties;
+import org.springframework.cloud.stream.binder.kafka.properties.KafkaConsumerProperties.StandardHeaders;
 import org.springframework.cloud.stream.binder.kafka.properties.KafkaProducerProperties;
 import org.springframework.cloud.stream.binder.kafka.utils.KafkaTopicUtils;
 import org.springframework.cloud.stream.config.BindingProperties;
 import org.springframework.cloud.stream.provisioning.ProvisioningException;
 import org.springframework.context.ApplicationContext;
+import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.support.GenericApplicationContext;
 import org.springframework.integration.IntegrationMessageHeaderAccessor;
 import org.springframework.integration.channel.DirectChannel;
@@ -79,6 +78,7 @@ import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.SendResult;
 import org.springframework.kafka.support.TopicPartitionInitialOffset;
+import org.springframework.kafka.support.converter.MessagingMessageConverter;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.MessageHandler;
@@ -94,8 +94,10 @@ import org.springframework.retry.support.RetryTemplate;
 import org.springframework.util.concurrent.ListenableFuture;
 import org.springframework.util.concurrent.SettableListenableFuture;
 
-import kafka.utils.ZKStringSerializer$;
-import kafka.utils.ZkUtils;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.fail;
+import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.mock;
 
 /**
  * @author Soby Chacko
@@ -1412,7 +1414,7 @@ public abstract class KafkaBinderTests extends
 	}
 
 	@Test
-	@SuppressWarnings("unchecked")
+	@SuppressWarnings({ "unchecked", "rawtypes" })
 	public void testNativeSerializationWithCustomSerializerDeserializer() throws Exception {
 		Binding<?> producerBinding = null;
 		Binding<?> consumerBinding = null;
@@ -1440,6 +1442,7 @@ public abstract class KafkaBinderTests extends
 			consumerProperties.getExtension().setAutoRebalanceEnabled(false);
 			consumerProperties.getExtension().getConfiguration().put("value.deserializer",
 					"org.apache.kafka.common.serialization.IntegerDeserializer");
+			consumerProperties.getExtension().setStandardHeaders(StandardHeaders.both);
 			consumerBinding = binder.bindConsumer(testTopicName, "test", moduleInputChannel, consumerProperties);
 			// Let the consumer actually bind to the producer before sending a msg
 			binderBindUnbindLatency();
@@ -1448,6 +1451,8 @@ public abstract class KafkaBinderTests extends
 			assertThat(inbound).isNotNull();
 			assertThat(inbound.getPayload()).isEqualTo(10);
 			assertThat(inbound.getHeaders()).doesNotContainKey("contentType");
+			assertThat(inbound.getHeaders().getId()).isNotNull();
+			assertThat(inbound.getHeaders().getTimestamp()).isNotNull();
 		}
 		finally {
 			if (producerBinding != null) {
@@ -1460,7 +1465,7 @@ public abstract class KafkaBinderTests extends
 	}
 
 	@Test
-	@SuppressWarnings("unchecked")
+	@SuppressWarnings({ "unchecked", "rawtypes" })
 	public void testNativeSerializationWithCustomSerializerDeserializerBytesPayload() throws Exception {
 		Binding<?> producerBinding = null;
 		Binding<?> consumerBinding = null;
@@ -1480,6 +1485,12 @@ public abstract class KafkaBinderTests extends
 			invokeCreateTopic(zkUtils, testTopicName, 1, 1, new Properties());
 			configurationProperties.setAutoAddPartitions(true);
 			Binder binder = getBinder(configurationProperties);
+			ConfigurableApplicationContext context = TestUtils.getPropertyValue(binder, "binder.applicationContext",
+					ConfigurableApplicationContext.class);
+			MessagingMessageConverter converter = new MessagingMessageConverter();
+			converter.setGenerateMessageId(true);
+			converter.setGenerateTimestamp(true);
+			context.getBeanFactory().registerSingleton("testConverter", converter);
 			QueueChannel moduleInputChannel = new QueueChannel();
 			ExtendedProducerProperties<KafkaProducerProperties> producerProperties = createProducerProperties();
 			producerProperties.setUseNativeEncoding(true);
@@ -1492,6 +1503,7 @@ public abstract class KafkaBinderTests extends
 			consumerProperties.getExtension()
 					.getConfiguration()
 					.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class.getName());
+			consumerProperties.getExtension().setConverterBeanName("testConverter");
 			consumerBinding = binder.bindConsumer(testTopicName, "test", moduleInputChannel, consumerProperties);
 			// Let the consumer actually bind to the producer before sending a msg
 			binderBindUnbindLatency();
@@ -1500,7 +1512,9 @@ public abstract class KafkaBinderTests extends
 			assertThat(inbound).isNotNull();
 			assertThat(inbound.getPayload()).isEqualTo(new byte[1]);
 			assertThat(inbound.getHeaders()).containsKey("contentType");
-			assertThat(inbound.getHeaders().get(MessageHeaders.CONTENT_TYPE)).isEqualTo("something/funky");
+			assertThat(inbound.getHeaders().get(MessageHeaders.CONTENT_TYPE).toString()).isEqualTo("something/funky");
+			assertThat(inbound.getHeaders().getId()).isNotNull();
+			assertThat(inbound.getHeaders().getTimestamp()).isNotNull();
 		}
 		finally {
 			if (producerBinding != null) {
@@ -1670,7 +1684,7 @@ public abstract class KafkaBinderTests extends
 	}
 
 	@Test
-	@SuppressWarnings("unchecked")
+	@SuppressWarnings({ "unchecked", "rawtypes" })
 	public void testSendAndReceiveWithRawMode() throws Exception {
 		Binder binder = getBinder();
 		DirectChannel moduleOutputChannel = new DirectChannel();
