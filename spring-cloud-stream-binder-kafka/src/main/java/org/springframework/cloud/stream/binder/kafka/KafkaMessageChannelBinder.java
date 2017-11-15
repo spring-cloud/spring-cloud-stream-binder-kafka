@@ -295,6 +295,9 @@ public class KafkaMessageChannelBinder extends
 
 				@Override
 				public void handle(Exception thrownException, final ConsumerRecord message) {
+					if (logger.isWarnEnabled()) {
+						logger.warn("Sending to DLQ:" + message, thrownException);
+					}
 					final byte[] key = message.key() != null ? Utils.toArray(ByteBuffer.wrap((byte[]) message.key()))
 							: null;
 					final byte[] payload = message.value() != null
