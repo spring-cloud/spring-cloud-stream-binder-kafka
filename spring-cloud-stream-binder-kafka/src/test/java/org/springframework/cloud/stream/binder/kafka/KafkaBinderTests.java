@@ -27,6 +27,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
+import kafka.utils.ZKStringSerializer$;
+import kafka.utils.ZkUtils;
+
 import org.I0Itec.zkclient.ZkClient;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.serialization.ByteArrayDeserializer;
@@ -90,14 +93,12 @@ import static org.assertj.core.api.Assertions.fail;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 
-import kafka.utils.ZKStringSerializer$;
-import kafka.utils.ZkUtils;
-
 /**
  * @author Soby Chacko
  * @author Ilayaperumal Gopinathan
  * @author Henryk Konsek
  * @author Gary Russell
+ * @author Aldo Sinanaj
  */
 public abstract class KafkaBinderTests extends
 		PartitionCapableBinderTests<AbstractKafkaTestBinder, ExtendedConsumerProperties<KafkaConsumerProperties>, ExtendedProducerProperties<KafkaProducerProperties>> {
@@ -206,12 +207,21 @@ public abstract class KafkaBinderTests extends
 				"error.dlqTest." + uniqueBindingId + ".0.testGroup", null, dlqChannel, dlqConsumerProperties);
 		binderBindUnbindLatency();
 		String testMessagePayload = "test." + UUID.randomUUID().toString();
-		Message<String> testMessage = MessageBuilder.withPayload(testMessagePayload).build();
+		Message<String> testMessage = MessageBuilder.withPayload(testMessagePayload)
+				.setHeader("dlqTestHeader", "propagatedToDlq")
+				.build();
 		moduleOutputChannel.send(testMessage);
 
 		Message<?> receivedMessage = receive(dlqChannel, 3);
 		assertThat(receivedMessage).isNotNull();
 		assertThat(receivedMessage.getPayload()).isEqualTo(testMessagePayload);
+		final MessageHeaders headers = receivedMessage.getHeaders();
+		assertThat(headers.get(KafkaMessageChannelBinder.X_ORIGINAL_TOPIC)).isEqualTo(producerName);
+		assertThat(headers.get(KafkaMessageChannelBinder.X_EXCEPTION_MESSAGE))
+				.isEqualTo("failed to send Message to channel 'null'; nested exception is java.lang.RuntimeException: fail");
+		assertThat(headers.get(KafkaMessageChannelBinder.X_EXCEPTION_STACKTRACE)).isNotNull();
+		assertThat(headers.get(MessageHeaders.CONTENT_TYPE)).isNotNull();
+		assertThat(headers.get("dlqTestHeader")).isEqualTo("propagatedToDlq");
 		assertThat(handler.getInvocationCount()).isEqualTo(consumerProperties.getMaxAttempts());
 		binderBindUnbindLatency();
 

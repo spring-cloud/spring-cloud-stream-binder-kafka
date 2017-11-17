@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-2016 the original author or authors.
+ * Copyright 2014-2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,8 +25,10 @@ import java.util.UUID;
 
 import io.confluent.kafka.schemaregistry.rest.SchemaRegistryConfig;
 import io.confluent.kafka.schemaregistry.rest.SchemaRegistryRestApplication;
+
 import kafka.utils.ZKStringSerializer$;
 import kafka.utils.ZkUtils;
+
 import org.I0Itec.zkclient.ZkClient;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.ByteArrayDeserializer;
@@ -69,6 +71,7 @@ import static org.junit.Assert.assertTrue;
  * @author Marius Bogoevici
  * @author Mark Fisher
  * @author Ilayaperumal Gopinathan
+ * @author Gary Russell
  */
 public class Kafka_0_10_2_BinderTests extends KafkaBinderTests {
 
@@ -79,7 +82,7 @@ public class Kafka_0_10_2_BinderTests extends KafkaBinderTests {
 
 	private Kafka10TestBinder binder;
 
-	private Kafka10AdminUtilsOperation adminUtilsOperation = new Kafka10AdminUtilsOperation();
+	private final Kafka10AdminUtilsOperation adminUtilsOperation = new Kafka10AdminUtilsOperation();
 
 	@Override
 	protected void binderBindUnbindLatency() throws InterruptedException {
@@ -90,11 +93,13 @@ public class Kafka_0_10_2_BinderTests extends KafkaBinderTests {
 	protected Kafka10TestBinder getBinder() {
 		if (binder == null) {
 			KafkaBinderConfigurationProperties binderConfiguration = createConfigurationProperties();
+			binderConfiguration.setHeaders("dlqTestHeader");
 			binder = new Kafka10TestBinder(binderConfiguration);
 		}
 		return binder;
 	}
 
+	@Override
 	protected KafkaBinderConfigurationProperties createConfigurationProperties() {
 		KafkaBinderConfigurationProperties binderConfiguration = new KafkaBinderConfigurationProperties();
 		BrokerAddress[] brokerAddresses = embeddedKafka.getBrokerAddresses();
