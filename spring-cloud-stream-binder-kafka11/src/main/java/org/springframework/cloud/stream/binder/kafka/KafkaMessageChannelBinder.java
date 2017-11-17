@@ -16,7 +16,10 @@
 
 package org.springframework.cloud.stream.binder.kafka;
 
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -35,6 +38,7 @@ import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.header.Headers;
+import org.apache.kafka.common.header.internals.RecordHeader;
 import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
 import org.apache.kafka.common.utils.Utils;
@@ -107,11 +111,18 @@ import org.springframework.util.concurrent.ListenableFutureCallback;
  * @author Soby Chacko
  * @author Henryk Konsek
  * @author Doug Saus
+ * @author Aldo Sinanaj
  */
 public class KafkaMessageChannelBinder extends
 		AbstractMessageChannelBinder<ExtendedConsumerProperties<KafkaConsumerProperties>,
 			ExtendedProducerProperties<KafkaProducerProperties>, KafkaTopicProvisioner>
 		implements ExtendedPropertiesBinder<MessageChannel, KafkaConsumerProperties, KafkaProducerProperties> {
+
+	public static final String X_ORIGINAL_TOPIC = "x-original-topic";
+
+	public static final String X_EXCEPTION_MESSAGE = "x-exception-message";
+
+	public static final String X_EXCEPTION_STACKTRACE = "x-exception-stacktrace";
 
 	private final KafkaBinderConfigurationProperties configurationProperties;
 
@@ -431,10 +442,22 @@ public class KafkaMessageChannelBinder extends
 				public void handleMessage(Message<?> message) throws MessagingException {
 					final ConsumerRecord<?, ?> record = message.getHeaders()
 							.get(KafkaMessageDrivenChannelAdapter.KAFKA_RAW_DATA, ConsumerRecord.class);
-					final byte[] key = record.key() != null ? Utils.toArray(ByteBuffer.wrap((byte[]) record.key()))
+					final byte[] key = record.key() != null
+							? Utils.toArray(ByteBuffer.wrap((byte[]) record.key()))
 							: null;
 					final byte[] payload = record.value() != null
 							? Utils.toArray(ByteBuffer.wrap((byte[]) record.value())) : null;
+					if (message.getPayload() instanceof Throwable) {
+						final Throwable throwable = (Throwable) message.getPayload();
+						final String failureMessage = throwable.getMessage();
+
+						record.headers()
+							.add(new RecordHeader(X_ORIGINAL_TOPIC, record.topic().getBytes(StandardCharsets.UTF_8)));
+						record.headers()
+							.add(new RecordHeader(X_EXCEPTION_MESSAGE, failureMessage.getBytes(StandardCharsets.UTF_8)));
+						record.headers()
+							.add(new RecordHeader(X_EXCEPTION_STACKTRACE, getStackTraceAsString(throwable).getBytes()));
+					}
 					String dlqName = StringUtils.hasText(extendedConsumerProperties.getExtension().getDlqName())
 							? extendedConsumerProperties.getExtension().getDlqName()
 							: "error." + destination.getName() + "." + group;
@@ -521,6 +544,13 @@ public class KafkaMessageChannelBinder extends
 			return original;
 		}
 		return original.substring(0, maxCharacters) + "...";
+	}
+
+	private String getStackTraceAsString(Throwable cause) {
+		StringWriter stringWriter = new StringWriter();
+		PrintWriter printWriter = new PrintWriter(stringWriter, true);
+		cause.printStackTrace(printWriter);
+		return stringWriter.getBuffer().toString();
 	}
 
 	private final class ProducerConfigurationMessageHandler extends KafkaProducerMessageHandler<byte[], byte[]>

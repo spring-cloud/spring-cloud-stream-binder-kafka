@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2017 the original author or authors.
+ * Copyright 2016-2018 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -104,6 +104,7 @@ import static org.mockito.Mockito.mock;
  * @author Ilayaperumal Gopinathan
  * @author Henryk Konsek
  * @author Gary Russell
+ * @author Aldo Sinanaj
  */
 public abstract class KafkaBinderTests extends
 		PartitionCapableBinderTests<AbstractKafkaTestBinder, ExtendedConsumerProperties<KafkaConsumerProperties>, ExtendedProducerProperties<KafkaProducerProperties>> {
@@ -164,7 +165,8 @@ public abstract class KafkaBinderTests extends
 		moduleInputChannel.subscribe(handler);
 		ExtendedProducerProperties<KafkaProducerProperties> producerProperties = createProducerProperties();
 		producerProperties.setPartitionCount(2);
-		producerProperties.getExtension().setHeaderPatterns(new String[] { MessageHeaders.CONTENT_TYPE });
+		producerProperties.getExtension().setHeaderPatterns(new String[] { MessageHeaders.CONTENT_TYPE,
+				"dlqTestHeader" });
 		ExtendedConsumerProperties<KafkaConsumerProperties> consumerProperties = createConsumerProperties();
 		consumerProperties.setMaxAttempts(withRetry ? 2 : 1);
 		consumerProperties.setBackOffInitialInterval(100);
@@ -213,12 +215,23 @@ public abstract class KafkaBinderTests extends
 				"error.dlqTest." + uniqueBindingId + ".0.testGroup", null, dlqChannel, dlqConsumerProperties);
 		binderBindUnbindLatency();
 		String testMessagePayload = "test." + UUID.randomUUID().toString();
-		Message<String> testMessage = MessageBuilder.withPayload(testMessagePayload).build();
+		Message<String> testMessage = MessageBuilder.withPayload(testMessagePayload)
+				.setHeader("dlqTestHeader", "propagatedToDlq")
+				.build();
 		moduleOutputChannel.send(testMessage);
 
 		Message<?> receivedMessage = receive(dlqChannel, 3);
 		assertThat(receivedMessage).isNotNull();
 		assertThat(receivedMessage.getPayload()).isEqualTo(testMessagePayload);
+		final MessageHeaders headers = receivedMessage.getHeaders();
+		assertThat(headers.get(KafkaMessageChannelBinder.X_ORIGINAL_TOPIC)).isEqualTo(producerName.getBytes());
+		assertThat(headers.get(KafkaMessageChannelBinder.X_EXCEPTION_MESSAGE))
+				.isEqualTo(
+						"failed to send Message to channel 'null'; nested exception is java.lang.RuntimeException: fail"
+								.getBytes());
+		assertThat(headers.get(KafkaMessageChannelBinder.X_EXCEPTION_STACKTRACE)).isNotNull();
+		assertThat(headers.get(MessageHeaders.CONTENT_TYPE)).isNotNull();
+		assertThat(headers.get("dlqTestHeader")).isEqualTo("propagatedToDlq");
 		assertThat(handler.getInvocationCount()).isEqualTo(consumerProperties.getMaxAttempts());
 		binderBindUnbindLatency();
 
