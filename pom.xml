@@ -12,9 +12,9 @@
 	</parent>
 	<properties>
 		<java.version>1.8</java.version>
-		<spring-kafka.version>2.0.0.RELEASE</spring-kafka.version>
-		<kafka.version>0.11.0.0</kafka.version>
-		<spring-integration-kafka.version>3.0.0.M2</spring-integration-kafka.version>
+		<spring-kafka.version>2.1.0.RC1</spring-kafka.version>
+		<kafka.version>1.0.0</kafka.version>
+		<spring-integration-kafka.version>3.0.0.BUILD-SNAPSHOT</spring-integration-kafka.version>
 		<spring-cloud-stream.version>2.0.0.BUILD-SNAPSHOT</spring-cloud-stream.version>
 	</properties>
 	<modules>
@@ -44,25 +44,6 @@
 			</dependency>
 			<dependency>
 				<groupId>org.apache.kafka</groupId>
-				<artifactId>kafka_2.11</artifactId>
-				<version>${kafka.version}</version>
-				<exclusions>
-					<exclusion>
-						<groupId>jline</groupId>
-						<artifactId>jline</artifactId>
-					</exclusion>
-					<exclusion>
-						<groupId>org.slf4j</groupId>
-						<artifactId>slf4j-log4j12</artifactId>
-					</exclusion>
-					<exclusion>
-						<groupId>log4j</groupId>
-						<artifactId>log4j</artifactId>
-					</exclusion>
-				</exclusions>
-			</dependency>
-			<dependency>
-				<groupId>org.apache.kafka</groupId>
 				<artifactId>kafka-clients</artifactId>
 				<version>${kafka.version}</version>
 			</dependency>
@@ -87,12 +68,6 @@
 				<artifactId>spring-kafka-test</artifactId>
 				<scope>test</scope>
 				<version>${spring-kafka.version}</version>
-			</dependency>
-			<dependency>
-				<groupId>org.apache.kafka</groupId>
-				<artifactId>kafka_2.11</artifactId>
-				<classifier>test</classifier>
-				<version>${kafka.version}</version>
 			</dependency>
 			<dependency>
 				<groupId>org.apache.kafka</groupId>

@@ -99,7 +99,7 @@ public class KafkaBinderConfigurationProperties {
 	private JaasLoginModuleConfiguration jaas;
 
 	/**
-	 * The bean name of a custom header mapper to use instead of a {@link DefaultKafkaHeaderMapper}.
+	 * The bean name of a custom header mapper to use instead of a {@link org.springframework.kafka.support.DefaultKafkaHeaderMapper}.
 	 */
 	private String headerMapperBeanName;
 

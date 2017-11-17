@@ -19,8 +19,8 @@ package org.springframework.cloud.stream.binder.kstream.config;
 import java.util.Properties;
 
 import org.apache.kafka.common.serialization.Serdes;
+import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.StreamsConfig;
-import org.apache.kafka.streams.kstream.KStreamBuilder;
 
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.UnsatisfiedDependencyException;
@@ -91,7 +91,7 @@ public class KStreamBinderSupportAutoConfiguration {
 	}
 
 	@Bean
-	public KStreamBoundElementFactory kStreamBindableTargetFactory(KStreamBuilder kStreamBuilder,
+	public KStreamBoundElementFactory kStreamBindableTargetFactory(StreamsBuilder kStreamBuilder,
 			BindingServiceProperties bindingServiceProperties,
 			CompositeMessageConverterFactory compositeMessageConverterFactory) {
 		return new KStreamBoundElementFactory(kStreamBuilder, bindingServiceProperties,

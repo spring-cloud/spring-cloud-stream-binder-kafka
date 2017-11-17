@@ -24,14 +24,12 @@ import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.junit.Test;
 
 import org.springframework.cloud.stream.binder.ExtendedConsumerProperties;
-import org.springframework.cloud.stream.binder.kafka.admin.AdminUtilsOperation;
 import org.springframework.cloud.stream.binder.kafka.properties.KafkaBinderConfigurationProperties;
 import org.springframework.cloud.stream.binder.kafka.properties.KafkaConsumerProperties;
 import org.springframework.cloud.stream.binder.kafka.provisioning.KafkaTopicProvisioner;
 import org.springframework.integration.test.util.TestUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.mock;
 
 /**
  * @author Gary Russell
@@ -43,9 +41,7 @@ public class KafkaBinderUnitTests {
 	@Test
 	public void testPropertyOverrides() throws Exception {
 		KafkaBinderConfigurationProperties binderConfigurationProperties = new KafkaBinderConfigurationProperties();
-		AdminUtilsOperation adminUtilsOperation = mock(AdminUtilsOperation.class);
-		KafkaTopicProvisioner provisioningProvider = new KafkaTopicProvisioner(binderConfigurationProperties,
-				adminUtilsOperation);
+		KafkaTopicProvisioner provisioningProvider = new KafkaTopicProvisioner(binderConfigurationProperties);
 		KafkaMessageChannelBinder binder = new KafkaMessageChannelBinder(binderConfigurationProperties,
 				provisioningProvider);
 		KafkaConsumerProperties consumerProps = new KafkaConsumerProperties();
