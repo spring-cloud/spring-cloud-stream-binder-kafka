@@ -212,6 +212,11 @@ public abstract class KafkaBinderTests extends
 		Message<?> receivedMessage = receive(dlqChannel, 3);
 		assertThat(receivedMessage).isNotNull();
 		assertThat(receivedMessage.getPayload()).isEqualTo(testMessagePayload);
+		final MessageHeaders headers = receivedMessage.getHeaders();
+		assertThat(headers.get(KafkaMessageChannelBinder.X_ORIGINAL_TOPIC)).isEqualTo(producerName);
+		assertThat(headers.get(KafkaMessageChannelBinder.X_EXCEPTION_MESSAGE))
+				.isEqualTo("failed to send Message to channel 'null'; nested exception is java.lang.RuntimeException: fail");
+		assertThat(headers.get(KafkaMessageChannelBinder.X_EXCEPTION_STACKTRACE)).isNotNull();
 		assertThat(handler.getInvocationCount()).isEqualTo(consumerProperties.getMaxAttempts());
 		binderBindUnbindLatency();
 

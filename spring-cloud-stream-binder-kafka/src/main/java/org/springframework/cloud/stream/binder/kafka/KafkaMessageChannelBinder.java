@@ -16,6 +16,8 @@
 
 package org.springframework.cloud.stream.binder.kafka;
 
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -39,9 +41,11 @@ import org.apache.kafka.common.utils.Utils;
 import org.springframework.cloud.stream.binder.AbstractMessageChannelBinder;
 import org.springframework.cloud.stream.binder.Binder;
 import org.springframework.cloud.stream.binder.BinderHeaders;
+import org.springframework.cloud.stream.binder.EmbeddedHeaderUtils;
 import org.springframework.cloud.stream.binder.ExtendedConsumerProperties;
 import org.springframework.cloud.stream.binder.ExtendedProducerProperties;
 import org.springframework.cloud.stream.binder.ExtendedPropertiesBinder;
+import org.springframework.cloud.stream.binder.MessageValues;
 import org.springframework.cloud.stream.binder.kafka.properties.KafkaBinderConfigurationProperties;
 import org.springframework.cloud.stream.binder.kafka.properties.KafkaConsumerProperties;
 import org.springframework.cloud.stream.binder.kafka.properties.KafkaExtendedBindingProperties;
@@ -71,6 +75,7 @@ import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.MessageHandler;
 import org.springframework.messaging.MessagingException;
+import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.util.Assert;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.ObjectUtils;
@@ -95,6 +100,12 @@ public class KafkaMessageChannelBinder extends
 		AbstractMessageChannelBinder<ExtendedConsumerProperties<KafkaConsumerProperties>,
 			ExtendedProducerProperties<KafkaProducerProperties>, KafkaTopicProvisioner>
 		implements ExtendedPropertiesBinder<MessageChannel, KafkaConsumerProperties, KafkaProducerProperties> {
+
+	public static final String X_ORIGINAL_TOPIC = "x-original-topic";
+
+	public static final String X_EXCEPTION_MESSAGE = "x-exception-message";
+
+	public static final String X_EXCEPTION_STACKTRACE = "x-exception-stacktrace";
 
 	private final KafkaBinderConfigurationProperties configurationProperties;
 
@@ -345,8 +356,27 @@ public class KafkaMessageChannelBinder extends
 							.get(KafkaMessageDrivenChannelAdapter.KAFKA_RAW_DATA, ConsumerRecord.class);
 					final byte[] key = record.key() != null ? Utils.toArray(ByteBuffer.wrap((byte[]) record.key()))
 							: null;
-					final byte[] payload = record.value() != null
-							? Utils.toArray(ByteBuffer.wrap((byte[]) record.value())) : null;
+					final byte[] payload;
+					if (message.getPayload() instanceof Throwable) {
+						final Throwable throwable = (Throwable) message.getPayload();
+						final String failureMessage = throwable.getMessage();
+
+						try {
+							MessageValues messageValues = EmbeddedHeaderUtils
+									.extractHeaders(MessageBuilder.withPayload((byte[]) record.value()).build(), true);
+							messageValues.put(X_ORIGINAL_TOPIC, record.topic());
+							messageValues.put(X_EXCEPTION_MESSAGE, failureMessage);
+							messageValues.put(X_EXCEPTION_STACKTRACE, getStackTraceAsString(throwable));
+
+							final String[] addedHeaders = {X_ORIGINAL_TOPIC, X_EXCEPTION_MESSAGE, X_EXCEPTION_STACKTRACE};
+							payload = EmbeddedHeaderUtils.embedHeaders(messageValues, EmbeddedHeaderUtils.headersToEmbed(addedHeaders));
+						} catch (Exception e) {
+							throw new RuntimeException(e);
+						}
+					} else {
+						payload = record.value() != null
+								? Utils.toArray(ByteBuffer.wrap((byte[]) record.value())) : null;
+					}
 					String dlqName = StringUtils.hasText(extendedConsumerProperties.getExtension().getDlqName())
 							? extendedConsumerProperties.getExtension().getDlqName()
 							: "error." + destination.getName() + "." + group;
@@ -432,6 +462,13 @@ public class KafkaMessageChannelBinder extends
 			return original;
 		}
 		return original.substring(0, maxCharacters) + "...";
+	}
+
+	private String getStackTraceAsString(Throwable cause) {
+		StringWriter stringWriter = new StringWriter();
+		PrintWriter printWriter = new PrintWriter(stringWriter, true);
+		cause.printStackTrace(printWriter);
+		return stringWriter.getBuffer().toString();
 	}
 
 	private final class ProducerConfigurationMessageHandler extends KafkaProducerMessageHandler<byte[], byte[]>
