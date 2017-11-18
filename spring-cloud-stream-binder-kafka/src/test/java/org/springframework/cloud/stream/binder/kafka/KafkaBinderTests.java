@@ -131,6 +131,8 @@ import static org.mockito.Mockito.mock;
 public class KafkaBinderTests extends
 		PartitionCapableBinderTests<AbstractKafkaTestBinder, ExtendedConsumerProperties<KafkaConsumerProperties>, ExtendedProducerProperties<KafkaProducerProperties>> {
 
+	private static final int DEFAULT_OPERATION_TIMEOUT = 30;
+
 	@Rule
 	public ExpectedException expectedProvisioningException = ExpectedException.none();
 
@@ -216,7 +218,7 @@ public class KafkaBinderTests extends
 		NewTopic newTopic = new NewTopic(topic, partitions,
 				(short) replicationFactor);
 		CreateTopicsResult topics = adminClient.createTopics(Collections.singletonList(newTopic));
-		topics.all().get();
+		topics.all().get(DEFAULT_OPERATION_TIMEOUT, TimeUnit.SECONDS);
 	}
 
 	private String getKafkaOffsetHeaderKey() {
@@ -246,9 +248,7 @@ public class KafkaBinderTests extends
 
 		DescribeTopicsResult describeTopicsResult = adminClient.describeTopics(Collections.singletonList(topic));
 		KafkaFuture<Map<String, TopicDescription>> all = describeTopicsResult.all();
-
-
-		Map<String, TopicDescription> stringTopicDescriptionMap = all.get();
+		Map<String, TopicDescription> stringTopicDescriptionMap = all.get(DEFAULT_OPERATION_TIMEOUT, TimeUnit.SECONDS);
 		TopicDescription topicDescription = stringTopicDescriptionMap.get(topic);
 		return topicDescription.partitions().size();
 	}

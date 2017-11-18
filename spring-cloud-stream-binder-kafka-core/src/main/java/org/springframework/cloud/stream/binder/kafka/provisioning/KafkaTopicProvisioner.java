@@ -23,6 +23,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -68,6 +69,8 @@ import org.springframework.util.StringUtils;
 public class KafkaTopicProvisioner implements ProvisioningProvider<ExtendedConsumerProperties<KafkaConsumerProperties>,
 		ExtendedProducerProperties<KafkaProducerProperties>>, InitializingBean {
 
+	private static final int DEFAULT_OPERATION_TIMEOUT = 30;
+
 	private final Log logger = LogFactory.getLog(getClass());
 
 	private final KafkaBinderConfigurationProperties configurationProperties;
@@ -75,6 +78,8 @@ public class KafkaTopicProvisioner implements ProvisioningProvider<ExtendedConsu
 	private final AdminClient adminClient;
 
 	private RetryOperations metadataRetryOperations;
+
+	private int operationTimeout = DEFAULT_OPERATION_TIMEOUT;
 
 	public KafkaTopicProvisioner(KafkaBinderConfigurationProperties kafkaBinderConfigurationProperties) {
 		this.configurationProperties = kafkaBinderConfigurationProperties;
@@ -120,7 +125,7 @@ public class KafkaTopicProvisioner implements ProvisioningProvider<ExtendedConsu
 			KafkaFuture<Map<String, TopicDescription>> all = describeTopicsResult.all();
 
 			try {
-				Map<String, TopicDescription> topicDescriptions = all.get();
+				Map<String, TopicDescription> topicDescriptions = all.get(operationTimeout, TimeUnit.SECONDS);
 				TopicDescription topicDescription = topicDescriptions.get(name);
 				int partitions = topicDescription.partitions().size();
 				return new KafkaProducerDestination(name, partitions);
@@ -149,7 +154,7 @@ public class KafkaTopicProvisioner implements ProvisioningProvider<ExtendedConsu
 			DescribeTopicsResult describeTopicsResult = adminClient.describeTopics(Collections.singletonList(name));
 			KafkaFuture<Map<String, TopicDescription>> all = describeTopicsResult.all();
 			try {
-				Map<String, TopicDescription> topicDescriptions = all.get();
+				Map<String, TopicDescription> topicDescriptions = all.get(operationTimeout, TimeUnit.SECONDS);
 				TopicDescription topicDescription = topicDescriptions.get(name);
 				int partitions = topicDescription.partitions().size();
 				ConsumerDestination dlqTopic = createDlqIfNeedBe(name, group, properties, anonymous, partitions);
@@ -222,7 +227,7 @@ public class KafkaTopicProvisioner implements ProvisioningProvider<ExtendedConsu
 		ListTopicsResult listTopicsResult = adminClient.listTopics();
 		KafkaFuture<Set<String>> namesFutures = listTopicsResult.names();
 
-		Set<String> names = namesFutures.get();
+		Set<String> names = namesFutures.get(operationTimeout, TimeUnit.SECONDS);
 		if (names.contains(topicName)) {
 			// only consider minPartitionCount for resizing if autoAddPartitions is true
 			int effectivePartitionCount = this.configurationProperties.isAutoAddPartitions()
@@ -230,14 +235,14 @@ public class KafkaTopicProvisioner implements ProvisioningProvider<ExtendedConsu
 					: partitionCount;
 			DescribeTopicsResult describeTopicsResult = adminClient.describeTopics(Collections.singletonList(topicName));
 			KafkaFuture<Map<String, TopicDescription>> topicDescriptionsFuture = describeTopicsResult.all();
-			Map<String, TopicDescription> topicDescriptions = topicDescriptionsFuture.get();
+			Map<String, TopicDescription> topicDescriptions = topicDescriptionsFuture.get(operationTimeout, TimeUnit.SECONDS);
 			TopicDescription topicDescription = topicDescriptions.get(topicName);
 			int partitionSize = topicDescription.partitions().size();
 			if (partitionSize < effectivePartitionCount) {
 				if (this.configurationProperties.isAutoAddPartitions()) {
 					CreatePartitionsResult partitions = adminClient.createPartitions(
 							Collections.singletonMap(topicName, NewPartitions.increaseTo(effectivePartitionCount)));
-					partitions.all().get();
+					partitions.all().get(operationTimeout, TimeUnit.SECONDS);
 				}
 				else if (tolerateLowerPartitionsOnBroker) {
 					logger.warn("The number of expected partitions was: " + partitionCount + ", but "
@@ -262,7 +267,7 @@ public class KafkaTopicProvisioner implements ProvisioningProvider<ExtendedConsu
 						(short) configurationProperties.getReplicationFactor());
 				CreateTopicsResult createTopicsResult = adminClient.createTopics(Collections.singletonList(newTopic));
 				try {
-					createTopicsResult.all().get();
+					createTopicsResult.all().get(operationTimeout, TimeUnit.SECONDS);
 				}
 				catch (Exception e) {
 					if (e instanceof ExecutionException) {
