@@ -20,6 +20,8 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.streams.StreamsConfig;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.kafka.KafkaProperties;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.cloud.stream.binder.kafka.properties.KafkaBinderConfigurationProperties;
 import org.springframework.cloud.stream.binder.kafka.provisioning.KafkaTopicProvisioner;
@@ -37,9 +39,12 @@ public class KStreamBinderConfiguration {
 
 	private static final Log logger = LogFactory.getLog(KStreamBinderConfiguration.class);
 
+	@Autowired
+	private KafkaProperties kafkaProperties;
+
 	@Bean
 	public KafkaTopicProvisioner provisioningProvider(KafkaBinderConfigurationProperties binderConfigurationProperties) {
-		return new KafkaTopicProvisioner(binderConfigurationProperties);
+		return new KafkaTopicProvisioner(binderConfigurationProperties, kafkaProperties);
 	}
 
 	@Bean

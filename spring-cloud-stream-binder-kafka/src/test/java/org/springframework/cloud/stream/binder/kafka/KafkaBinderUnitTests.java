@@ -23,6 +23,7 @@ import java.util.Map;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.junit.Test;
 
+import org.springframework.boot.autoconfigure.kafka.KafkaProperties;
 import org.springframework.cloud.stream.binder.ExtendedConsumerProperties;
 import org.springframework.cloud.stream.binder.kafka.properties.KafkaBinderConfigurationProperties;
 import org.springframework.cloud.stream.binder.kafka.properties.KafkaConsumerProperties;
@@ -41,7 +42,7 @@ public class KafkaBinderUnitTests {
 	@Test
 	public void testPropertyOverrides() throws Exception {
 		KafkaBinderConfigurationProperties binderConfigurationProperties = new KafkaBinderConfigurationProperties();
-		KafkaTopicProvisioner provisioningProvider = new KafkaTopicProvisioner(binderConfigurationProperties);
+		KafkaTopicProvisioner provisioningProvider = new KafkaTopicProvisioner(binderConfigurationProperties, new KafkaProperties());
 		KafkaMessageChannelBinder binder = new KafkaMessageChannelBinder(binderConfigurationProperties,
 				provisioningProvider);
 		KafkaConsumerProperties consumerProps = new KafkaConsumerProperties();

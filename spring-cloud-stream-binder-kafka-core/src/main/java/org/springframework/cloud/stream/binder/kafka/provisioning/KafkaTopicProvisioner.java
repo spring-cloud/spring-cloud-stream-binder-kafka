@@ -18,7 +18,6 @@ package org.springframework.cloud.stream.binder.kafka.provisioning;
 
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Callable;
@@ -40,6 +39,7 @@ import org.apache.kafka.common.KafkaFuture;
 import org.apache.kafka.common.PartitionInfo;
 
 import org.springframework.beans.factory.InitializingBean;
+import org.springframework.boot.autoconfigure.kafka.KafkaProperties;
 import org.springframework.cloud.stream.binder.BinderException;
 import org.springframework.cloud.stream.binder.ExtendedConsumerProperties;
 import org.springframework.cloud.stream.binder.ExtendedProducerProperties;
@@ -73,7 +73,7 @@ public class KafkaTopicProvisioner implements ProvisioningProvider<ExtendedConsu
 
 	private final Log logger = LogFactory.getLog(getClass());
 
-	private final KafkaBinderConfigurationProperties configurationProperties;
+	private KafkaBinderConfigurationProperties configurationProperties;
 
 	private final AdminClient adminClient;
 
@@ -81,11 +81,14 @@ public class KafkaTopicProvisioner implements ProvisioningProvider<ExtendedConsu
 
 	private int operationTimeout = DEFAULT_OPERATION_TIMEOUT;
 
-	public KafkaTopicProvisioner(KafkaBinderConfigurationProperties kafkaBinderConfigurationProperties) {
+	public KafkaTopicProvisioner(KafkaBinderConfigurationProperties kafkaBinderConfigurationProperties,
+								KafkaProperties kafkaProperties) {
+		Assert.isTrue(kafkaProperties != null, "KafkaProperties cannot be null");
+		Map<String, Object> stringObjectMap = kafkaProperties.buildAdminProperties();
+		//override if there is a binder level bootstrap server config or if it is different from base properties.
+		stringObjectMap.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaBinderConfigurationProperties.getKafkaConnectionString());
 		this.configurationProperties = kafkaBinderConfigurationProperties;
-		Map<String, Object> adminConfigs = new HashMap<>();
-		adminConfigs.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaBinderConfigurationProperties.getKafkaConnectionString());
-		this.adminClient = AdminClient.create(adminConfigs);
+		this.adminClient = AdminClient.create(stringObjectMap);
 	}
 
 	/**
@@ -192,7 +195,7 @@ public class KafkaTopicProvisioner implements ProvisioningProvider<ExtendedConsu
 
 	private void createTopic(String name, int partitionCount, boolean tolerateLowerPartitionsOnBroker) {
 		try {
-			createTopicsIfAutoCreateEnabledAndAdminUtilsPresent(name, partitionCount, tolerateLowerPartitionsOnBroker);
+			createTopicIfNecessary(name, partitionCount, tolerateLowerPartitionsOnBroker);
 		}
 		catch (Throwable throwable) {
 			if (throwable instanceof Error) {
@@ -204,8 +207,8 @@ public class KafkaTopicProvisioner implements ProvisioningProvider<ExtendedConsu
 		}
 	}
 
-	private void createTopicsIfAutoCreateEnabledAndAdminUtilsPresent(final String topicName, final int partitionCount,
-																	boolean tolerateLowerPartitionsOnBroker) throws Throwable {
+	private void createTopicIfNecessary(final String topicName, final int partitionCount,
+										boolean tolerateLowerPartitionsOnBroker) throws Throwable {
 		if (this.configurationProperties.isAutoCreateTopics() && adminClient != null) {
 			createTopicAndPartitions(topicName, partitionCount, tolerateLowerPartitionsOnBroker);
 		}

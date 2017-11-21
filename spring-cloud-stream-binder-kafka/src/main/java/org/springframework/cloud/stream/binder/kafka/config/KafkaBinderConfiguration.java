@@ -29,6 +29,7 @@ import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.context.PropertyPlaceholderAutoConfiguration;
+import org.springframework.boot.autoconfigure.kafka.KafkaProperties;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.cloud.stream.binder.Binder;
 import org.springframework.cloud.stream.binder.kafka.KafkaBinderHealthIndicator;
@@ -78,9 +79,12 @@ public class KafkaBinderConfiguration {
 	@Autowired
 	private ApplicationContext context;
 
+	@Autowired
+	private KafkaProperties kafkaProperties;
+
 	@Bean
 	KafkaTopicProvisioner provisioningProvider() {
-		return new KafkaTopicProvisioner(this.configurationProperties);
+		return new KafkaTopicProvisioner(this.configurationProperties, this.kafkaProperties);
 	}
 
 	@Bean

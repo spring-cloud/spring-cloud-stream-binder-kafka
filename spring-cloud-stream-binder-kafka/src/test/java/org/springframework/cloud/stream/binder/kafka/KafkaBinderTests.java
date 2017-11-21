@@ -62,6 +62,7 @@ import org.junit.Test;
 import org.junit.rules.ExpectedException;
 
 import org.springframework.beans.DirectFieldAccessor;
+import org.springframework.boot.autoconfigure.kafka.KafkaProperties;
 import org.springframework.cloud.stream.binder.Binder;
 import org.springframework.cloud.stream.binder.BinderHeaders;
 import org.springframework.cloud.stream.binder.Binding;
@@ -172,7 +173,7 @@ public class KafkaBinderTests extends
 	protected KafkaTestBinder getBinder() {
 		if (binder == null) {
 			KafkaBinderConfigurationProperties binderConfiguration = createConfigurationProperties();
-			KafkaTopicProvisioner kafkaTopicProvisioner = new KafkaTopicProvisioner(binderConfiguration);
+			KafkaTopicProvisioner kafkaTopicProvisioner = new KafkaTopicProvisioner(binderConfiguration, new KafkaProperties());
 			try {
 				kafkaTopicProvisioner.afterPropertiesSet();
 			}
@@ -186,7 +187,7 @@ public class KafkaBinderTests extends
 
 	private Binder getBinder(KafkaBinderConfigurationProperties kafkaBinderConfigurationProperties) {
 		KafkaTopicProvisioner provisioningProvider =
-				new KafkaTopicProvisioner(kafkaBinderConfigurationProperties);
+				new KafkaTopicProvisioner(kafkaBinderConfigurationProperties, new KafkaProperties());
 		try {
 			provisioningProvider.afterPropertiesSet();
 		}
