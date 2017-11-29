@@ -56,6 +56,7 @@ import org.springframework.retry.backoff.ExponentialBackOffPolicy;
 import org.springframework.retry.policy.SimpleRetryPolicy;
 import org.springframework.retry.support.RetryTemplate;
 import org.springframework.util.Assert;
+import org.springframework.util.ObjectUtils;
 import org.springframework.util.StringUtils;
 
 /**
@@ -84,11 +85,15 @@ public class KafkaTopicProvisioner implements ProvisioningProvider<ExtendedConsu
 	public KafkaTopicProvisioner(KafkaBinderConfigurationProperties kafkaBinderConfigurationProperties,
 								KafkaProperties kafkaProperties) {
 		Assert.isTrue(kafkaProperties != null, "KafkaProperties cannot be null");
-		Map<String, Object> stringObjectMap = kafkaProperties.buildAdminProperties();
-		//override if there is a binder level bootstrap server config or if it is different from base properties.
-		stringObjectMap.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaBinderConfigurationProperties.getKafkaConnectionString());
+		Map<String, Object> adminClientProperties = kafkaProperties.buildAdminProperties();
+		String kafkaConnectionString = kafkaBinderConfigurationProperties.getKafkaConnectionString();
+
+		if (ObjectUtils.isEmpty(adminClientProperties.get(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG))
+				|| !kafkaConnectionString.equals(kafkaBinderConfigurationProperties.getDefaultKafkaConnectionString())) {
+			adminClientProperties.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaConnectionString);
+		}
 		this.configurationProperties = kafkaBinderConfigurationProperties;
-		this.adminClient = AdminClient.create(stringObjectMap);
+		this.adminClient = AdminClient.create(adminClientProperties);
 	}
 
 	/**
