@@ -32,7 +32,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.CreateTopicsResult;
@@ -87,6 +86,7 @@ import org.springframework.integration.IntegrationMessageHeaderAccessor;
 import org.springframework.integration.channel.DirectChannel;
 import org.springframework.integration.channel.QueueChannel;
 import org.springframework.integration.context.IntegrationContextUtils;
+import org.springframework.integration.handler.BridgeHandler;
 import org.springframework.integration.kafka.inbound.KafkaMessageDrivenChannelAdapter;
 import org.springframework.integration.kafka.outbound.KafkaProducerMessageHandler;
 import org.springframework.integration.kafka.support.KafkaSendFailureException;
@@ -117,6 +117,8 @@ import org.springframework.util.MimeType;
 import org.springframework.util.MimeTypeUtils;
 import org.springframework.util.concurrent.ListenableFuture;
 import org.springframework.util.concurrent.SettableListenableFuture;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.fail;
@@ -2324,7 +2326,6 @@ public class KafkaBinderTests extends
 		KafkaBinderConfigurationProperties binderConfiguration = createConfigurationProperties();
 		binderConfiguration.setHeaders("foo");
 		Binder binder = getBinder(binderConfiguration);
-		QueueChannel moduleInputChannel = new QueueChannel();
 		DirectChannel moduleOutputChannel1 = new DirectChannel();
 		ExtendedProducerProperties<KafkaProducerProperties> producerProperties1 = createProducerProperties();
 		producerProperties1.setHeaderMode(HeaderMode.embeddedHeaders);
@@ -2345,6 +2346,12 @@ public class KafkaBinderTests extends
 
 		ExtendedConsumerProperties<KafkaConsumerProperties> consumerProperties = createConsumerProperties();
 		consumerProperties.setHeaderMode(HeaderMode.embeddedHeaders);
+		DirectChannel moduleInputChannel = createBindableChannel("input",
+				createConsumerBindingProperties(consumerProperties));
+		QueueChannel bridged = new QueueChannel();
+		BridgeHandler bridge = new BridgeHandler();
+		bridge.setOutputChannel(bridged);
+		moduleInputChannel.subscribe(bridge);
 		Binding<MessageChannel> consumerBinding = binder.bindConsumer("mixed.0", "test", moduleInputChannel,
 				consumerProperties);
 		Message<?> message = org.springframework.integration.support.MessageBuilder
@@ -2356,19 +2363,19 @@ public class KafkaBinderTests extends
 		moduleOutputChannel1.send(message);
 		moduleOutputChannel2.send(message);
 		moduleOutputChannel3.send(message);
-		Message<?> inbound = receive(moduleInputChannel, 10_000);
+		Message<?> inbound = receive(bridged, 10_000);
 		assertThat(inbound).isNotNull();
-		assertThat(new String((byte[]) inbound.getPayload(), StandardCharsets.UTF_8)).isEqualTo("testSendAndReceiveWithMixedMode");
+		assertThat(inbound.getPayload()).isEqualTo("testSendAndReceiveWithMixedMode");
 		assertThat(inbound.getHeaders().get("foo")).isEqualTo("bar");
 		assertThat(inbound.getHeaders().get(BinderHeaders.NATIVE_HEADERS_PRESENT)).isNull();
-		inbound = receive(moduleInputChannel);
+		inbound = receive(bridged);
 		assertThat(inbound).isNotNull();
-		assertThat(new String((byte[]) inbound.getPayload(), StandardCharsets.UTF_8)).isEqualTo("testSendAndReceiveWithMixedMode");
+		assertThat(inbound.getPayload()).isEqualTo("testSendAndReceiveWithMixedMode");
 		assertThat(inbound.getHeaders().get("foo")).isEqualTo("bar");
 		assertThat(inbound.getHeaders().get(BinderHeaders.NATIVE_HEADERS_PRESENT)).isEqualTo(Boolean.TRUE);
-		inbound = receive(moduleInputChannel);
+		inbound = receive(bridged);
 		assertThat(inbound).isNotNull();
-		assertThat(new String((byte[]) inbound.getPayload(), StandardCharsets.UTF_8)).isEqualTo("testSendAndReceiveWithMixedMode");
+		assertThat(inbound.getPayload()).isEqualTo("testSendAndReceiveWithMixedMode");
 		assertThat(inbound.getHeaders().get("foo")).isNull();
 		assertThat(inbound.getHeaders().get(BinderHeaders.NATIVE_HEADERS_PRESENT)).isNull();
 
