@@ -50,7 +50,12 @@ import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.SubscribableChannel;
 import org.springframework.messaging.support.MessageBuilder;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
+import java.util.UUID;
 
 import static org.junit.Assert.assertTrue;
 
