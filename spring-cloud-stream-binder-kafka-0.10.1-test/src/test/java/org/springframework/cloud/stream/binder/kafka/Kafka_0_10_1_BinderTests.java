@@ -16,13 +16,6 @@
 
 package org.springframework.cloud.stream.binder.kafka;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-import java.util.UUID;
-
 import io.confluent.kafka.schemaregistry.rest.SchemaRegistryConfig;
 import io.confluent.kafka.schemaregistry.rest.SchemaRegistryRestApplication;
 import kafka.utils.ZKStringSerializer$;
@@ -36,7 +29,6 @@ import org.eclipse.jetty.server.Server;
 import org.junit.Before;
 import org.junit.ClassRule;
 import org.junit.Test;
-
 import org.springframework.cloud.stream.binder.Binder;
 import org.springframework.cloud.stream.binder.Binding;
 import org.springframework.cloud.stream.binder.ExtendedConsumerProperties;
@@ -58,11 +50,13 @@ import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.SubscribableChannel;
 import org.springframework.messaging.support.MessageBuilder;
 
+import java.util.*;
+
 import static org.junit.Assert.assertTrue;
 
 /**
  * Integration tests for the {@link KafkaMessageChannelBinder}.
- * 
+ *
  * This test specifically tests for the 0.10.1.x version of Kafka.
  *
  * @author Eric Bottard
@@ -79,7 +73,7 @@ public class Kafka_0_10_1_BinderTests extends Kafka_0_10_2_BinderTests {
 
 	private Kafka10TestBinder binder;
 
-	private Kafka10AdminUtilsOperation adminUtilsOperation = new Kafka10AdminUtilsOperation();
+	private final Kafka10AdminUtilsOperation adminUtilsOperation = new Kafka10AdminUtilsOperation();
 
 	@Override
 	protected void binderBindUnbindLatency() throws InterruptedException {
@@ -90,11 +84,13 @@ public class Kafka_0_10_1_BinderTests extends Kafka_0_10_2_BinderTests {
 	protected Kafka10TestBinder getBinder() {
 		if (binder == null) {
 			KafkaBinderConfigurationProperties binderConfiguration = createConfigurationProperties();
+			binderConfiguration.setHeaders("dlqTestHeader");
 			binder = new Kafka10TestBinder(binderConfiguration);
 		}
 		return binder;
 	}
 
+	@Override
 	protected KafkaBinderConfigurationProperties createConfigurationProperties() {
 		KafkaBinderConfigurationProperties binderConfiguration = new KafkaBinderConfigurationProperties();
 		BrokerAddress[] brokerAddresses = embeddedKafka.getBrokerAddresses();
