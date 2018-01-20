@@ -16,9 +16,31 @@
 
 package org.springframework.cloud.stream.binder.kstream.config;
 
+import org.springframework.cloud.stream.binder.kafka.properties.KafkaConsumerProperties;
+
 /**
  * @author Marius Bogoevici
  */
-public class KStreamConsumerProperties extends KStreamCommonProperties {
+public class KStreamConsumerProperties extends KafkaConsumerProperties {
+
+	private String keySerde;
+
+	private String valueSerde;
+
+	public String getKeySerde() {
+		return keySerde;
+	}
+
+	public void setKeySerde(String keySerde) {
+		this.keySerde = keySerde;
+	}
+
+	public String getValueSerde() {
+		return valueSerde;
+	}
+
+	public void setValueSerde(String valueSerde) {
+		this.valueSerde = valueSerde;
+	}
 
 }
