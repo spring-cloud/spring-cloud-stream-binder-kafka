@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 the original author or authors.
+ * Copyright 2017-2018 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,6 +26,7 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.cloud.stream.binder.kafka.properties.KafkaBinderConfigurationProperties;
 import org.springframework.cloud.stream.binder.kafka.provisioning.KafkaTopicProvisioner;
 import org.springframework.cloud.stream.binder.kstream.KStreamBinder;
+import org.springframework.cloud.stream.binder.kstream.MessageConversionDelegate;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -51,9 +52,11 @@ public class KStreamBinderConfiguration {
 	@Bean
 	public KStreamBinder kStreamBinder(KafkaBinderConfigurationProperties binderConfigurationProperties,
 									KafkaTopicProvisioner kafkaTopicProvisioner,
-									KStreamExtendedBindingProperties kStreamExtendedBindingProperties, StreamsConfig streamsConfig) {
-		return new KStreamBinder(binderConfigurationProperties, kafkaTopicProvisioner, kStreamExtendedBindingProperties,
-				streamsConfig);
+									KStreamExtendedBindingProperties kStreamExtendedBindingProperties, StreamsConfig streamsConfig,
+									MessageConversionDelegate messageConversionDelegate) {
+		KStreamBinder kStreamBinder = new KStreamBinder(binderConfigurationProperties, kafkaTopicProvisioner, kStreamExtendedBindingProperties,
+				streamsConfig, messageConversionDelegate);
+		return kStreamBinder;
 	}
 
 }

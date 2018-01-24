@@ -23,6 +23,7 @@ import org.apache.kafka.common.utils.Utils;
 import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.kstream.KStream;
+import org.apache.kafka.streams.kstream.KeyValueMapper;
 import org.apache.kafka.streams.kstream.Produced;
 
 import org.springframework.cloud.stream.binder.AbstractBinder;
@@ -38,7 +39,6 @@ import org.springframework.cloud.stream.binder.kafka.provisioning.KafkaTopicProv
 import org.springframework.cloud.stream.binder.kstream.config.KStreamConsumerProperties;
 import org.springframework.cloud.stream.binder.kstream.config.KStreamExtendedBindingProperties;
 import org.springframework.cloud.stream.binder.kstream.config.KStreamProducerProperties;
-import org.springframework.messaging.Message;
 import org.springframework.util.StringUtils;
 
 /**
@@ -57,20 +57,25 @@ public class KStreamBinder extends
 
 	private final KafkaBinderConfigurationProperties binderConfigurationProperties;
 
+	private final MessageConversionDelegate messageConversionDelegate;
+
 	public KStreamBinder(KafkaBinderConfigurationProperties binderConfigurationProperties,
 						KafkaTopicProvisioner kafkaTopicProvisioner,
-						KStreamExtendedBindingProperties kStreamExtendedBindingProperties, StreamsConfig streamsConfig) {
+						KStreamExtendedBindingProperties kStreamExtendedBindingProperties, StreamsConfig streamsConfig,
+						MessageConversionDelegate messageConversionDelegate) {
 		this.binderConfigurationProperties = binderConfigurationProperties;
 		this.kafkaTopicProvisioner = kafkaTopicProvisioner;
 		this.kStreamExtendedBindingProperties = kStreamExtendedBindingProperties;
 		this.streamsConfig = streamsConfig;
+		this.messageConversionDelegate = messageConversionDelegate;
 	}
 
 	@Override
 	protected Binding<KStream<Object, Object>> doBindConsumer(String name, String group,
-															KStream<Object, Object> inputTarget, ExtendedConsumerProperties<KStreamConsumerProperties> properties) {
+															KStream<Object, Object> inputTarget,
+															ExtendedConsumerProperties<KStreamConsumerProperties> properties) {
 
-		ExtendedConsumerProperties<KafkaConsumerProperties> extendedConsumerProperties = new ExtendedConsumerProperties<KafkaConsumerProperties>(
+		ExtendedConsumerProperties<KafkaConsumerProperties> extendedConsumerProperties = new ExtendedConsumerProperties<>(
 				new KafkaConsumerProperties());
 		this.kafkaTopicProvisioner.provisionConsumerDestination(name, group, extendedConsumerProperties);
 		return new DefaultBinding<>(name, group, inputTarget, null);
@@ -80,42 +85,77 @@ public class KStreamBinder extends
 	@SuppressWarnings("unchecked")
 	protected Binding<KStream<Object, Object>> doBindProducer(String name, KStream<Object, Object> outboundBindTarget,
 															ExtendedProducerProperties<KStreamProducerProperties> properties) {
-		ExtendedProducerProperties<KafkaProducerProperties> extendedProducerProperties = new ExtendedProducerProperties<KafkaProducerProperties>(
+		ExtendedProducerProperties<KafkaProducerProperties> extendedProducerProperties = new ExtendedProducerProperties<>(
 				new KafkaProducerProperties());
 		this.kafkaTopicProvisioner.provisionProducerDestination(name, extendedProducerProperties);
-		outboundBindTarget = outboundBindTarget
-				.map((k, v) -> KeyValue.pair(k, ((Message<Object>) v).getPayload()));
 
-		Serde<?> keySerde = Serdes.ByteArray();
-		Serde<?> valueSerde = Serdes.ByteArray();
-		if (properties.isUseNativeEncoding()) {
-			outboundBindTarget.to(name, Produced.with((Serde<Object>) keySerde, (Serde<Object>) valueSerde));
+		Serde<?> keySerde = getKeySerde(properties);
+		Serde<?> valueSerde = getValueSerde(properties);
+
+		to(properties.isUseNativeEncoding(), name, outboundBindTarget, (Serde<Object>) keySerde, (Serde<Object>) valueSerde);
+
+		return new DefaultBinding<>(name, null, outboundBindTarget, null);
+	}
+
+	private Serde<?> getKeySerde(ExtendedProducerProperties<KStreamProducerProperties> properties) {
+		Serde<?> keySerde;
+		try {
+			if (StringUtils.hasText(properties.getExtension().getKeySerde())) {
+				keySerde = Utils.newInstance(properties.getExtension().getKeySerde(), Serde.class);
+				if (keySerde instanceof Configurable) {
+					((Configurable) keySerde).configure(streamsConfig.originals());
+				}
+			}
+			else {
+				keySerde = this.binderConfigurationProperties.getConfiguration().containsKey("key.serde") ?
+						Utils.newInstance(this.binderConfigurationProperties.getConfiguration().get("key.serde"), Serde.class) : Serdes.ByteArray();
+			}
+
 		}
-		else {
-			try {
-				if (StringUtils.hasText(properties.getExtension().getKeySerde())) {
-					keySerde = Utils.newInstance(properties.getExtension().getKeySerde(), Serde.class);
-					if (keySerde instanceof Configurable) {
-						((Configurable) keySerde).configure(streamsConfig.originals());
-					}
-				}
-				else {
-					keySerde = this.binderConfigurationProperties.getConfiguration().containsKey("key.serde") ?
-							Utils.newInstance(this.binderConfigurationProperties.getConfiguration().get("key.serde"), Serde.class) : Serdes.ByteArray();
-				}
+		catch (ClassNotFoundException e) {
+			throw new IllegalStateException("Serde class not found: ", e);
+		}
+		return keySerde;
+	}
 
+	private Serde<?> getValueSerde(ExtendedProducerProperties<KStreamProducerProperties> properties) {
+		Serde<?> valueSerde;
+		try {
+			if (properties.isUseNativeEncoding()) {
 				if (StringUtils.hasText(properties.getExtension().getValueSerde())) {
 					valueSerde = Utils.newInstance(properties.getExtension().getValueSerde(), Serde.class);
 					if (valueSerde instanceof Configurable) {
 						((Configurable) valueSerde).configure(streamsConfig.originals());
 					}
 				}
-				outboundBindTarget.to(name, Produced.with((Serde<Object>) keySerde, (Serde<Object>) valueSerde));
-			} catch (ClassNotFoundException e) {
-				throw new IllegalStateException("Serde class not found: ", e);
+				else {
+					valueSerde = this.binderConfigurationProperties.getConfiguration().containsKey("value.serde") ?
+							Utils.newInstance(this.binderConfigurationProperties.getConfiguration().get("value.serde"), Serde.class) : Serdes.ByteArray();
+				}
+			}
+			else {
+				valueSerde = Serdes.ByteArray();
 			}
 		}
-		return new DefaultBinding<>(name, null, outboundBindTarget, null);
+		catch (ClassNotFoundException e) {
+			throw new IllegalStateException("Serde class not found: ", e);
+		}
+		return valueSerde;
+	}
+
+	@SuppressWarnings("unchecked")
+	private void to(boolean isNativeEncoding, String name, KStream<Object, Object> outboundBindTarget,
+				Serde<Object> keySerde, Serde<Object> valueSerde) {
+		KeyValueMapper<Object, Object, KeyValue<Object, Object>> keyValueMapper = null;
+		if (!isNativeEncoding) {
+			keyValueMapper = messageConversionDelegate.outboundKeyValueMapper(name);
+		}
+		if (!isNativeEncoding) {
+				outboundBindTarget.map(keyValueMapper).to(name, Produced.with(keySerde, valueSerde));
+		}
+		else {
+			outboundBindTarget.to(name, Produced.with(keySerde, valueSerde));
+		}
 	}
 
 	@Override
@@ -127,5 +167,4 @@ public class KStreamBinder extends
 	public KStreamProducerProperties getExtendedProducerProperties(String channelName) {
 		return this.kStreamExtendedBindingProperties.getExtendedProducerProperties(channelName);
 	}
-
 }
