@@ -24,7 +24,6 @@ import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.KeyValue;
-import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.kstream.KStream;
 import org.apache.kafka.streams.kstream.TimeWindows;
 import org.junit.AfterClass;
@@ -71,9 +70,6 @@ public abstract class KStreamsNativeEncodingDecodingTests {
 
 	@SpyBean
 	KStreamBoundMessageConversionDelegate KStreamBoundMessageConversionDelegate;
-
-	@Autowired
-	StreamsConfig streamsConfig;
 
 	private static Consumer<String, String> consumer;
 
