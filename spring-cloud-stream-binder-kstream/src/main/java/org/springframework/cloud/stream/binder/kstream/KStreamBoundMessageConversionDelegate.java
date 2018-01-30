@@ -99,37 +99,37 @@ public class KStreamBoundMessageConversionDelegate {
 					}
 					else if (o2 instanceof Message) {
 						Object payload = ((Message) o2).getPayload();
-						Object fx = ((Message) o2).getHeaders().get(MessageHeaders.CONTENT_TYPE);
-						MimeType contentTypeToUse = fx instanceof String ? MimeType.valueOf((String) fx) : (MimeType) fx;
+						Object contentType = ((Message) o2).getHeaders().get(MessageHeaders.CONTENT_TYPE);
+						MimeType contentTypeToUse = contentType instanceof String ? MimeType.valueOf((String) contentType) : (MimeType) contentType;
 						if (payload instanceof byte[] && ("text".equalsIgnoreCase(contentTypeToUse.getType()) ||
 								equalTypeAndSubType(MimeTypeUtils.APPLICATION_JSON, contentTypeToUse))) {
 							payload = new String((byte[]) payload, StandardCharsets.UTF_8);
 							Message<String> msg = MessageBuilder.withPayload((String) payload).copyHeaders(((Message) o2).getHeaders()).build();
-							Object o1 = messageConverter.fromMessage(msg, valueClass);
-							if (o1 == null) {
+							Object messageConverted = messageConverter.fromMessage(msg, valueClass);
+							if (messageConverted == null) {
 								throw new IllegalStateException("Inbound data conversion failed.");
 							}
 
-							keyValueAtomic.set(new KeyValue<>(o, o1));
+							keyValueAtomic.set(new KeyValue<>(o, messageConverted));
 						}
 						else if (valueClass.isAssignableFrom(((Message) o2).getPayload().getClass())) {
 							keyValueAtomic.set(new KeyValue<>(o, ((Message) o2).getPayload()));
 						}
 						else {
-							Object o1 = messageConverter.fromMessage((Message) o2, valueClass);
-							if (o1 == null) {
+							Object messageConverted = messageConverter.fromMessage((Message) o2, valueClass);
+							if (messageConverted == null) {
 								throw new IllegalStateException("Inbound data conversion failed.");
 							}
-							keyValueAtomic.set(new KeyValue<>(o, o1));
+							keyValueAtomic.set(new KeyValue<>(o, messageConverted));
 						}
 					}
 					else if (o2 instanceof String || o2 instanceof byte[]) {
 						Message<?> message = MessageBuilder.withPayload(o2).build();
-						Object o1 = messageConverter.fromMessage(message, valueClass);
-						if (o1 == null) {
+						Object messageConverted = messageConverter.fromMessage(message, valueClass);
+						if (messageConverted == null) {
 							throw new IllegalStateException("Inbound data conversion failed.");
 						}
-						keyValueAtomic.set(new KeyValue<>(o, o1));
+						keyValueAtomic.set(new KeyValue<>(o, messageConverted));
 					}
 					else {
 						keyValueAtomic.set(new KeyValue<>(o, o2));

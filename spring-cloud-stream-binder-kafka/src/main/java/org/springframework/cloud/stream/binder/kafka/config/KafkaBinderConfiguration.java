@@ -27,7 +27,6 @@ import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.context.PropertyPlaceholderAutoConfiguration;
 import org.springframework.boot.autoconfigure.kafka.KafkaProperties;
@@ -69,7 +68,6 @@ public class KafkaBinderConfiguration {
 	protected static final Log logger = LogFactory.getLog(KafkaBinderConfiguration.class);
 
 	@Autowired
-	@Qualifier("spring.cloud.stream.kafka.binder-org.springframework.cloud.stream.binder.kafka.properties.KafkaBinderConfigurationProperties")
 	private KafkaBinderConfigurationProperties configurationProperties;
 
 	@Autowired
