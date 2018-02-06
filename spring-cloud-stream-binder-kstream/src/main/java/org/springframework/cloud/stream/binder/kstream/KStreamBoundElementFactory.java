@@ -18,6 +18,8 @@ package org.springframework.cloud.stream.binder.kstream;
 
 import org.aopalliance.intercept.MethodInterceptor;
 import org.aopalliance.intercept.MethodInvocation;
+import org.apache.kafka.common.serialization.Serde;
+import org.apache.kafka.streams.Consumed;
 import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.kstream.KStream;
@@ -42,21 +44,36 @@ public class KStreamBoundElementFactory extends AbstractBindingTargetFactory<KSt
 
 	private final BindingServiceProperties bindingServiceProperties;
 
-	public KStreamBoundElementFactory(StreamsBuilder kStreamBuilder, BindingServiceProperties bindingServiceProperties) {
+	private final BoundedKStreamPropertyCache boundedKStreamPropertyCache;
+
+	private final KeyValueSerdeResolver keyValueSerdeResolver;
+
+	public KStreamBoundElementFactory(StreamsBuilder kStreamBuilder,
+									BindingServiceProperties bindingServiceProperties,
+									BoundedKStreamPropertyCache boundedKStreamPropertyCache,
+									KeyValueSerdeResolver keyValueSerdeResolver) {
 		super(KStream.class);
 		this.bindingServiceProperties = bindingServiceProperties;
 		this.kStreamBuilder = kStreamBuilder;
+		this.boundedKStreamPropertyCache = boundedKStreamPropertyCache;
+		this.keyValueSerdeResolver = keyValueSerdeResolver;
 	}
 
 	@Override
 	public KStream createInput(String name) {
-		KStream<Object, Object> stream = kStreamBuilder.stream(bindingServiceProperties.getBindingDestination(name));
+
+		BindingProperties bindingProperties = bindingServiceProperties.getBindingProperties(name);
+
+		Serde<?> keySerde = this.keyValueSerdeResolver.getInboundKeySerde(name);
+		Serde<?> valueSerde = this.keyValueSerdeResolver.getInboundValueSerde(name);
+
+		KStream<?,?> stream = kStreamBuilder.stream(bindingServiceProperties.getBindingDestination(name),
+						Consumed.with(keySerde, valueSerde));
 		stream = stream.map((key, value) -> {
 			KeyValue<Object, Object> keyValue;
-			BindingProperties bindingProperties = bindingServiceProperties.getBindingProperties(name);
 			String contentType = bindingProperties.getContentType();
 			if (!StringUtils.isEmpty(contentType) && !bindingProperties.getConsumer().isUseNativeDecoding()) {
-				Message<Object> message = MessageBuilder.withPayload(value)
+				Message<?> message = MessageBuilder.withPayload(value)
 						.setHeader(MessageHeaders.CONTENT_TYPE, contentType).build();
 				keyValue = new KeyValue<>(key, message);
 			}
@@ -65,6 +82,7 @@ public class KStreamBoundElementFactory extends AbstractBindingTargetFactory<KSt
 			}
 			return keyValue;
 		});
+		this.boundedKStreamPropertyCache.addBindingTargetToBindingProperties(stream, bindingProperties);
 		return stream;
 	}
 
@@ -74,7 +92,12 @@ public class KStreamBoundElementFactory extends AbstractBindingTargetFactory<KSt
 		KStreamWrapperHandler wrapper= new KStreamWrapperHandler();
 		ProxyFactory proxyFactory = new ProxyFactory(KStreamWrapper.class, KStream.class);
 		proxyFactory.addAdvice(wrapper);
-		return (KStream) proxyFactory.getProxy();
+
+		KStream proxy = (KStream) proxyFactory.getProxy();
+
+		BindingProperties bindingProperties = bindingServiceProperties.getBindingProperties(name);
+		this.boundedKStreamPropertyCache.addBindingTargetToBindingProperties(proxy, bindingProperties);
+		return proxy;
 	}
 
 	public interface KStreamWrapper {
