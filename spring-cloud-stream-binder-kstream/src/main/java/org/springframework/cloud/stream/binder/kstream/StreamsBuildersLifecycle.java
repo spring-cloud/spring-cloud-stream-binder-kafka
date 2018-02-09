@@ -76,7 +76,7 @@ public class StreamsBuildersLifecycle implements SmartLifecycle {
 					}
 				}
 				catch (Exception e) {
-					e.printStackTrace();
+					throw new IllegalStateException(e);
 				}
 				finally {
 					this.running = false;

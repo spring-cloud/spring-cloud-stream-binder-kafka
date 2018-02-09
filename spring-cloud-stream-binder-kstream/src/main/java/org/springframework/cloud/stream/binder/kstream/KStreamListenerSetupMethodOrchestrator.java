@@ -192,7 +192,6 @@ public class KStreamListenerSetupMethodOrchestrator implements StreamListenerSet
 				Object targetBean = applicationContext.getBean((String) targetReferenceValue);
 				BindingProperties bindingProperties = bindingServiceProperties.getBindingProperties(inboundName);
 				enableNativeDecodingForKTableAlways(parameterType, bindingProperties);
-				KStreamConsumerProperties extendedConsumerProperties = kStreamExtendedBindingProperties.getExtendedConsumerProperties(inboundName);
 				StreamsConfig streamsConfig = null;
 				if (!methodStreamsBuilderFactoryBeanMap.containsKey(method)) {
 					streamsConfig = buildStreamsBuilderAndRetrieveConfig(method, applicationContext, bindingProperties);
@@ -200,6 +199,7 @@ public class KStreamListenerSetupMethodOrchestrator implements StreamListenerSet
 				try {
 					StreamsBuilderFactoryBean streamsBuilderFactoryBean = methodStreamsBuilderFactoryBeanMap.get(method);
 					StreamsBuilder streamsBuilder = streamsBuilderFactoryBean.getObject();
+					KStreamConsumerProperties extendedConsumerProperties = kStreamExtendedBindingProperties.getExtendedConsumerProperties(inboundName);
 					Serde<?> keySerde = this.keyValueSerdeResolver.getInboundKeySerde(extendedConsumerProperties);
 					Serde<?> valueSerde = this.keyValueSerdeResolver.getInboundValueSerde(bindingProperties.getConsumer(), extendedConsumerProperties);
 					if (parameterType.isAssignableFrom(KStream.class)) {
