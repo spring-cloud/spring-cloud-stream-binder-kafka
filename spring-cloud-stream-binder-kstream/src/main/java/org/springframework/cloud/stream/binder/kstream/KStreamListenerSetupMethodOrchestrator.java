@@ -25,6 +25,7 @@ import java.util.UUID;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.common.serialization.Serde;
+import org.apache.kafka.common.utils.Bytes;
 import org.apache.kafka.streams.Consumed;
 import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.StreamsBuilder;
@@ -32,6 +33,8 @@ import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.errors.DeserializationExceptionHandler;
 import org.apache.kafka.streams.kstream.KStream;
 import org.apache.kafka.streams.kstream.KTable;
+import org.apache.kafka.streams.kstream.Materialized;
+import org.apache.kafka.streams.state.KeyValueStore;
 
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.BeanInitializationException;
@@ -106,7 +109,8 @@ public class KStreamListenerSetupMethodOrchestrator implements StreamListenerSet
 
 	@Override
 	public boolean supports(Method method) {
-		return methodParameterSuppports(method) && methodReturnTypeSuppports(method);
+		return methodParameterSuppports(method) &&
+				(methodReturnTypeSuppports(method) || Void.TYPE.equals(method.getReturnType()));
 	}
 
 	private boolean methodReturnTypeSuppports(Method method) {
@@ -119,9 +123,15 @@ public class KStreamListenerSetupMethodOrchestrator implements StreamListenerSet
 	}
 
 	private boolean methodParameterSuppports(Method method) {
-		MethodParameter methodParameter = MethodParameter.forExecutable(method, 0);
-		Class<?> parameterType = methodParameter.getParameterType();
-		return parameterType.equals(KStream.class);
+		boolean supports = false;
+		for (int i = 0; i < method.getParameterCount(); i++) {
+			MethodParameter methodParameter = MethodParameter.forExecutable(method, i);
+			Class<?> parameterType = methodParameter.getParameterType();
+			if (parameterType.equals(KStream.class) || parameterType.equals(KTable.class)) {
+				supports = true;
+			}
+		}
+		return supports;
 	}
 
 	@Override
@@ -134,32 +144,38 @@ public class KStreamListenerSetupMethodOrchestrator implements StreamListenerSet
 				this.applicationContext,
 				this.streamListenerParameterAdapter);
 		try {
-			Object result = method.invoke(bean, adaptedInboundArguments);
-
-			if (result.getClass().isArray()) {
-				Assert.isTrue(methodAnnotatedOutboundNames.length == ((Object[]) result).length, "Big error");
-			} else {
-				Assert.isTrue(methodAnnotatedOutboundNames.length == 1, "Big error");
-			}
-			if (result.getClass().isArray()) {
-				Object[] outboundKStreams = (Object[]) result;
-				int i = 0;
-				for (Object outboundKStream : outboundKStreams) {
-					Object targetBean = this.applicationContext.getBean(methodAnnotatedOutboundNames[i++]);
-					for (StreamListenerResultAdapter streamListenerResultAdapter : streamListenerResultAdapters) {
-						if (streamListenerResultAdapter.supports(outboundKStream.getClass(), targetBean.getClass())) {
-							streamListenerResultAdapter.adapt(outboundKStream, targetBean);
-							break;
-						}
-					}
-				}
+			if (Void.TYPE.equals(method.getReturnType())) {
+				method.invoke(bean, adaptedInboundArguments);
 			}
 			else {
-				Object targetBean = this.applicationContext.getBean(methodAnnotatedOutboundNames[0]);
-				for (StreamListenerResultAdapter streamListenerResultAdapter : streamListenerResultAdapters) {
-					if (streamListenerResultAdapter.supports(result.getClass(), targetBean.getClass())) {
-						streamListenerResultAdapter.adapt(result, targetBean);
-						break;
+				Object result = method.invoke(bean, adaptedInboundArguments);
+
+				if (result.getClass().isArray()) {
+					Assert.isTrue(methodAnnotatedOutboundNames.length == ((Object[]) result).length,
+							"Result does not match with the number of declared outbounds");
+				} else {
+					Assert.isTrue(methodAnnotatedOutboundNames.length == 1,
+							"Result does not match with the number of declared outbounds");
+				}
+				if (result.getClass().isArray()) {
+					Object[] outboundKStreams = (Object[]) result;
+					int i = 0;
+					for (Object outboundKStream : outboundKStreams) {
+						Object targetBean = this.applicationContext.getBean(methodAnnotatedOutboundNames[i++]);
+						for (StreamListenerResultAdapter streamListenerResultAdapter : streamListenerResultAdapters) {
+							if (streamListenerResultAdapter.supports(outboundKStream.getClass(), targetBean.getClass())) {
+								streamListenerResultAdapter.adapt(outboundKStream, targetBean);
+								break;
+							}
+						}
+					}
+				} else {
+					Object targetBean = this.applicationContext.getBean(methodAnnotatedOutboundNames[0]);
+					for (StreamListenerResultAdapter streamListenerResultAdapter : streamListenerResultAdapters) {
+						if (streamListenerResultAdapter.supports(result.getClass(), targetBean.getClass())) {
+							streamListenerResultAdapter.adapt(result, targetBean);
+							break;
+						}
 					}
 				}
 			}
@@ -224,8 +240,12 @@ public class KStreamListenerSetupMethodOrchestrator implements StreamListenerSet
 								+ "from " + stream.getClass() + " to " + parameterType);
 					}
 					else if (parameterType.isAssignableFrom(KTable.class)) {
-						KTable<?, ?> table = streamsBuilder.table(bindingServiceProperties.getBindingDestination(inboundName),
-								Consumed.with(keySerde, valueSerde));
+						String materializedAs = extendedConsumerProperties.getMaterializedAs();
+						String bindingDestination = bindingServiceProperties.getBindingDestination(inboundName);
+						KTable<?, ?> table = materializedAs != null ?
+								materializedAs(streamsBuilder, bindingDestination, materializedAs, keySerde, valueSerde ) :
+								streamsBuilder.table(bindingDestination,
+										Consumed.with(keySerde, valueSerde));
 						KTableBoundElementFactory.KTableWrapper kTableWrapper = (KTableBoundElementFactory.KTableWrapper) targetBean;
 						kTableWrapper.wrap((KTable<Object, Object>) table);
 						kStreamBindingInformationCatalogue.addStreamBuilderFactory(streamsBuilderFactoryBean);
@@ -244,6 +264,13 @@ public class KStreamListenerSetupMethodOrchestrator implements StreamListenerSet
 			}
 		}
 		return arguments;
+	}
+
+	private <K,V> KTable<K,V> materializedAs(StreamsBuilder streamsBuilder, String destination, String storeName, Serde<K> k, Serde<V> v) {
+		return streamsBuilder.table(bindingServiceProperties.getBindingDestination(destination),
+				Materialized.<K, V, KeyValueStore<Bytes, byte[]>>as(storeName)
+						.withKeySerde(k)
+						.withValueSerde(v));
 	}
 
 	private KStream<?, ?> getkStream(String inboundName, BindingProperties bindingProperties, StreamsBuilder streamsBuilder,
@@ -335,9 +362,11 @@ public class KStreamListenerSetupMethodOrchestrator implements StreamListenerSet
 
 	private void validateStreamListenerMethod(StreamListener streamListener, Method method, String[] methodAnnotatedOutboundNames) {
 		String methodAnnotatedInboundName = streamListener.value();
-		for (String s : methodAnnotatedOutboundNames) {
-			if (StringUtils.hasText(s)) {
-				Assert.isTrue(isDeclarativeOutput(method, s), "Method must be declarative");
+		if (methodAnnotatedOutboundNames != null) {
+			for (String s : methodAnnotatedOutboundNames) {
+				if (StringUtils.hasText(s)) {
+					Assert.isTrue(isDeclarativeOutput(method, s), "Method must be declarative");
+				}
 			}
 		}
 		if (StringUtils.hasText(methodAnnotatedInboundName)) {

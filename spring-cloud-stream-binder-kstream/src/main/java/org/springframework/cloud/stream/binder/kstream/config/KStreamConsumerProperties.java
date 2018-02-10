@@ -34,6 +34,11 @@ public class KStreamConsumerProperties extends KafkaConsumerProperties {
 	 */
 	private String valueSerde;
 
+	/**
+	 * Materialized as a KeyValueStore
+	 */
+	private String materializedAs;
+
 	public String getKeySerde() {
 		return keySerde;
 	}
@@ -48,6 +53,14 @@ public class KStreamConsumerProperties extends KafkaConsumerProperties {
 
 	public void setValueSerde(String valueSerde) {
 		this.valueSerde = valueSerde;
+	}
+
+	public String getMaterializedAs() {
+		return materializedAs;
+	}
+
+	public void setMaterializedAs(String materializedAs) {
+		this.materializedAs = materializedAs;
 	}
 
 }

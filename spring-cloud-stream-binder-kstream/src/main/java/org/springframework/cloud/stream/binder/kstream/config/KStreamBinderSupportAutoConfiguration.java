@@ -143,9 +143,10 @@ public class KStreamBinderSupportAutoConfiguration {
 	}
 
 	@Bean
-	public KeyValueSerdeResolver keyValueSerdeResolver(@Qualifier("streamConfigGlobalProperties") Map<String,Object> streamConfigGlobalProperties,
+	@SuppressWarnings("unchecked")
+	public KeyValueSerdeResolver keyValueSerdeResolver(@Qualifier("streamConfigGlobalProperties") Object streamConfigGlobalProperties,
 													KStreamBinderConfigurationProperties kStreamBinderConfigurationProperties) {
-		return new KeyValueSerdeResolver(streamConfigGlobalProperties, kStreamBinderConfigurationProperties);
+		return new KeyValueSerdeResolver((Map<String,Object>)streamConfigGlobalProperties, kStreamBinderConfigurationProperties);
 	}
 
 	@Bean
