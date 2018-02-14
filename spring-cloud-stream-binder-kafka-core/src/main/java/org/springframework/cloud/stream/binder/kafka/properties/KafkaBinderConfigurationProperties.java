@@ -83,7 +83,7 @@ public class KafkaBinderConfigurationProperties {
 	 */
 	private int zkConnectionTimeout = 10000;
 
-	private int requiredAcks = 1;
+	private String requiredAcks = "1";
 
 	private int replicationFactor = 1;
 
@@ -219,11 +219,15 @@ public class KafkaBinderConfigurationProperties {
 		this.maxWait = maxWait;
 	}
 
-	public int getRequiredAcks() {
+	public String getRequiredAcks() {
 		return this.requiredAcks;
 	}
 
 	public void setRequiredAcks(int requiredAcks) {
+		this.requiredAcks = String.valueOf(requiredAcks);
+	}
+
+	public void setRequiredAcks(String requiredAcks) {
 		this.requiredAcks = requiredAcks;
 	}
 

@@ -114,6 +114,7 @@ import org.springframework.util.concurrent.ListenableFutureCallback;
  * @author Soby Chacko
  * @author Henryk Konsek
  * @author Doug Saus
+ * @author Rafal Zukowski
  */
 public class KafkaMessageChannelBinder extends
 		AbstractMessageChannelBinder<ExtendedConsumerProperties<KafkaConsumerProperties>, ExtendedProducerProperties<KafkaProducerProperties>, KafkaTopicProvisioner>
