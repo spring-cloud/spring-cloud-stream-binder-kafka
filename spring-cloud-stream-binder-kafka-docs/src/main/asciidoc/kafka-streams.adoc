@@ -11,16 +11,6 @@ Maven coordinates:
 </dependency>
 ----
 
-Alternatively, you can also use the Spring Cloud Stream RabbitMQ Starter.
-
-[source,xml]
-----
-<dependency>
-  <groupId>org.springframework.cloud</groupId>
-  <artifactId>spring-cloud-starter-stream-kafka-streams</artifactId>
-</dependency>
-----
-
 == Kafka Streams Binder Overview
 
 Spring Cloud Stream's Apache Kafka support also includes a binder implementation designed explicitly for Apache Kafka 
