@@ -60,9 +60,9 @@ public class KafkaBinderMetrics implements MeterBinder, ApplicationListener<Bind
 	private final KafkaBinderConfigurationProperties binderConfigurationProperties;
 
 	private ConsumerFactory<?, ?> defaultConsumerFactory;
-	
+
 	private final MeterRegistry meterRegistry;
-	
+
 	public KafkaBinderMetrics(KafkaMessageChannelBinder binder,
 			KafkaBinderConfigurationProperties binderConfigurationProperties,
 			ConsumerFactory<?, ?> defaultConsumerFactory, @Nullable MeterRegistry meterRegistry) {
@@ -140,12 +140,12 @@ public class KafkaBinderMetrics implements MeterBinder, ApplicationListener<Bind
 
 		return this.defaultConsumerFactory;
 	}
-	
+
 	@Override
 	public void onApplicationEvent(BindingCreatedEvent event) {
 		if (this.meterRegistry != null) {
 			// meters are idempotent when called with the same arguments so safe to call it multiple times
-			this.bindTo(meterRegistry); 
+			this.bindTo(this.meterRegistry);
 		}
 	}
 

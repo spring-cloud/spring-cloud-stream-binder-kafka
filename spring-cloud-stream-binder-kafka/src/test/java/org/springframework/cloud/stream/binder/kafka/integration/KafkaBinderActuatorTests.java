@@ -39,6 +39,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * @author Artem Bilan
+ * @author Oleg Zhurakousky
  *
  * @since 2.0
  */
@@ -86,13 +87,14 @@ public class KafkaBinderActuatorTests {
 
 	@EnableBinding(Sink.class)
 	@EnableAutoConfiguration
-	public static class KafkaMetricsTestConfig {//implements ApplicationListener<ApplicationReadyEvent> {
+	public static class KafkaMetricsTestConfig {
 
 		@StreamListener(Sink.INPUT)
 		public void process(String payload) throws InterruptedException {
 			// Artificial slow listener to emulate consumer lag
 			Thread.sleep(1000);
 		}
+
 	}
 
 }

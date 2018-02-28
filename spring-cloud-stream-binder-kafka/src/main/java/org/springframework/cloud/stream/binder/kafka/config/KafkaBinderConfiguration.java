@@ -60,6 +60,7 @@ import org.springframework.util.ObjectUtils;
  * @author Ilayaperumal Gopinathan
  * @author Henryk Konsek
  * @author Gary Russell
+ * @author Oleg Zhurakousky
  */
 @Configuration
 @ConditionalOnMissingBean(Binder.class)
