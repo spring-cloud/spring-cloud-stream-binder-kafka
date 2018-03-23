@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 the original author or authors.
+ * Copyright 2018 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,46 +16,37 @@
 
 package org.springframework.cloud.stream.binder.kafka.streams;
 
+
 import java.util.Map;
 
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
-import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.apache.kafka.common.serialization.Serdes;
-import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.kstream.KStream;
-import org.apache.kafka.streams.kstream.Serialized;
-import org.apache.kafka.streams.state.QueryableStoreTypes;
-import org.apache.kafka.streams.state.ReadOnlyKeyValueStore;
+import org.apache.kafka.streams.processor.Processor;
+import org.apache.kafka.streams.processor.ProcessorContext;
+import org.apache.kafka.streams.state.WindowStore;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.Test;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.WebApplicationType;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.cloud.stream.annotation.EnableBinding;
+import org.springframework.cloud.stream.annotation.Input;
 import org.springframework.cloud.stream.annotation.StreamListener;
-import org.springframework.cloud.stream.binder.kafka.streams.annotations.KafkaStreamsProcessor;
+import org.springframework.cloud.stream.binder.kafka.streams.annotations.KafkaStreamsStateStore;
 import org.springframework.context.ConfigurableApplicationContext;
-import org.springframework.context.annotation.Bean;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
-import org.springframework.kafka.support.serializer.JsonSerde;
 import org.springframework.kafka.test.rule.KafkaEmbedded;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
-import org.springframework.messaging.handler.annotation.SendTo;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * @author Soby Chacko
- * @author Gary Russell
- */
-public class KafkaStreamsInteractiveQueryIntegrationTests {
+public class KafkaStreamsStateStoreIntegrationTests {
 
 	@ClassRule
 	public static KafkaEmbedded embeddedKafka = new KafkaEmbedded(1, true, "counts-id");
@@ -77,7 +68,7 @@ public class KafkaStreamsInteractiveQueryIntegrationTests {
 	}
 
 	@Test
-	public void testKstreamBinderWithPojoInputAndStringOuput() throws Exception {
+	public void testKstreamStateStore() throws Exception {
 		SpringApplication app = new SpringApplication(ProductCountApplication.class);
 		app.setWebApplicationType(WebApplicationType.NONE);
 		ConfigurableApplicationContext context = app.run("--server.port=0",
@@ -93,9 +84,13 @@ public class KafkaStreamsInteractiveQueryIntegrationTests {
 				"--spring.cloud.stream.kafka.streams.binder.zkNodes=" + embeddedKafka.getZookeeperConnectionString());
 		try {
 			receiveAndValidateFoo(context);
-		} finally {
+		} catch (Exception e) {
+			throw e;
+		}
+		finally {
 			context.close();
 		}
+
 	}
 
 	private void receiveAndValidateFoo(ConfigurableApplicationContext context) throws Exception {
@@ -104,55 +99,48 @@ public class KafkaStreamsInteractiveQueryIntegrationTests {
 		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf, true);
 		template.setDefaultTopic("foos");
 		template.sendDefault("{\"id\":\"123\"}");
-		ConsumerRecord<String, String> cr = KafkaTestUtils.getSingleRecord(consumer, "counts-id");
-		assertThat(cr.value().contains("Count for product with ID 123: 1")).isTrue();
-
-		ProductCountApplication.Foo foo = context.getBean(ProductCountApplication.Foo.class);
-		assertThat(foo.getProductStock(123).equals(1L));
 	}
 
-	@EnableBinding(KafkaStreamsProcessor.class)
+	@EnableBinding(KafkaStreamsProcessorX.class)
 	@EnableAutoConfiguration
 	public static class ProductCountApplication {
 
-		@Autowired
-		private QueryableStoreRegistry queryableStoreRegistry;
-
 		@StreamListener("input")
-		@SendTo("output")
+		@KafkaStreamsStateStore(name="mystate", type="window", size=300000)
 		@SuppressWarnings("deprecation")
-		public KStream<?, String> process(KStream<Object, Product> input) {
+		public void process(KStream<Object, Product> input) {
+			input
+					.process(() -> new Processor<Object, Product>() {
 
-			return input
-					.filter((key, product) -> product.getId() == 123)
-					.map((key, value) -> new KeyValue<>(value.id, value))
-					.groupByKey(Serialized.with(new Serdes.IntegerSerde(), new JsonSerde<>(Product.class)))
-					.count("prod-id-count-store")
-					.toStream()
-					.map((key, value) -> new KeyValue<>(null, "Count for product with ID 123: " + value));
-		}
+						WindowStore<Object, String> state;
 
-		@Bean
-		public Foo foo(QueryableStoreRegistry queryableStoreRegistry) {
-			return new Foo(queryableStoreRegistry);
-		}
+						@Override
+						public void init(ProcessorContext processorContext) {
+							state = (WindowStore)processorContext.getStateStore("mystate");
+							assertThat(state != null).isTrue();
+						}
 
-		static class Foo {
-			QueryableStoreRegistry queryableStoreRegistry;
+						@Override
+						public void process(Object s, Product product) {
 
-			Foo(QueryableStoreRegistry queryableStoreRegistry) {
-				this.queryableStoreRegistry = queryableStoreRegistry;
-			}
+						}
 
-			public Long getProductStock(Integer id) {
-				ReadOnlyKeyValueStore<Object, Object> keyValueStore =
-						queryableStoreRegistry.getQueryableStoreType("prod-id-count-store", QueryableStoreTypes.keyValueStore());
-				return (Long) keyValueStore.get(id);
-			}
+						@Override
+						public void punctuate(long l) {
+
+						}
+
+						@Override
+						public void close() {
+							if (state != null) {
+								state.close();
+							}
+						}
+					}, "mystate");
 		}
 	}
 
-	static class Product {
+	public static class Product {
 
 		Integer id;
 
@@ -163,5 +151,11 @@ public class KafkaStreamsInteractiveQueryIntegrationTests {
 		public void setId(Integer id) {
 			this.id = id;
 		}
+	}
+
+	interface KafkaStreamsProcessorX {
+
+		@Input("input")
+		KStream<?, ?> input();
 	}
 }
