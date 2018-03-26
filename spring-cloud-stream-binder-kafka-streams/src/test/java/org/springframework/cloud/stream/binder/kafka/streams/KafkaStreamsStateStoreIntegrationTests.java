@@ -37,6 +37,7 @@ import org.springframework.cloud.stream.annotation.EnableBinding;
 import org.springframework.cloud.stream.annotation.Input;
 import org.springframework.cloud.stream.annotation.StreamListener;
 import org.springframework.cloud.stream.binder.kafka.streams.annotations.KafkaStreamsStateStore;
+import org.springframework.cloud.stream.binder.kafka.streams.properties.KafkaStreamsStateStoreProperties;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
@@ -106,7 +107,7 @@ public class KafkaStreamsStateStoreIntegrationTests {
 	public static class ProductCountApplication {
 
 		@StreamListener("input")
-		@KafkaStreamsStateStore(name="mystate", type="window", size=300000)
+		@KafkaStreamsStateStore(name="mystate", type= KafkaStreamsStateStoreProperties.StoreType.WINDOW, size=300000)
 		@SuppressWarnings("deprecation")
 		public void process(KStream<Object, Product> input) {
 			input

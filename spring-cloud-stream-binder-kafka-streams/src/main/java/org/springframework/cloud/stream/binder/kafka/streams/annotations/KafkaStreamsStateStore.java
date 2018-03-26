@@ -16,10 +16,13 @@
 
 package org.springframework.cloud.stream.binder.kafka.streams.annotations;
 
+
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+
+import org.springframework.cloud.stream.binder.kafka.streams.properties.KafkaStreamsStateStoreProperties;
 
 @Target({ ElementType.TYPE, ElementType.METHOD, ElementType.ANNOTATION_TYPE })
 @Retention(RetentionPolicy.RUNTIME)
@@ -27,15 +30,15 @@ import java.lang.annotation.Target;
 public @interface KafkaStreamsStateStore {
 	String name() default "";
 
-	String type() default "keyvalue";
+	KafkaStreamsStateStoreProperties.StoreType type() default KafkaStreamsStateStoreProperties.StoreType.KEYVALUE;
 
 	String keySerde() default "org.apache.kafka.common.serialization.Serdes$StringSerde";
 
 	String valueSerde() default "org.apache.kafka.common.serialization.Serdes$StringSerde";
 
-	long size() default 0;
+	long lengthMs() default 0;
 
-	long retention() default 0;
+	long retentionMs() default 0;
 
 	boolean cache() default false;
 

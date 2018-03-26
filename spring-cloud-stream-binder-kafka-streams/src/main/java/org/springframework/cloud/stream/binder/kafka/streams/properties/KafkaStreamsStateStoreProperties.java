@@ -18,6 +18,28 @@ package org.springframework.cloud.stream.binder.kafka.streams.properties;
 
 public class KafkaStreamsStateStoreProperties {
 
+	public enum StoreType {
+		KEYVALUE("keyvalue"),
+		WINDOW("window"),
+		SESSION("session")
+		;
+
+		private final String type;
+
+		/**
+		 * @param type
+		 */
+		StoreType(final String type) {
+			this.type = type;
+		}
+
+		@Override
+		public String toString() {
+			return type;
+		}
+	}
+
+
 	/**
 	 * name for this state store
 	 */
@@ -26,15 +48,15 @@ public class KafkaStreamsStateStoreProperties {
 	/**
 	 * type for this state store
 	 */
-	private String type;
+	private StoreType type;
 
 	/**
-	 * Size/length of this state store. Only applicable for window store.
+	 * Size/length of this state store in ms. Only applicable for window store.
 	 */
-	private long size;
+	private long length;
 
 	/**
-	 * Retention period for this state store.
+	 * Retention period for this state store in ms.
 	 */
 	private long retention;
 
@@ -67,20 +89,20 @@ public class KafkaStreamsStateStoreProperties {
 		this.name = name;
 	}
 
-	public String getType() {
+	public StoreType getType() {
 		return type;
 	}
 
-	public void setType(String type) {
+	public void setType(StoreType type) {
 		this.type = type;
 	}
 
-	public long getSize() {
-		return size;
+	public long getLength() {
+		return length;
 	}
 
-	public void setSize(long size) {
-		this.size = size;
+	public void setLength(long length) {
+		this.length = length;
 	}
 
 	public long getRetention() {

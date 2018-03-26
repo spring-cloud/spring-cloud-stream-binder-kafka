@@ -301,15 +301,15 @@ class KafkaStreamsStreamListenerSetupMethodOrchestrator implements StreamListene
 			Serde<?> valueSerde = this.keyValueSerdeResolver.getStateStoreValueSerde(spec.getValueSerdeString());
 			StoreBuilder builder = null;
 			switch (spec.getType()) {
-				case "keyvalue":
+				case KEYVALUE:
 					builder = Stores.keyValueStoreBuilder(Stores.persistentKeyValueStore(spec.getName()), keySerde, valueSerde);
 					break;
-				case "window":
-					builder = Stores.windowStoreBuilder(Stores.persistentWindowStore(spec.getName(), spec.getRetention(), 3, spec.getSize(), false),
+				case WINDOW:
+					builder = Stores.windowStoreBuilder(Stores.persistentWindowStore(spec.getName(), spec.getRetention(), 3, spec.getLength(), false),
 							keySerde,
 							valueSerde);
 					break;
-				case "session":
+				case SESSION:
 					builder = Stores.sessionStoreBuilder(Stores.persistentSessionStore(spec.getName(), spec.getRetention()), keySerde, valueSerde);
 					break;
 				default:
@@ -488,8 +488,9 @@ class KafkaStreamsStreamListenerSetupMethodOrchestrator implements StreamListene
 			KafkaStreamsStateStoreProperties props = new KafkaStreamsStateStoreProperties();
 			props.setName(spec.name());
 			props.setType(spec.type());
-			props.setSize(spec.size());
+			props.setLength(spec.lengthMs());
 			props.setKeySerdeString(spec.keySerde());
+			props.setRetention(spec.retentionMs());
 			props.setValueSerdeString(spec.valueSerde());
 			props.setCacheEnabled(spec.cache());
 			props.setLoggingDisabled(!spec.logging());
