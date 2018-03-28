@@ -291,9 +291,7 @@ class KafkaStreamsStreamListenerSetupMethodOrchestrator implements StreamListene
 									Serde<?> keySerde, Serde<?> valueSerde) {
 		KStream<?, ?> stream = streamsBuilder.stream(bindingServiceProperties.getBindingDestination(inboundName),
 				Consumed.with(keySerde, valueSerde));
-		final boolean nativeDecoding = bindingProperties.getConsumer() != null &&
-				bindingProperties.getConsumer().isUseNativeDecoding();
-
+		final boolean nativeDecoding = bindingServiceProperties.getConsumerProperties(inboundName).isUseNativeDecoding();
 		if (nativeDecoding){
 			LOG.info("Native decoding is enabled for " + inboundName + ". Inbound deserialization done at the broker.");
 		}
