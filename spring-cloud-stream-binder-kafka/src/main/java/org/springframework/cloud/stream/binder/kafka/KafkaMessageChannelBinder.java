@@ -45,6 +45,7 @@ import org.springframework.cloud.stream.binder.EmbeddedHeaderUtils;
 import org.springframework.cloud.stream.binder.ExtendedConsumerProperties;
 import org.springframework.cloud.stream.binder.ExtendedProducerProperties;
 import org.springframework.cloud.stream.binder.ExtendedPropertiesBinder;
+import org.springframework.cloud.stream.binder.HeaderMode;
 import org.springframework.cloud.stream.binder.MessageValues;
 import org.springframework.cloud.stream.binder.kafka.properties.KafkaBinderConfigurationProperties;
 import org.springframework.cloud.stream.binder.kafka.properties.KafkaConsumerProperties;
@@ -359,7 +360,8 @@ public class KafkaMessageChannelBinder extends
 							? Utils.toArray(ByteBuffer.wrap((byte[]) record.key()))
 							: null;
 					final byte[] payload;
-					if (message.getPayload() instanceof Throwable) {
+					if (HeaderMode.embeddedHeaders == extendedConsumerProperties.getHeaderMode()
+							&& message.getPayload() instanceof Throwable) {
 						final Throwable throwable = (Throwable) message.getPayload();
 						final String failureMessage = throwable.getMessage();
 
