@@ -16,6 +16,12 @@
 
 package org.springframework.cloud.stream.binder.kafka;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.fail;
+import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.mock;
+
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -26,9 +32,6 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
-
-import kafka.utils.ZKStringSerializer$;
-import kafka.utils.ZkUtils;
 
 import org.I0Itec.zkclient.ZkClient;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
@@ -88,10 +91,8 @@ import org.springframework.retry.support.RetryTemplate;
 import org.springframework.util.concurrent.ListenableFuture;
 import org.springframework.util.concurrent.SettableListenableFuture;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.fail;
-import static org.junit.Assert.assertTrue;
-import static org.mockito.Mockito.mock;
+import kafka.utils.ZKStringSerializer$;
+import kafka.utils.ZkUtils;
 
 /**
  * @author Soby Chacko
@@ -142,15 +143,20 @@ public abstract class KafkaBinderTests extends
 
 	@Test
 	public void testDlqAndRetry() throws Exception {
-		testDlqGuts(true);
+		testDlqGuts(true, false);
 	}
 
 	@Test
 	public void testDlq() throws Exception {
-		testDlqGuts(false);
+		testDlqGuts(false, false);
 	}
 
-	private void testDlqGuts(boolean withRetry) throws Exception {
+	@Test
+	public void testDlqRawHeaders() throws Exception {
+		testDlqGuts(false, true);
+	}
+
+	private void testDlqGuts(boolean withRetry, boolean raw) throws Exception {
 		AbstractKafkaTestBinder binder = getBinder();
 		DirectChannel moduleOutputChannel = new DirectChannel();
 		DirectChannel moduleInputChannel = new DirectChannel();
@@ -159,12 +165,18 @@ public abstract class KafkaBinderTests extends
 		moduleInputChannel.subscribe(handler);
 		ExtendedProducerProperties<KafkaProducerProperties> producerProperties = createProducerProperties();
 		producerProperties.setPartitionCount(2);
+		if (raw) {
+			producerProperties.setHeaderMode(HeaderMode.raw);
+		}
 		ExtendedConsumerProperties<KafkaConsumerProperties> consumerProperties = createConsumerProperties();
 		consumerProperties.setMaxAttempts(withRetry ? 2 : 1);
 		consumerProperties.setBackOffInitialInterval(100);
 		consumerProperties.setBackOffMaxInterval(150);
 		consumerProperties.getExtension().setEnableDlq(true);
 		consumerProperties.getExtension().setAutoRebalanceEnabled(false);
+		if (raw) {
+			consumerProperties.setHeaderMode(HeaderMode.raw);
+		}
 		long uniqueBindingId = System.currentTimeMillis();
 
 		String producerName = "dlqTest." + uniqueBindingId + ".0";
@@ -175,6 +187,9 @@ public abstract class KafkaBinderTests extends
 
 		ExtendedConsumerProperties<KafkaConsumerProperties> dlqConsumerProperties = createConsumerProperties();
 		dlqConsumerProperties.setMaxAttempts(1);
+		if (raw) {
+			dlqConsumerProperties.setHeaderMode(HeaderMode.raw);
+		}
 
 		ApplicationContext context = TestUtils.getPropertyValue(binder.getBinder(), "applicationContext",
 				ApplicationContext.class);
@@ -214,15 +229,21 @@ public abstract class KafkaBinderTests extends
 
 		Message<?> receivedMessage = receive(dlqChannel, 3);
 		assertThat(receivedMessage).isNotNull();
-		assertThat(receivedMessage.getPayload()).isEqualTo(testMessagePayload);
-		final MessageHeaders headers = receivedMessage.getHeaders();
-		assertThat(headers.get(KafkaMessageChannelBinder.X_ORIGINAL_TOPIC)).isEqualTo(producerName);
-		assertThat(headers.get(KafkaMessageChannelBinder.X_EXCEPTION_MESSAGE))
-				.isEqualTo("failed to send Message to channel 'null'; nested exception is java.lang.RuntimeException: fail");
-		assertThat(headers.get(KafkaMessageChannelBinder.X_EXCEPTION_STACKTRACE)).isNotNull();
-		assertThat(headers.get(MessageHeaders.CONTENT_TYPE)).isNotNull();
-		assertThat(headers.get("dlqTestHeader")).isEqualTo("propagatedToDlq");
-		assertThat(handler.getInvocationCount()).isEqualTo(consumerProperties.getMaxAttempts());
+		if (raw) {
+			assertThat(new String((byte[]) receivedMessage.getPayload(), StandardCharsets.UTF_8))
+					.isEqualTo(testMessagePayload);
+		}
+		else {
+			assertThat(receivedMessage.getPayload()).isEqualTo(testMessagePayload);
+			final MessageHeaders headers = receivedMessage.getHeaders();
+			assertThat(headers.get(KafkaMessageChannelBinder.X_ORIGINAL_TOPIC)).isEqualTo(producerName);
+			assertThat(headers.get(KafkaMessageChannelBinder.X_EXCEPTION_MESSAGE))
+					.isEqualTo("failed to send Message to channel 'null'; nested exception is java.lang.RuntimeException: fail");
+			assertThat(headers.get(KafkaMessageChannelBinder.X_EXCEPTION_STACKTRACE)).isNotNull();
+			assertThat(headers.get(MessageHeaders.CONTENT_TYPE)).isNotNull();
+			assertThat(headers.get("dlqTestHeader")).isEqualTo("propagatedToDlq");
+			assertThat(handler.getInvocationCount()).isEqualTo(consumerProperties.getMaxAttempts());
+		}
 		binderBindUnbindLatency();
 
 		// verify we got a message on the dedicated error channel and the global (via bridge)
