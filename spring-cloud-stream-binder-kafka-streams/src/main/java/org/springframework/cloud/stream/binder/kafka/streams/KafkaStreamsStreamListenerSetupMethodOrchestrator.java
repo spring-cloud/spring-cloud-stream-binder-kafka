@@ -84,6 +84,7 @@ import org.springframework.util.StringUtils;
  * 3. Each StreamListener method that it orchestrates gets its own {@link StreamsBuilderFactoryBean} and {@link StreamsConfig}
  *
  * @author Soby Chacko
+ * @author Lei Chen
  */
 class KafkaStreamsStreamListenerSetupMethodOrchestrator implements StreamListenerSetupMethodOrchestrator, ApplicationContextAware {
 

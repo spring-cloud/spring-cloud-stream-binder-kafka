@@ -16,6 +16,10 @@
 
 package org.springframework.cloud.stream.binder.kafka.streams.properties;
 
+
+/**
+ * @author Lei Chen
+ */
 public class KafkaStreamsStateStoreProperties {
 
 	public enum StoreType {

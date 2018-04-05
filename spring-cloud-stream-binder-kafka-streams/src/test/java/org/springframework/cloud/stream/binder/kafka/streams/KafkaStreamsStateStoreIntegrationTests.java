@@ -47,6 +47,9 @@ import org.springframework.kafka.test.utils.KafkaTestUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+/**
+ * @author Lei Chen
+ */
 public class KafkaStreamsStateStoreIntegrationTests {
 
 	@ClassRule
@@ -107,7 +110,7 @@ public class KafkaStreamsStateStoreIntegrationTests {
 	public static class ProductCountApplication {
 
 		@StreamListener("input")
-		@KafkaStreamsStateStore(name="mystate", type= KafkaStreamsStateStoreProperties.StoreType.WINDOW, size=300000)
+		@KafkaStreamsStateStore(name="mystate", type= KafkaStreamsStateStoreProperties.StoreType.WINDOW, lengthMs=300000)
 		@SuppressWarnings("deprecation")
 		public void process(KStream<Object, Product> input) {
 			input

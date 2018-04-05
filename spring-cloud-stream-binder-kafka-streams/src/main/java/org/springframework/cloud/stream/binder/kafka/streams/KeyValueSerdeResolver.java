@@ -47,6 +47,7 @@ import org.springframework.util.StringUtils;
  * For state store, use serdes class specified in {@link KafkaStreamsStateStore} to create Serde accordingly.
  *
  * @author Soby Chacko
+ * @author Lei Chen
  */
 class KeyValueSerdeResolver {
 

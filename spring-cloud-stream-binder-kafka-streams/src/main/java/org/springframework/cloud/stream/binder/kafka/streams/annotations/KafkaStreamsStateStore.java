@@ -24,6 +24,40 @@ import java.lang.annotation.Target;
 
 import org.springframework.cloud.stream.binder.kafka.streams.properties.KafkaStreamsStateStoreProperties;
 
+
+/**
+ * Interface for Kafka Stream state store.
+ *
+ * This interface can be used to inject a state store specification into KStream building process so
+ * that the desired store can be built by StreamBuilder and added to topology for later use by processors.
+ * This is particularly useful when need to combine stream DSL with low level processor APIs. In those cases,
+ * if a writable state store is desired in processors, it needs to be created using this annotation.
+ * Here is the example.
+ *
+ * <pre class="code">
+ *     &#064;StreamListener("input")
+ *     &#064;KafkaStreamsStateStore(name="mystate", type= KafkaStreamsStateStoreProperties.StoreType.WINDOW, size=300000)
+ *	   public void process(KStream<Object, Product> input) {
+ *         ......
+ *     }
+ *</pre>
+ *
+ * With that, you should be able to read/write this state store in your processor/transformer code.
+ *
+ * <pre class="code">
+ * 		new Processor<Object, Product>() {
+ * 			WindowStore<Object, String> state;
+ * 			&#064;Override
+ *			public void init(ProcessorContext processorContext) {
+ *			state = (WindowStore)processorContext.getStateStore("mystate");
+ *				......
+ *			}
+ *		}
+ *</pre>
+ *
+ * @author Lei Chen
+ */
+
 @Target({ ElementType.TYPE, ElementType.METHOD, ElementType.ANNOTATION_TYPE })
 @Retention(RetentionPolicy.RUNTIME)
 
