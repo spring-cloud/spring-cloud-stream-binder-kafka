@@ -22,7 +22,7 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-import org.springframework.cloud.stream.binder.kafka.streams.properties.KafkaStreamsStateStoreProperties;
+import org.springframework.cloud.stream.binder.kafka.streams.properties.KafkaStreamsStateStoreProperties;;
 
 
 /**
@@ -62,19 +62,44 @@ import org.springframework.cloud.stream.binder.kafka.streams.properties.KafkaStr
 @Retention(RetentionPolicy.RUNTIME)
 
 public @interface KafkaStreamsStateStore {
+
+	/**
+	 * @return name of state store.
+	 */
 	String name() default "";
 
+	/**
+	 * @return {@link KafkaStreamsStateStoreProperties.StoreType} of state store.
+	 */
 	KafkaStreamsStateStoreProperties.StoreType type() default KafkaStreamsStateStoreProperties.StoreType.KEYVALUE;
 
+	/**
+	 * @return key serde of state store.
+	 */
 	String keySerde() default "org.apache.kafka.common.serialization.Serdes$StringSerde";
 
+	/**
+	 * @return value serde of state store.
+	 */
 	String valueSerde() default "org.apache.kafka.common.serialization.Serdes$StringSerde";
 
+	/**
+	 * @return length in milli-second of window(for windowed store).
+	 */
 	long lengthMs() default 0;
 
+	/**
+	 * @return the maximum period of time in milli-second to keep each window in this store(for windowed store).
+	 */
 	long retentionMs() default 0;
 
+	/**
+	 * @return whether caching should be enabled on the created store.
+	 */
 	boolean cache() default false;
 
+	/**
+	 * @return whether logging should be enabled on the created store.
+	 */
 	boolean logging() default true;
 }
