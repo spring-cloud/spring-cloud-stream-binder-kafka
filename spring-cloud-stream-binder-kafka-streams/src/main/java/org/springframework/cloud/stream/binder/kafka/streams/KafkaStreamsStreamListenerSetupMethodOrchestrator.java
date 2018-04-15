@@ -17,6 +17,7 @@
 package org.springframework.cloud.stream.binder.kafka.streams;
 
 import java.lang.reflect.Method;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
@@ -290,7 +291,9 @@ class KafkaStreamsStreamListenerSetupMethodOrchestrator implements StreamListene
 
 	private KStream<?, ?> getkStream(String inboundName, BindingProperties bindingProperties, StreamsBuilder streamsBuilder,
 									Serde<?> keySerde, Serde<?> valueSerde) {
-		KStream<?, ?> stream = streamsBuilder.stream(bindingServiceProperties.getBindingDestination(inboundName),
+		String[] bindingTargets = StringUtils
+				.commaDelimitedListToStringArray(bindingServiceProperties.getBindingDestination(inboundName));
+		KStream<?, ?> stream = streamsBuilder.stream(Arrays.asList(bindingTargets),
 				Consumed.with(keySerde, valueSerde));
 		final boolean nativeDecoding = bindingServiceProperties.getConsumerProperties(inboundName).isUseNativeDecoding();
 		if (nativeDecoding){
