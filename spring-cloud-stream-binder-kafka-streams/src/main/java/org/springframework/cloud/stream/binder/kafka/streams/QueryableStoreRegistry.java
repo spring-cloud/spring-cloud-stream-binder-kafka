@@ -18,11 +18,10 @@ package org.springframework.cloud.stream.binder.kafka.streams;
 
 import java.util.HashSet;
 import java.util.Set;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+
 import org.apache.kafka.streams.KafkaStreams;
-import org.apache.kafka.streams.errors.InvalidStateStoreException;
 import org.apache.kafka.streams.state.QueryableStoreType;
+import org.apache.kafka.streams.errors.InvalidStateStoreException;
 
 /**
  * Registry that contains {@link QueryableStoreType}s those created from
@@ -32,7 +31,6 @@ import org.apache.kafka.streams.state.QueryableStoreType;
  * @since 2.0.0
  */
 public class QueryableStoreRegistry {
-	private final Log logger = LogFactory.getLog(getClass());
 
 	private final Set<KafkaStreams> kafkaStreams = new HashSet<>();
 
@@ -48,10 +46,10 @@ public class QueryableStoreRegistry {
 
 		for (KafkaStreams kafkaStream : kafkaStreams) {
 			try{
-			T store = kafkaStream.store(storeName, storeType);
-			if (store != null) {
-				return store;
-			}
+				T store = kafkaStream.store(storeName, storeType);
+				if (store != null) {
+					return store;
+				}
 			}
 			catch (InvalidStateStoreException ignored) {
 				//pass through
