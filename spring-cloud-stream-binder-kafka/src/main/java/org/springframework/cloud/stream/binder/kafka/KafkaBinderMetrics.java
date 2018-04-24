@@ -65,6 +65,8 @@ public class KafkaBinderMetrics implements MeterBinder, ApplicationListener<Bind
 
 	private final MeterRegistry meterRegistry;
 
+	private Consumer<?, ?> metadataConsumer;
+
 	public KafkaBinderMetrics(KafkaMessageChannelBinder binder,
 			KafkaBinderConfigurationProperties binderConfigurationProperties,
 			ConsumerFactory<?, ?> defaultConsumerFactory, @Nullable MeterRegistry meterRegistry) {
@@ -104,7 +106,10 @@ public class KafkaBinderMetrics implements MeterBinder, ApplicationListener<Bind
 
 	private double calculateConsumerLagOnTopic(String topic, String group) {
 		long lag = 0;
-		try (Consumer<?, ?> metadataConsumer = createConsumerFactory(group).createConsumer()) {
+		try {
+			if (metadataConsumer == null) {
+				metadataConsumer = createConsumerFactory(group).createConsumer();
+			}
 			List<PartitionInfo> partitionInfos = metadataConsumer.partitionsFor(topic);
 			List<TopicPartition> topicPartitions = new LinkedList<>();
 			for (PartitionInfo partitionInfo : partitionInfos) {
