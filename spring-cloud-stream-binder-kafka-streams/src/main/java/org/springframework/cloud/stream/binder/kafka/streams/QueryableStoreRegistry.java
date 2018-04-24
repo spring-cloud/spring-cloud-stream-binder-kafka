@@ -22,6 +22,7 @@ import java.util.Set;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.errors.InvalidStateStoreException;
 import org.apache.kafka.streams.state.QueryableStoreType;
+import org.apache.kafka.streams.errors.InvalidStateStoreException;
 
 /**
  * Registry that contains {@link QueryableStoreType}s those created from
