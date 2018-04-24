@@ -28,6 +28,7 @@ import org.apache.kafka.streams.errors.InvalidStateStoreException;
  * the user applications.
  *
  * @author Soby Chacko
+ * @author Renwei Han
  * @since 2.0.0
  */
 public class QueryableStoreRegistry {
