@@ -242,6 +242,8 @@ Default: `30000`
 destinationIsPattern::
 When true, the destination is treated as a regular expression `Pattern` used to match topic names by the broker.
 When true, topics are not provisioned, and `enableDlq` is not allowed, because the binder does not know the topic names during the provisioning phase.
+Note, the time taken to detect new topics that match the pattern is controlled by the consumer property `metadata.max.age.ms`, which (at the time of writing) defaults to 300,000ms (5 minutes).
+This can be configured using the `configuration` property above.
 +
 Default: `false`
 
