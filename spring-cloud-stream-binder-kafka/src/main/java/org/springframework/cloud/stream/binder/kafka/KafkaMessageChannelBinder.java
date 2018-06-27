@@ -147,6 +147,10 @@ public class KafkaMessageChannelBinder extends
 
 	private KafkaExtendedBindingProperties extendedBindingProperties = new KafkaExtendedBindingProperties();
 
+	public KafkaMessageChannelBinder(KafkaBinderConfigurationProperties configurationProperties, KafkaTopicProvisioner provisioningProvider) {
+		this(configurationProperties, provisioningProvider, null);
+	}
+
 	public KafkaMessageChannelBinder(KafkaBinderConfigurationProperties configurationProperties,
 			KafkaTopicProvisioner provisioningProvider, ListenerContainerCustomizer<AbstractMessageListenerContainer<?, ?>> containerCustomizer) {
 		super(headersToMap(configurationProperties), provisioningProvider, containerCustomizer);
