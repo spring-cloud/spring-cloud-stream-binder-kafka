@@ -19,7 +19,6 @@ package org.springframework.cloud.stream.binder.kafka.streams;
 /**
  * @author Soby Chacko
  * @author Rafal Zukowski
- * @author Gary Russell
  */
 import java.util.HashMap;
 import java.util.Map;
@@ -106,9 +105,8 @@ class KafkaStreamsDlqDispatch {
 		props.put(ProducerConfig.RETRIES_CONFIG, 0);
 		props.put(ProducerConfig.BUFFER_MEMORY_CONFIG, 33554432);
 		props.put(ProducerConfig.ACKS_CONFIG, configurationProperties.getRequiredAcks());
-		Map<String, Object> mergedConfig = configurationProperties.mergedProducerConfiguration();
-		if (!ObjectUtils.isEmpty(mergedConfig)) {
-			props.putAll(mergedConfig);
+		if (!ObjectUtils.isEmpty(configurationProperties.getProducerConfiguration())) {
+			props.putAll(configurationProperties.getProducerConfiguration());
 		}
 		if (ObjectUtils.isEmpty(props.get(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG))) {
 			props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, configurationProperties.getKafkaConnectionString());

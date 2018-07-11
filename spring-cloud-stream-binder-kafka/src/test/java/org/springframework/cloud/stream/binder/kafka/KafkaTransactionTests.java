@@ -58,10 +58,9 @@ public class KafkaTransactionTests {
 	@SuppressWarnings({ "rawtypes", "unchecked" })
 	@Test
 	public void testProducerRunsInTx() {
-		KafkaProperties kafkaProperties = new TestKafkaProperties();
+		KafkaProperties kafkaProperties = new KafkaProperties();
 		kafkaProperties.setBootstrapServers(Collections.singletonList(embeddedKafka.getBrokersAsString()));
-		KafkaBinderConfigurationProperties configurationProperties =
-				new KafkaBinderConfigurationProperties(kafkaProperties);
+		KafkaBinderConfigurationProperties configurationProperties = new KafkaBinderConfigurationProperties();
 		configurationProperties.getTransaction().setTransactionIdPrefix("foo-");
 		KafkaTopicProvisioner provisioningProvider = new KafkaTopicProvisioner(configurationProperties, kafkaProperties);
 		provisioningProvider.setMetadataRetryOperations(new RetryTemplate());

@@ -30,7 +30,6 @@ import java.util.stream.Collectors;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
-import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 import org.junit.Test;
@@ -68,10 +67,8 @@ public class KafkaBinderUnitTests {
 
 	@Test
 	public void testPropertyOverrides() throws Exception {
-		KafkaProperties kafkaProperties = new TestKafkaProperties();
-		KafkaBinderConfigurationProperties binderConfigurationProperties =
-				new KafkaBinderConfigurationProperties(kafkaProperties);
-		KafkaTopicProvisioner provisioningProvider = new KafkaTopicProvisioner(binderConfigurationProperties, kafkaProperties);
+		KafkaBinderConfigurationProperties binderConfigurationProperties = new KafkaBinderConfigurationProperties();
+		KafkaTopicProvisioner provisioningProvider = new KafkaTopicProvisioner(binderConfigurationProperties, new KafkaProperties());
 		KafkaMessageChannelBinder binder = new KafkaMessageChannelBinder(binderConfigurationProperties,
 				provisioningProvider);
 		KafkaConsumerProperties consumerProps = new KafkaConsumerProperties();
@@ -106,30 +103,6 @@ public class KafkaBinderUnitTests {
 	}
 
 	@Test
-	public void testMergedConsumerProperties() {
-		KafkaProperties bootProps = new TestKafkaProperties();
-		bootProps.getConsumer().getProperties().put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "bar");
-		KafkaBinderConfigurationProperties props = new KafkaBinderConfigurationProperties(bootProps);
-		assertThat(props.mergedConsumerConfiguration().get(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG)).isEqualTo("bar");
-		props.getConfiguration().put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "baz");
-		assertThat(props.mergedConsumerConfiguration().get(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG)).isEqualTo("baz");
-		props.getConsumerProperties().put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "qux");
-		assertThat(props.mergedConsumerConfiguration().get(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG)).isEqualTo("qux");
-	}
-
-	@Test
-	public void testMergedProducerProperties() {
-		KafkaProperties bootProps = new TestKafkaProperties();
-		bootProps.getProducer().getProperties().put(ProducerConfig.RETRIES_CONFIG, "bar");
-		KafkaBinderConfigurationProperties props = new KafkaBinderConfigurationProperties(bootProps);
-		assertThat(props.mergedProducerConfiguration().get(ProducerConfig.RETRIES_CONFIG)).isEqualTo("bar");
-		props.getConfiguration().put(ProducerConfig.RETRIES_CONFIG, "baz");
-		assertThat(props.mergedProducerConfiguration().get(ProducerConfig.RETRIES_CONFIG)).isEqualTo("baz");
-		props.getProducerProperties().put(ProducerConfig.RETRIES_CONFIG, "qux");
-		assertThat(props.mergedProducerConfiguration().get(ProducerConfig.RETRIES_CONFIG)).isEqualTo("qux");
-	}
-
-	@Test
 	public void testOffsetResetWithGroupManagementEarliest() throws Exception {
 		testOffsetResetWithGroupManagement(true, true);
 	}
@@ -153,8 +126,7 @@ public class KafkaBinderUnitTests {
 		final List<TopicPartition> partitions = new ArrayList<>();
 		partitions.add(new TopicPartition("foo", 0));
 		partitions.add(new TopicPartition("foo", 1));
-		KafkaBinderConfigurationProperties configurationProperties = new KafkaBinderConfigurationProperties(
-				new TestKafkaProperties());
+		KafkaBinderConfigurationProperties configurationProperties = new KafkaBinderConfigurationProperties();
 		KafkaTopicProvisioner provisioningProvider = mock(KafkaTopicProvisioner.class);
 		ConsumerDestination dest = mock(ConsumerDestination.class);
 		given(dest.getName()).willReturn("foo");
