@@ -18,6 +18,8 @@ package org.springframework.cloud.stream.binder.kafka.config;
 
 import java.io.IOException;
 
+import javax.security.auth.login.AppConfigurationEntry;
+
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.binder.MeterBinder;
 
@@ -56,7 +58,8 @@ import org.springframework.kafka.support.ProducerListener;
  */
 @Configuration
 @ConditionalOnMissingBean(Binder.class)
-@Import({KafkaAutoConfiguration.class, PropertyPlaceholderAutoConfiguration.class, KafkaBinderHealthIndicatorConfiguration.class })
+@Import({ KafkaAutoConfiguration.class, PropertyPlaceholderAutoConfiguration.class,
+		KafkaBinderHealthIndicatorConfiguration.class })
 @EnableConfigurationProperties({ KafkaExtendedBindingProperties.class })
 public class KafkaBinderConfiguration {
 
@@ -81,7 +84,7 @@ public class KafkaBinderConfiguration {
 
 	@Bean
 	KafkaMessageChannelBinder kafkaMessageChannelBinder(KafkaBinderConfigurationProperties configurationProperties,
-			KafkaTopicProvisioner provisioningProvider) {
+														KafkaTopicProvisioner provisioningProvider) {
 
 		KafkaMessageChannelBinder kafkaMessageChannelBinder = new KafkaMessageChannelBinder(
 				configurationProperties, provisioningProvider);
@@ -97,8 +100,34 @@ public class KafkaBinderConfiguration {
 	}
 
 	@Bean
-	public KafkaJaasLoginModuleInitializer jaasInitializer() throws IOException {
-		return new KafkaJaasLoginModuleInitializer();
+	@ConditionalOnMissingBean(KafkaJaasLoginModuleInitializer.class)
+	public KafkaJaasLoginModuleInitializer jaasInitializer(KafkaBinderConfigurationProperties configurationProperties) throws IOException {
+		KafkaJaasLoginModuleInitializer kafkaJaasLoginModuleInitializer = new KafkaJaasLoginModuleInitializer();
+		JaasLoginModuleConfiguration jaas = configurationProperties.getJaas();
+		if (jaas != null) {
+			kafkaJaasLoginModuleInitializer.setLoginModule(jaas.getLoginModule());
+
+			KafkaJaasLoginModuleInitializer.ControlFlag controlFlag = null;
+			AppConfigurationEntry.LoginModuleControlFlag controlFlagValue = jaas.getControlFlagValue();
+
+			if (AppConfigurationEntry.LoginModuleControlFlag.OPTIONAL.equals(controlFlagValue)) {
+				controlFlag = KafkaJaasLoginModuleInitializer.ControlFlag.OPTIONAL;
+			}
+			else if (AppConfigurationEntry.LoginModuleControlFlag.REQUIRED.equals(controlFlagValue)) {
+				controlFlag = KafkaJaasLoginModuleInitializer.ControlFlag.REQUIRED;
+			}
+			else if (AppConfigurationEntry.LoginModuleControlFlag.REQUISITE.equals(controlFlagValue)) {
+				controlFlag = KafkaJaasLoginModuleInitializer.ControlFlag.REQUISITE;
+			}
+			else if (AppConfigurationEntry.LoginModuleControlFlag.SUFFICIENT.equals(controlFlagValue)) {
+				controlFlag = KafkaJaasLoginModuleInitializer.ControlFlag.SUFFICIENT;
+			}
+			if (controlFlag != null) {
+				kafkaJaasLoginModuleInitializer.setControlFlag(controlFlag);
+			}
+			kafkaJaasLoginModuleInitializer.setOptions(jaas.getOptions());
+		}
+		return kafkaJaasLoginModuleInitializer;
 	}
 
 	/**
