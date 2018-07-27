@@ -61,8 +61,8 @@ import org.springframework.lang.Nullable;
  */
 @Configuration
 @ConditionalOnMissingBean(Binder.class)
-@Import({KafkaAutoConfiguration.class, PropertyPlaceholderAutoConfiguration.class, KafkaBinderHealthIndicatorConfiguration.class })
-@EnableConfigurationProperties({ KafkaExtendedBindingProperties.class })
+@Import({KafkaAutoConfiguration.class, PropertyPlaceholderAutoConfiguration.class, KafkaBinderHealthIndicatorConfiguration.class})
+@EnableConfigurationProperties({KafkaExtendedBindingProperties.class})
 public class KafkaBinderConfiguration {
 
 	@Autowired
@@ -86,7 +86,7 @@ public class KafkaBinderConfiguration {
 
 	@Bean
 	KafkaMessageChannelBinder kafkaMessageChannelBinder(KafkaBinderConfigurationProperties configurationProperties,
-			KafkaTopicProvisioner provisioningProvider, @Nullable ListenerContainerCustomizer<AbstractMessageListenerContainer<?,?>> listenerContainerCustomizer) {
+														KafkaTopicProvisioner provisioningProvider, @Nullable ListenerContainerCustomizer<AbstractMessageListenerContainer<?, ?>> listenerContainerCustomizer) {
 
 		KafkaMessageChannelBinder kafkaMessageChannelBinder = new KafkaMessageChannelBinder(
 				configurationProperties, provisioningProvider, listenerContainerCustomizer);
@@ -114,11 +114,14 @@ public class KafkaBinderConfiguration {
 
 			if (AppConfigurationEntry.LoginModuleControlFlag.OPTIONAL.equals(controlFlagValue)) {
 				controlFlag = KafkaJaasLoginModuleInitializer.ControlFlag.OPTIONAL;
-			} else if (AppConfigurationEntry.LoginModuleControlFlag.REQUIRED.equals(controlFlagValue)) {
+			}
+			else if (AppConfigurationEntry.LoginModuleControlFlag.REQUIRED.equals(controlFlagValue)) {
 				controlFlag = KafkaJaasLoginModuleInitializer.ControlFlag.REQUIRED;
-			} else if (AppConfigurationEntry.LoginModuleControlFlag.REQUISITE.equals(controlFlagValue)) {
+			}
+			else if (AppConfigurationEntry.LoginModuleControlFlag.REQUISITE.equals(controlFlagValue)) {
 				controlFlag = KafkaJaasLoginModuleInitializer.ControlFlag.REQUISITE;
-			} else if (AppConfigurationEntry.LoginModuleControlFlag.SUFFICIENT.equals(controlFlagValue)) {
+			}
+			else if (AppConfigurationEntry.LoginModuleControlFlag.SUFFICIENT.equals(controlFlagValue)) {
 				controlFlag = KafkaJaasLoginModuleInitializer.ControlFlag.SUFFICIENT;
 			}
 			if (controlFlag != null) {
@@ -142,8 +145,8 @@ public class KafkaBinderConfiguration {
 		@Bean
 		@ConditionalOnMissingBean(KafkaBinderMetrics.class)
 		public MeterBinder kafkaBinderMetrics(KafkaMessageChannelBinder kafkaMessageChannelBinder,
-				KafkaBinderConfigurationProperties configurationProperties,
-				MeterRegistry meterRegistry) {
+											KafkaBinderConfigurationProperties configurationProperties,
+											MeterRegistry meterRegistry) {
 
 			return new KafkaBinderMetrics(kafkaMessageChannelBinder, configurationProperties, null, meterRegistry);
 		}
