@@ -129,7 +129,7 @@ public class KafkaStreamsMessageConversionDelegate {
 				}
 				return isValidRecord;
 			},
-			//sedond filter that catches any messages for which an exception thrown in the first filter above.
+			//second filter that catches any messages for which an exception thrown in the first filter above.
 			(k, v) -> true
 		);
 		//process errors from the second filter in the branch above.

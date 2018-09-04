@@ -134,23 +134,33 @@ public class KafkaStreamsBinderWordCountIntegrationTests {
 	private void receiveAndValidate(ConfigurableApplicationContext context) throws Exception {
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
 		DefaultKafkaProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<>(senderProps);
-		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf, true);
-		template.setDefaultTopic("words");
-		template.sendDefault("foobar");
-		ConsumerRecord<String, String> cr = KafkaTestUtils.getSingleRecord(consumer, "counts");
-		assertThat(cr.value().contains("\"word\":\"foobar\",\"count\":1")).isTrue();
+		try {
+			KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf, true);
+			template.setDefaultTopic("words");
+			template.sendDefault("foobar");
+			ConsumerRecord<String, String> cr = KafkaTestUtils.getSingleRecord(consumer, "counts");
+			assertThat(cr.value().contains("\"word\":\"foobar\",\"count\":1")).isTrue();
+		}
+		finally {
+			pf.destroy();
+		}
 	}
 
-	private void sendTombStoneRecordsAndVerifyGracefulHandling() {
+	private void sendTombStoneRecordsAndVerifyGracefulHandling() throws Exception {
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
 		DefaultKafkaProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<>(senderProps);
-		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf, true);
-		template.setDefaultTopic("words");
-		template.sendDefault(null);
-		ConsumerRecords<String, String> received = consumer.poll(Duration.ofMillis(5000));
-		//By asserting that the received record is empty, we are ensuring that the tombstone record
-		//was handled by the binder gracefully.
-		assertThat(received.isEmpty()).isTrue();
+		try {
+			KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf, true);
+			template.setDefaultTopic("words");
+			template.sendDefault(null);
+			ConsumerRecords<String, String> received = consumer.poll(Duration.ofMillis(5000));
+			//By asserting that the received record is empty, we are ensuring that the tombstone record
+			//was handled by the binder gracefully.
+			assertThat(received.isEmpty()).isTrue();
+		}
+		finally {
+			pf.destroy();
+		}
 	}
 
 	@EnableBinding(KafkaStreamsProcessor.class)
