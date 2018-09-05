@@ -19,6 +19,8 @@ package org.springframework.cloud.stream.binder.kafka.streams;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.kstream.KStream;
 import org.apache.kafka.streams.processor.Processor;
@@ -42,6 +44,8 @@ import org.springframework.util.StringUtils;
  * @author Soby Chacko
  */
 public class KafkaStreamsMessageConversionDelegate {
+
+	private final static Log LOG = LogFactory.getLog(KafkaStreamsMessageConversionDelegate.class);
 
 	private static final ThreadLocal<KeyValue<Object, Object>> keyValueThreadLocal = new ThreadLocal<>();
 
@@ -122,6 +126,9 @@ public class KafkaStreamsMessageConversionDelegate {
 							keyValueThreadLocal.set(new KeyValue<>(o, o2));
 						}
 						isValidRecord = true;
+					}
+					else {
+						LOG.info("Received a tombstone record. This will be skipped from further processing.");
 					}
 				}
 				catch (Exception ignored) {
