@@ -29,9 +29,8 @@ import org.springframework.context.annotation.Configuration;
 /**
  * @author Soby Chacko
  */
-@SuppressWarnings("ALL")
 @Configuration
-public class KTableBinderConfiguration {
+public class GlobalKTableBinderConfiguration {
 
 	@Bean
 	@ConditionalOnBean(name = "outerContext")
@@ -52,11 +51,10 @@ public class KTableBinderConfiguration {
 	}
 
 	@Bean
-	public KTableBinder kTableBinder(KafkaStreamsBinderConfigurationProperties binderConfigurationProperties,
+	public GlobalKTableBinder GlobalKTableBinder(KafkaStreamsBinderConfigurationProperties binderConfigurationProperties,
 									KafkaTopicProvisioner kafkaTopicProvisioner,
 									KafkaStreamsBindingInformationCatalogue KafkaStreamsBindingInformationCatalogue) {
-		KTableBinder kStreamBinder = new KTableBinder(binderConfigurationProperties, kafkaTopicProvisioner,
+		return new GlobalKTableBinder(binderConfigurationProperties, kafkaTopicProvisioner,
 				KafkaStreamsBindingInformationCatalogue);
-		return kStreamBinder;
 	}
 }
