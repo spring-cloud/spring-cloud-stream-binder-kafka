@@ -32,12 +32,13 @@ import org.springframework.cloud.stream.binder.kafka.streams.properties.KafkaStr
 import org.springframework.util.StringUtils;
 
 /**
- * {@link org.springframework.cloud.stream.binder.Binder} implementation for {@link GlobalKTable}.
- * This implementation extends from the {@link AbstractBinder} directly.
+ * An {@link AbstractBinder} implementation for {@link GlobalKTable}.
  *
- * Provides only consumer binding for the bound GlobalKTable as output bindings are not allowed on it.
+ * Provides only consumer binding for the bound {@link GlobalKTable}.
+ * Output bindings are not allowed on this binder.
  *
  * @author Soby Chacko
+ * @since 2.1.0
  */
 public class GlobalKTableBinder extends
 		AbstractBinder<GlobalKTable<Object, Object>, ExtendedConsumerProperties<KafkaStreamsConsumerProperties>, ExtendedProducerProperties<KafkaStreamsProducerProperties>>
@@ -51,7 +52,7 @@ public class GlobalKTableBinder extends
 
 	private KafkaStreamsExtendedBindingProperties kafkaStreamsExtendedBindingProperties = new KafkaStreamsExtendedBindingProperties();
 
-	GlobalKTableBinder(KafkaStreamsBinderConfigurationProperties binderConfigurationProperties, KafkaTopicProvisioner kafkaTopicProvisioner,
+	public GlobalKTableBinder(KafkaStreamsBinderConfigurationProperties binderConfigurationProperties, KafkaTopicProvisioner kafkaTopicProvisioner,
 				KafkaStreamsBindingInformationCatalogue kafkaStreamsBindingInformationCatalogue) {
 		this.binderConfigurationProperties = binderConfigurationProperties;
 		this.kafkaTopicProvisioner = kafkaTopicProvisioner;
@@ -86,7 +87,7 @@ public class GlobalKTableBinder extends
 
 	@Override
 	public KafkaStreamsProducerProperties getExtendedProducerProperties(String channelName) {
-		return this.kafkaStreamsExtendedBindingProperties.getExtendedProducerProperties(channelName);
+		throw new UnsupportedOperationException("No producer binding is allowed and therefore no properties");
 	}
 
 }

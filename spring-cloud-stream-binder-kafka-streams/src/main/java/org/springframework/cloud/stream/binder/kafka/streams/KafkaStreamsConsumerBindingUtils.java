@@ -32,7 +32,7 @@ import org.springframework.util.StringUtils;
  */
 class KafkaStreamsConsumerBindingUtils {
 
-	public static void prepareConsumerBinding(String name, String group, Object inputTarget,
+	static void prepareConsumerBinding(String name, String group, Object inputTarget,
 											ApplicationContext context,
 											KafkaTopicProvisioner kafkaTopicProvisioner,
 											KafkaStreamsBindingInformationCatalogue kafkaStreamsBindingInformationCatalogue,

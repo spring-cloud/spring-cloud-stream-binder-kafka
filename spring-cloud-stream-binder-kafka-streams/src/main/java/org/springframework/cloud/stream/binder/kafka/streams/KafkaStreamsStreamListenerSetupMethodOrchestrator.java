@@ -112,13 +112,13 @@ class KafkaStreamsStreamListenerSetupMethodOrchestrator implements StreamListene
 	private ConfigurableApplicationContext applicationContext;
 
 	KafkaStreamsStreamListenerSetupMethodOrchestrator(BindingServiceProperties bindingServiceProperties,
-													  KafkaStreamsExtendedBindingProperties kafkaStreamsExtendedBindingProperties,
-													  KeyValueSerdeResolver keyValueSerdeResolver,
-													  KafkaStreamsBindingInformationCatalogue kafkaStreamsBindingInformationCatalogue,
-													  StreamListenerParameterAdapter streamListenerParameterAdapter,
-													  Collection<StreamListenerResultAdapter> streamListenerResultAdapters,
-													  KafkaStreamsBinderConfigurationProperties binderConfigurationProperties,
-													  CleanupConfig cleanupConfig) {
+													KafkaStreamsExtendedBindingProperties kafkaStreamsExtendedBindingProperties,
+													KeyValueSerdeResolver keyValueSerdeResolver,
+													KafkaStreamsBindingInformationCatalogue kafkaStreamsBindingInformationCatalogue,
+													StreamListenerParameterAdapter streamListenerParameterAdapter,
+													Collection<StreamListenerResultAdapter> streamListenerResultAdapters,
+													KafkaStreamsBinderConfigurationProperties binderConfigurationProperties,
+													CleanupConfig cleanupConfig) {
 		this.bindingServiceProperties = bindingServiceProperties;
 		this.kafkaStreamsExtendedBindingProperties = kafkaStreamsExtendedBindingProperties;
 		this.keyValueSerdeResolver = keyValueSerdeResolver;
@@ -212,8 +212,8 @@ class KafkaStreamsStreamListenerSetupMethodOrchestrator implements StreamListene
 	@Override
 	@SuppressWarnings({"unchecked"})
 	public Object[] adaptAndRetrieveInboundArguments(Method method, String inboundName,
-													 ApplicationContext applicationContext,
-													 StreamListenerParameterAdapter... streamListenerParameterAdapters) {
+													ApplicationContext applicationContext,
+													StreamListenerParameterAdapter... streamListenerParameterAdapters) {
 		Object[] arguments = new Object[method.getParameterTypes().length];
 		for (int parameterIndex = 0; parameterIndex < arguments.length; parameterIndex++) {
 			MethodParameter methodParameter = MethodParameter.forExecutable(method, parameterIndex);
@@ -363,8 +363,8 @@ class KafkaStreamsStreamListenerSetupMethodOrchestrator implements StreamListene
 	}
 
 	private KStream<?, ?> getkStream(String inboundName, KafkaStreamsStateStoreProperties storeSpec,
-									 BindingProperties bindingProperties, StreamsBuilder streamsBuilder,
-									 Serde<?> keySerde, Serde<?> valueSerde) {
+									BindingProperties bindingProperties, StreamsBuilder streamsBuilder,
+									Serde<?> keySerde, Serde<?> valueSerde) {
 		if (storeSpec != null) {
 			StoreBuilder storeBuilder = buildStateStore(storeSpec);
 			streamsBuilder.addStateStore(storeBuilder);
@@ -411,7 +411,7 @@ class KafkaStreamsStreamListenerSetupMethodOrchestrator implements StreamListene
 
 	@SuppressWarnings({"unchecked"})
 	private StreamsConfig buildStreamsBuilderAndRetrieveConfig(Method method, ApplicationContext applicationContext,
-															   BindingProperties bindingProperties) {
+															BindingProperties bindingProperties) {
 		ConfigurableListableBeanFactory beanFactory = this.applicationContext.getBeanFactory();
 		String group = bindingProperties.getGroup();
 		if (!StringUtils.hasText(group)) {

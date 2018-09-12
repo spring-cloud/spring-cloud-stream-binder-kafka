@@ -34,7 +34,7 @@ public class GlobalKTableBinderConfiguration {
 
 	@Bean
 	@ConditionalOnBean(name = "outerContext")
-	public BeanFactoryPostProcessor outerContextBeanFactoryPostProcessor() {
+	public static BeanFactoryPostProcessor outerContextBeanFactoryPostProcessor() {
 		return beanFactory -> {
 			ApplicationContext outerContext = (ApplicationContext) beanFactory.getBean("outerContext");
 			beanFactory.registerSingleton(KafkaStreamsBinderConfigurationProperties.class.getSimpleName(), outerContext
