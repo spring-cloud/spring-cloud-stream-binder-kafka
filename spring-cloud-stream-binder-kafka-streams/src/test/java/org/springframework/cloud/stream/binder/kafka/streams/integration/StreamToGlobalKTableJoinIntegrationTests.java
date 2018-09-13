@@ -140,7 +140,6 @@ public class StreamToGlobalKTableJoinIntegrationTests {
 			DefaultKafkaProducerFactory<Long, Customer> pfCustomer = new DefaultKafkaProducerFactory<>(senderPropsCustomer);
 			KafkaTemplate<Long, Customer> template = new KafkaTemplate<>(pfCustomer, true);
 			template.setDefaultTopic("customers");
-
 			for (long i = 0; i < 5; i++) {
 				final Customer customer = new Customer();
 				customer.setName("customer-" + i);
@@ -214,7 +213,10 @@ public class StreamToGlobalKTableJoinIntegrationTests {
 				assertThat(enrichedOrder.getCustomer().name.equals("customer-" + i)).isTrue();
 				assertThat(enrichedOrder.getProduct().name.equals("product-" + i)).isTrue();
 			}
+			pfCustomer.destroy();
+			consumer.close();
 		}
+
 	}
 
 	static class Order {

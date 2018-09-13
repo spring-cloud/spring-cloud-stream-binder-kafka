@@ -32,6 +32,7 @@ import org.springframework.util.Assert;
  * Input bindings are only created as output bindings on GlobalKTable are not allowed.
  *
  * @author Soby Chacko
+ * @since 2.1.0
  */
 public class GlobalKTableBoundElementFactory extends AbstractBindingTargetFactory<GlobalKTable> {
 
