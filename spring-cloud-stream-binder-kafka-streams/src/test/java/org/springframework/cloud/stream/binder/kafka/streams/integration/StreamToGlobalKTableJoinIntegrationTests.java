@@ -214,6 +214,8 @@ public class StreamToGlobalKTableJoinIntegrationTests {
 				assertThat(enrichedOrder.getProduct().name.equals("product-" + i)).isTrue();
 			}
 			pfCustomer.destroy();
+			pfProduct.destroy();
+			pfOrder.destroy();
 			consumer.close();
 		}
 
