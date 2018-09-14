@@ -48,7 +48,7 @@ public class GlobalKTableBinderConfiguration {
 			if (registry.containsBeanDefinition(BEAN_NAME)) {
 
 				AbstractBeanDefinition configBean = BeanDefinitionBuilder.genericBeanDefinition(MethodInvokingFactoryBean.class)
-						.addPropertyReference("targetObject", "outerContext")
+						.addPropertyReference("targetObject", BEAN_NAME)
 						.addPropertyValue("targetMethod", "getBean")
 						.addPropertyValue("arguments", KafkaStreamsBinderConfigurationProperties.class)
 						.getBeanDefinition();
@@ -56,7 +56,7 @@ public class GlobalKTableBinderConfiguration {
 				registry.registerBeanDefinition(KafkaStreamsBinderConfigurationProperties.class.getSimpleName(), configBean);
 
 				AbstractBeanDefinition catalogueBean = BeanDefinitionBuilder.genericBeanDefinition(MethodInvokingFactoryBean.class)
-						.addPropertyReference("targetObject", "outerContext")
+						.addPropertyReference("targetObject", BEAN_NAME)
 						.addPropertyValue("targetMethod", "getBean")
 						.addPropertyValue("arguments", KafkaStreamsBindingInformationCatalogue.class)
 						.getBeanDefinition();
