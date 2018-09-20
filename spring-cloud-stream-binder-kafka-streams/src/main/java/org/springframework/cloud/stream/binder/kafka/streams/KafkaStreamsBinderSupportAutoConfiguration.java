@@ -18,8 +18,10 @@ package org.springframework.cloud.stream.binder.kafka.streams;
 
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
+import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.errors.LogAndContinueExceptionHandler;
@@ -40,8 +42,10 @@ import org.springframework.cloud.stream.config.BindingServiceConfiguration;
 import org.springframework.cloud.stream.config.BindingServiceProperties;
 import org.springframework.cloud.stream.converter.CompositeMessageConverterFactory;
 import org.springframework.context.annotation.Bean;
+import org.springframework.core.env.Environment;
 import org.springframework.kafka.core.CleanupConfig;
 import org.springframework.util.ObjectUtils;
+import org.springframework.util.StringUtils;
 
 /**
  * @author Marius Bogoevici
@@ -60,29 +64,61 @@ public class KafkaStreamsBinderSupportAutoConfiguration {
 	}
 
 	@Bean("streamConfigGlobalProperties")
-	public Map<String, Object> streamConfigGlobalProperties(KafkaStreamsBinderConfigurationProperties binderConfigurationProperties) {
-		Map<String, Object> props = new HashMap<>();
-		props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, binderConfigurationProperties.getKafkaConnectionString());
-		props.put(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.ByteArraySerde.class.getName());
-		props.put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, Serdes.ByteArraySerde.class.getName());
-		props.put(StreamsConfig.APPLICATION_ID_CONFIG, binderConfigurationProperties.getApplicationId());
+	public Map<String, Object> streamConfigGlobalProperties(KafkaStreamsBinderConfigurationProperties binderConfigurationProperties,
+															Environment environment) {
+
+		//Initialize configuration with default boot auto configuration properties
+		Map<String, Object> streamsConfiguration =
+				new HashMap<>(binderConfigurationProperties.getKafkaProperties().buildStreamsProperties());
+
+		// Override Spring Boot bootstrap server setting if left to default with the value
+		// configured in the binder
+		if (ObjectUtils.isEmpty(streamsConfiguration.get(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG))) {
+			streamsConfiguration.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, binderConfigurationProperties.getKafkaConnectionString());
+		}
+		else {
+			Object boostrapServersConfig = streamsConfiguration.get(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG);
+			if (boostrapServersConfig instanceof List) {
+				@SuppressWarnings("unchecked")
+				List<String> bootStrapServers = (List<String>) streamsConfiguration
+						.get(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG);
+				if (bootStrapServers.size() == 1 && bootStrapServers.get(0).equals("localhost:9092")) {
+					streamsConfiguration.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, binderConfigurationProperties.getKafkaConnectionString());
+				}
+			}
+		}
+
+		String binderProvidedApplicationId = binderConfigurationProperties.getApplicationId();
+		if (StringUtils.isEmpty(streamsConfiguration.get(StreamsConfig.APPLICATION_ID_CONFIG))) {
+			streamsConfiguration.put(StreamsConfig.APPLICATION_ID_CONFIG, binderProvidedApplicationId);
+		}
+		else {
+			String applicationId = (String)streamsConfiguration.get(StreamsConfig.APPLICATION_ID_CONFIG);
+			if (applicationId.equals(environment.getProperty("spring.application.name")) &&
+					!StringUtils.isEmpty(binderProvidedApplicationId)) {
+				streamsConfiguration.put(StreamsConfig.APPLICATION_ID_CONFIG, binderProvidedApplicationId);
+			}
+		}
+
+		streamsConfiguration.put(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.ByteArraySerde.class.getName());
+		streamsConfiguration.put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, Serdes.ByteArraySerde.class.getName());
 
 		if (binderConfigurationProperties.getSerdeError() == KafkaStreamsBinderConfigurationProperties.SerdeError.logAndContinue) {
-			props.put(StreamsConfig.DEFAULT_DESERIALIZATION_EXCEPTION_HANDLER_CLASS_CONFIG,
+			streamsConfiguration.put(StreamsConfig.DEFAULT_DESERIALIZATION_EXCEPTION_HANDLER_CLASS_CONFIG,
 					LogAndContinueExceptionHandler.class);
 		} else if (binderConfigurationProperties.getSerdeError() == KafkaStreamsBinderConfigurationProperties.SerdeError.logAndFail) {
-			props.put(StreamsConfig.DEFAULT_DESERIALIZATION_EXCEPTION_HANDLER_CLASS_CONFIG,
+			streamsConfiguration.put(StreamsConfig.DEFAULT_DESERIALIZATION_EXCEPTION_HANDLER_CLASS_CONFIG,
 					LogAndFailExceptionHandler.class);
 		} else if (binderConfigurationProperties.getSerdeError() == KafkaStreamsBinderConfigurationProperties.SerdeError.sendToDlq) {
-			props.put(StreamsConfig.DEFAULT_DESERIALIZATION_EXCEPTION_HANDLER_CLASS_CONFIG,
+			streamsConfiguration.put(StreamsConfig.DEFAULT_DESERIALIZATION_EXCEPTION_HANDLER_CLASS_CONFIG,
 					SendToDlqAndContinue.class);
 		}
 
 		if (!ObjectUtils.isEmpty(binderConfigurationProperties.getConfiguration())) {
-			props.putAll(binderConfigurationProperties.getConfiguration());
+			streamsConfiguration.putAll(binderConfigurationProperties.getConfiguration());
 		}
 
-		return props;
+		return streamsConfiguration;
 	}
 
 	@Bean
