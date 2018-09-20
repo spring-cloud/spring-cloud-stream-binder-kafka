@@ -18,8 +18,9 @@ package org.springframework.cloud.stream.binder.kafka.streams;
 
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
+import java.util.Properties;
+import java.util.stream.Collectors;
 
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.Serdes;
@@ -42,7 +43,7 @@ import org.springframework.cloud.stream.config.BindingServiceConfiguration;
 import org.springframework.cloud.stream.config.BindingServiceProperties;
 import org.springframework.cloud.stream.converter.CompositeMessageConverterFactory;
 import org.springframework.context.annotation.Bean;
-import org.springframework.core.env.Environment;
+import org.springframework.kafka.config.KafkaStreamsConfiguration;
 import org.springframework.kafka.core.CleanupConfig;
 import org.springframework.util.ObjectUtils;
 import org.springframework.util.StringUtils;
@@ -63,62 +64,58 @@ public class KafkaStreamsBinderSupportAutoConfiguration {
 		return new KafkaStreamsBinderConfigurationProperties(kafkaProperties);
 	}
 
+	@Bean
+	public KafkaStreamsConfiguration kafkaStreamsConfiguration(KafkaStreamsBinderConfigurationProperties binderConfigurationProperties) {
+		return new KafkaStreamsConfiguration(
+				new HashMap<>(binderConfigurationProperties.getKafkaProperties().buildStreamsProperties()));
+	}
+
 	@Bean("streamConfigGlobalProperties")
 	public Map<String, Object> streamConfigGlobalProperties(KafkaStreamsBinderConfigurationProperties binderConfigurationProperties,
-															Environment environment) {
+															KafkaStreamsConfiguration kafkaStreamsConfiguration) {
 
-		//Initialize configuration with default boot auto configuration properties
-		Map<String, Object> streamsConfiguration =
-				new HashMap<>(binderConfigurationProperties.getKafkaProperties().buildStreamsProperties());
-
+		Properties properties = kafkaStreamsConfiguration.asProperties();
 		// Override Spring Boot bootstrap server setting if left to default with the value
 		// configured in the binder
-		if (ObjectUtils.isEmpty(streamsConfiguration.get(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG))) {
-			streamsConfiguration.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, binderConfigurationProperties.getKafkaConnectionString());
+		if (ObjectUtils.isEmpty(properties.get(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG))) {
+			properties.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, binderConfigurationProperties.getKafkaConnectionString());
 		}
 		else {
-			Object boostrapServersConfig = streamsConfiguration.get(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG);
-			if (boostrapServersConfig instanceof List) {
+			Object bootstrapServerConfig = properties.get(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG);
+			if (bootstrapServerConfig instanceof String) {
 				@SuppressWarnings("unchecked")
-				List<String> bootStrapServers = (List<String>) streamsConfiguration
+				String bootStrapServers = (String) properties
 						.get(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG);
-				if (bootStrapServers.size() == 1 && bootStrapServers.get(0).equals("localhost:9092")) {
-					streamsConfiguration.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, binderConfigurationProperties.getKafkaConnectionString());
+				if (bootStrapServers.equals("localhost:9092")) {
+					properties.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, binderConfigurationProperties.getKafkaConnectionString());
 				}
 			}
 		}
 
 		String binderProvidedApplicationId = binderConfigurationProperties.getApplicationId();
-		if (StringUtils.isEmpty(streamsConfiguration.get(StreamsConfig.APPLICATION_ID_CONFIG))) {
-			streamsConfiguration.put(StreamsConfig.APPLICATION_ID_CONFIG, binderProvidedApplicationId);
-		}
-		else {
-			String applicationId = (String)streamsConfiguration.get(StreamsConfig.APPLICATION_ID_CONFIG);
-			if (applicationId.equals(environment.getProperty("spring.application.name")) &&
-					!StringUtils.isEmpty(binderProvidedApplicationId)) {
-				streamsConfiguration.put(StreamsConfig.APPLICATION_ID_CONFIG, binderProvidedApplicationId);
-			}
+		if (StringUtils.hasText(binderProvidedApplicationId)) {
+			properties.put(StreamsConfig.APPLICATION_ID_CONFIG, binderProvidedApplicationId);
 		}
 
-		streamsConfiguration.put(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.ByteArraySerde.class.getName());
-		streamsConfiguration.put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, Serdes.ByteArraySerde.class.getName());
+		properties.put(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.ByteArraySerde.class.getName());
+		properties.put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, Serdes.ByteArraySerde.class.getName());
 
 		if (binderConfigurationProperties.getSerdeError() == KafkaStreamsBinderConfigurationProperties.SerdeError.logAndContinue) {
-			streamsConfiguration.put(StreamsConfig.DEFAULT_DESERIALIZATION_EXCEPTION_HANDLER_CLASS_CONFIG,
+			properties.put(StreamsConfig.DEFAULT_DESERIALIZATION_EXCEPTION_HANDLER_CLASS_CONFIG,
 					LogAndContinueExceptionHandler.class);
 		} else if (binderConfigurationProperties.getSerdeError() == KafkaStreamsBinderConfigurationProperties.SerdeError.logAndFail) {
-			streamsConfiguration.put(StreamsConfig.DEFAULT_DESERIALIZATION_EXCEPTION_HANDLER_CLASS_CONFIG,
+			properties.put(StreamsConfig.DEFAULT_DESERIALIZATION_EXCEPTION_HANDLER_CLASS_CONFIG,
 					LogAndFailExceptionHandler.class);
 		} else if (binderConfigurationProperties.getSerdeError() == KafkaStreamsBinderConfigurationProperties.SerdeError.sendToDlq) {
-			streamsConfiguration.put(StreamsConfig.DEFAULT_DESERIALIZATION_EXCEPTION_HANDLER_CLASS_CONFIG,
+			properties.put(StreamsConfig.DEFAULT_DESERIALIZATION_EXCEPTION_HANDLER_CLASS_CONFIG,
 					SendToDlqAndContinue.class);
 		}
 
 		if (!ObjectUtils.isEmpty(binderConfigurationProperties.getConfiguration())) {
-			streamsConfiguration.putAll(binderConfigurationProperties.getConfiguration());
+			properties.putAll(binderConfigurationProperties.getConfiguration());
 		}
-
-		return streamsConfiguration;
+		return properties.entrySet().stream().collect(
+				Collectors.toMap(e -> String.valueOf(e.getKey()), Map.Entry::getValue));
 	}
 
 	@Bean

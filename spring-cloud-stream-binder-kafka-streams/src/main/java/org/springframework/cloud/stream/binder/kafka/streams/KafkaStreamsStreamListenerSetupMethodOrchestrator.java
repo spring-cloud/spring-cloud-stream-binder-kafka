@@ -431,7 +431,7 @@ class KafkaStreamsStreamListenerSetupMethodOrchestrator implements StreamListene
 		String applicationId = extendedConsumerProperties.getApplicationId();
 
 		//override application.id if set at the individual binding level.
-		if (!StringUtils.isEmpty(applicationId)) {
+		if (StringUtils.hasText(applicationId)) {
 			streamConfigGlobalProperties.put(StreamsConfig.APPLICATION_ID_CONFIG, applicationId);
 		}
 
