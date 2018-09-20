@@ -22,7 +22,6 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.stream.Collectors;
 
-import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.errors.LogAndContinueExceptionHandler;
@@ -78,7 +77,7 @@ public class KafkaStreamsBinderSupportAutoConfiguration {
 		// Override Spring Boot bootstrap server setting if left to default with the value
 		// configured in the binder
 		if (ObjectUtils.isEmpty(properties.get(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG))) {
-			properties.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, binderConfigurationProperties.getKafkaConnectionString());
+			properties.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, binderConfigurationProperties.getKafkaConnectionString());
 		}
 		else {
 			Object bootstrapServerConfig = properties.get(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG);
@@ -87,7 +86,7 @@ public class KafkaStreamsBinderSupportAutoConfiguration {
 				String bootStrapServers = (String) properties
 						.get(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG);
 				if (bootStrapServers.equals("localhost:9092")) {
-					properties.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, binderConfigurationProperties.getKafkaConnectionString());
+					properties.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, binderConfigurationProperties.getKafkaConnectionString());
 				}
 			}
 		}
