@@ -17,7 +17,6 @@
 package org.springframework.cloud.stream.binder.kafka.streams;
 
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 import java.util.stream.Collectors;
@@ -42,6 +41,7 @@ import org.springframework.cloud.stream.config.BindingServiceConfiguration;
 import org.springframework.cloud.stream.config.BindingServiceProperties;
 import org.springframework.cloud.stream.converter.CompositeMessageConverterFactory;
 import org.springframework.context.annotation.Bean;
+import org.springframework.core.env.Environment;
 import org.springframework.kafka.config.KafkaStreamsConfiguration;
 import org.springframework.kafka.core.CleanupConfig;
 import org.springframework.util.ObjectUtils;
@@ -64,9 +64,17 @@ public class KafkaStreamsBinderSupportAutoConfiguration {
 	}
 
 	@Bean
-	public KafkaStreamsConfiguration kafkaStreamsConfiguration(KafkaStreamsBinderConfigurationProperties binderConfigurationProperties) {
-		return new KafkaStreamsConfiguration(
-				new HashMap<>(binderConfigurationProperties.getKafkaProperties().buildStreamsProperties()));
+	public KafkaStreamsConfiguration kafkaStreamsConfiguration(KafkaStreamsBinderConfigurationProperties binderConfigurationProperties,
+															Environment environment) {
+		KafkaProperties kafkaProperties = binderConfigurationProperties.getKafkaProperties();
+		Map<String, Object> streamsProperties = kafkaProperties.buildStreamsProperties();
+		if (kafkaProperties.getStreams().getApplicationId() == null) {
+			String applicationName = environment.getProperty("spring.application.name");
+			if (applicationName != null) {
+				streamsProperties.put(StreamsConfig.APPLICATION_ID_CONFIG, applicationName);
+			}
+		}
+		return new KafkaStreamsConfiguration(streamsProperties);
 	}
 
 	@Bean("streamConfigGlobalProperties")
