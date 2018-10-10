@@ -380,12 +380,12 @@ public class KafkaMessageChannelBinder extends
 				+ "use the regex pattern to specify multiple topics instead");
 		boolean groupManagement = extendedConsumerProperties.getExtension().isAutoRebalanceEnabled();
 		if (!extendedConsumerProperties.isMultiplex()) {
-			listenedPartitions.addAll(processTopic(group, extendedConsumerProperties, consumerFactory,
+			listenedPartitions.addAll(processTopic(consumerGroup, extendedConsumerProperties, consumerFactory,
 					partitionCount, usingPatterns, groupManagement, destination.getName()));
 		}
 		else {
 			for (String name : StringUtils.commaDelimitedListToStringArray(destination.getName())) {
-				listenedPartitions.addAll(processTopic(group, extendedConsumerProperties, consumerFactory,
+				listenedPartitions.addAll(processTopic(consumerGroup, extendedConsumerProperties, consumerFactory,
 						partitionCount, usingPatterns, groupManagement, name.trim()));
 			}
 		}
@@ -567,13 +567,13 @@ public class KafkaMessageChannelBinder extends
 			// not just the ones this binding is listening to; doesn't seem right for a health check.
 			Collection<PartitionInfo> partitionInfos = getPartitionInfo(destination.getName(), consumerProperties,
 					consumerFactory, -1);
-			this.topicsInUse.put(destination.getName(), new TopicInformation(group, partitionInfos));
+			this.topicsInUse.put(destination.getName(), new TopicInformation(consumerGroup, partitionInfos));
 		}
 		else {
 			for (int i = 0; i < topics.length; i++) {
 				Collection<PartitionInfo> partitionInfos = getPartitionInfo(topics[i], consumerProperties,
 						consumerFactory, -1);
-				this.topicsInUse.put(topics[i], new TopicInformation(group, partitionInfos));
+				this.topicsInUse.put(topics[i], new TopicInformation(consumerGroup, partitionInfos));
 			}
 		}
 
