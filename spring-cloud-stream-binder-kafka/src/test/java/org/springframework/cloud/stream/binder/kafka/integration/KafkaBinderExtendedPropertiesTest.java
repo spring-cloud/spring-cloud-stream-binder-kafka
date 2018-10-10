@@ -63,7 +63,6 @@ properties = {"spring.cloud.stream.kafka.bindings.standard-out.producer.configur
 public class KafkaBinderExtendedPropertiesTest {
 
 	private static final String KAFKA_BROKERS_PROPERTY = "spring.cloud.stream.kafka.binder.brokers";
-	private static final String ZK_NODE_PROPERTY = "spring.cloud.stream.kafka.binder.zkNodes";
 
 	@ClassRule
 	public static EmbeddedKafkaRule kafkaEmbedded = new EmbeddedKafkaRule(1, true);
@@ -71,13 +70,11 @@ public class KafkaBinderExtendedPropertiesTest {
 	@BeforeClass
 	public static void setup() {
 		System.setProperty(KAFKA_BROKERS_PROPERTY, kafkaEmbedded.getEmbeddedKafka().getBrokersAsString());
-		System.setProperty(ZK_NODE_PROPERTY, kafkaEmbedded.getEmbeddedKafka().getZookeeperConnectionString());
 	}
 
 	@AfterClass
 	public static void clean() {
 		System.clearProperty(KAFKA_BROKERS_PROPERTY);
-		System.clearProperty(ZK_NODE_PROPERTY);
 	}
 
 	@Autowired
