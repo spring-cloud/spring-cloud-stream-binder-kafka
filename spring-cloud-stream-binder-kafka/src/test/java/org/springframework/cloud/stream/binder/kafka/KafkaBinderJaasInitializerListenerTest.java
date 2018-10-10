@@ -19,6 +19,9 @@ package org.springframework.cloud.stream.binder.kafka;
 import javax.security.auth.login.AppConfigurationEntry;
 
 import com.sun.security.auth.login.ConfigFile;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
+import org.junit.ClassRule;
 import org.junit.Test;
 
 import org.springframework.boot.SpringApplication;
@@ -26,6 +29,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.ConfigurationPropertiesBindException;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.core.io.ClassPathResource;
+import org.springframework.kafka.test.rule.EmbeddedKafkaRule;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -35,6 +39,24 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * @author Soby Chacko
  */
 public class KafkaBinderJaasInitializerListenerTest {
+
+	private static final String KAFKA_BROKERS_PROPERTY = "spring.cloud.stream.kafka.binder.brokers";
+	private static final String ZK_NODE_PROPERTY = "spring.cloud.stream.kafka.binder.zkNodes";
+
+	@ClassRule
+	public static EmbeddedKafkaRule kafkaEmbedded = new EmbeddedKafkaRule(1, true);
+
+	@BeforeClass
+	public static void setup() {
+		System.setProperty(KAFKA_BROKERS_PROPERTY, kafkaEmbedded.getEmbeddedKafka().getBrokersAsString());
+		System.setProperty(ZK_NODE_PROPERTY, kafkaEmbedded.getEmbeddedKafka().getZookeeperConnectionString());
+	}
+
+	@AfterClass
+	public static void clean() {
+		System.clearProperty(KAFKA_BROKERS_PROPERTY);
+		System.clearProperty(ZK_NODE_PROPERTY);
+	}
 
 	@Test
 	public void testConfigurationParsedCorrectlyWithKafkaClientAndDefaultControlFlag() throws Exception {
