@@ -27,6 +27,7 @@ import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -79,6 +80,7 @@ import org.springframework.cloud.stream.binder.PollableSource;
 import org.springframework.cloud.stream.binder.RequeueCurrentMessageException;
 import org.springframework.cloud.stream.binder.Spy;
 import org.springframework.cloud.stream.binder.TestUtils;
+import org.springframework.cloud.stream.binder.kafka.KafkaMessageChannelBinder.TopicInformation;
 import org.springframework.cloud.stream.binder.kafka.properties.KafkaBinderConfigurationProperties;
 import org.springframework.cloud.stream.binder.kafka.properties.KafkaConsumerProperties;
 import org.springframework.cloud.stream.binder.kafka.properties.KafkaProducerProperties;
@@ -412,6 +414,7 @@ public class KafkaBinderTests extends
 				.setHeader(MessageHeaders.CONTENT_TYPE,
 						MimeTypeUtils.APPLICATION_OCTET_STREAM)
 				.build();
+		
 		// Let the consumer actually bind to the producer before sending a msg
 		binderBindUnbindLatency();
 		moduleOutputChannel.send(message);
@@ -431,6 +434,13 @@ public class KafkaBinderTests extends
 		assertThat(new String(inboundMessageRef.get().getPayload(), StandardCharsets.UTF_8)).isEqualTo("foo");
 		assertThat(inboundMessageRef.get().getHeaders().get(MessageHeaders.CONTENT_TYPE))
 				.isEqualTo(MimeTypeUtils.APPLICATION_OCTET_STREAM);
+		
+		Map<String, TopicInformation> topicsInUse = ((KafkaTestBinder)binder).getCoreBinder().getTopicsInUse();
+		assertThat(topicsInUse.keySet()).contains("foo.bar");
+		TopicInformation topic = topicsInUse.get("foo.bar");
+		assertThat(topic.isConsumerTopic()).isTrue();
+		assertThat(topic.getConsumerGroup()).isEqualTo("testSendAndReceive");
+		
 		producerBinding.unbind();
 		consumerBinding.unbind();
 	}
@@ -1457,6 +1467,12 @@ public class KafkaBinderTests extends
 		assertThat(receivedMessage2).isNotNull();
 		assertThat(new String(receivedMessage2.getPayload(), StandardCharsets.UTF_8)).isEqualTo(testPayload3);
 
+		Map<String, TopicInformation> topicsInUse = ((KafkaTestBinder)binder).getCoreBinder().getTopicsInUse();
+		assertThat(topicsInUse.keySet()).contains("defaultGroup.0");
+		TopicInformation topic = topicsInUse.get("defaultGroup.0");
+		assertThat(topic.isConsumerTopic()).isTrue();
+		assertThat(topic.getConsumerGroup()).startsWith("anonymous");
+		
 		producerBinding.unbind();
 		binding1.unbind();
 		binding2.unbind();
