@@ -253,7 +253,6 @@ public class StreamToTableJoinIntegrationTests {
 				"--spring.cloud.stream.bindings.input-x.consumer.useNativeDecoding=true",
 				"--spring.cloud.stream.bindings.output.producer.useNativeEncoding=true",
 				"--spring.cloud.stream.kafka.streams.binder.configuration.auto.offset.reset=latest",
-				"--spring.cloud.stream.kafka.streams.bindings.input.consumer.resetOffsets=true",
 				"--spring.cloud.stream.kafka.streams.bindings.input.consumer.startOffset=earliest",
 				"--spring.cloud.stream.kafka.streams.bindings.input.consumer.keySerde=org.apache.kafka.common.serialization.Serdes$StringSerde",
 				"--spring.cloud.stream.kafka.streams.bindings.input.consumer.valueSerde=org.apache.kafka.common.serialization.Serdes$LongSerde",
