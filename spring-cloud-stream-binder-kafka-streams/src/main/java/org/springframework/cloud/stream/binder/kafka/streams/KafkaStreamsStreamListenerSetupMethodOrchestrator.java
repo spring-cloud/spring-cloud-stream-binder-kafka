@@ -255,6 +255,10 @@ class KafkaStreamsStreamListenerSetupMethodOrchestrator implements StreamListene
 							default: break;
 						}
 					}
+					if (extendedConsumerProperties.isResetOffsets()) {
+						LOG.warn("Detected resetOffsets configured on binding " + inboundName + ". "
+								+ "Setting resetOffsets in Kafka Streams binder does not have any effect.");
+					}
 
 					if (parameterType.isAssignableFrom(KStream.class)) {
 						KStream<?, ?> stream = getkStream(inboundName, spec, bindingProperties,
