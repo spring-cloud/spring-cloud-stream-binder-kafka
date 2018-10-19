@@ -173,6 +173,11 @@ Default: `earliest`.
 Note: Using `resetOffsets` on the consumer does not have any effect on Kafka Streams binder.
 Unlike the message channel based binder, Kafka Streams binder does not seek to beginning or end on demand.
 
+concurrency::
+  Number of stream task threads. Needs at least these many number of partitions in the consuming topic.
++
+Default: `1`.
+
 === TimeWindow properties:
 
 Windowing is an important concept in stream processing applications. Following properties are available to configure
