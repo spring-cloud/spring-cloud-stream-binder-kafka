@@ -15,7 +15,7 @@
         <artifactId>{@= artifactId @}</artifactId>
     </dependency>
     <dependency>
-        <groupId>org.springframework.cloud</groupId>
-        <artifactId>spring-cloud-starter-stream-rabbit</artifactId> <!-- or '*-stream-kafka' -->
+        <groupId>{@= groupId @}</groupId>
+        <artifactId>spring-cloud-stream</artifactId>
     </dependency>
 </dependencies>
