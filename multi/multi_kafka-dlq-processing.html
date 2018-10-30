@@ -1,0 +1,89 @@
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
+   <title>7.&nbsp;Dead-Letter Topic Processing</title><link rel="stylesheet" type="text/css" href="css/manual-multipage.css"><meta name="generator" content="DocBook XSL Stylesheets V1.79.1"><link rel="home" href="multi_spring-cloud-stream-binder-kafka.html" title="Spring Cloud Stream Kafka Binder Reference Guide"><link rel="up" href="multi__reference_guide.html" title="Part&nbsp;I.&nbsp;Reference Guide"><link rel="prev" href="multi_kafka-tombstones.html" title="6.&nbsp;Tombstone Records (null record values)"><link rel="next" href="multi__partitioning_with_the_kafka_binder.html" title="8.&nbsp;Partitioning with the Kafka Binder"></head><body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF"><div class="navheader"><table width="100%" summary="Navigation header"><tr><th colspan="3" align="center">7.&nbsp;Dead-Letter Topic Processing</th></tr><tr><td width="20%" align="left"><a accesskey="p" href="multi_kafka-tombstones.html">Prev</a>&nbsp;</td><th width="60%" align="center">Part&nbsp;I.&nbsp;Reference Guide</th><td width="20%" align="right">&nbsp;<a accesskey="n" href="multi__partitioning_with_the_kafka_binder.html">Next</a></td></tr></table><hr></div><div class="chapter"><div class="titlepage"><div><div><h2 class="title"><a name="kafka-dlq-processing" href="#kafka-dlq-processing"></a>7.&nbsp;Dead-Letter Topic Processing</h2></div></div></div><p>Because you cannot anticipate how users would want to dispose of dead-lettered messages, the framework does not provide any standard mechanism to handle them.
+If the reason for the dead-lettering is transient, you may wish to route the messages back to the original topic.
+However, if the problem is a permanent issue, that could cause an infinite loop.
+The sample Spring Boot application within this topic is an example of how to route those messages back to the original topic, but it moves them to a <span class="quote">&#8220;<span class="quote">parking lot</span>&#8221;</span> topic after three attempts.
+The application is another spring-cloud-stream application that reads from the dead-letter topic.
+It terminates when no messages are received for 5 seconds.</p><p>The examples assume the original destination is <code class="literal">so8400out</code> and the consumer group is <code class="literal">so8400</code>.</p><p>There are a couple of strategies to consider:</p><div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; "><li class="listitem">Consider running the rerouting only when the main application is not running.
+Otherwise, the retries for transient errors are used up very quickly.</li><li class="listitem">Alternatively, use a two-stage approach: Use this application to route to a third topic and another to route from there back to the main topic.</li></ul></div><p>The following code listings show the sample application:</p><p><b>application.properties.&nbsp;</b>
+</p><pre class="screen">spring.cloud.stream.bindings.input.group=so8400replay
+spring.cloud.stream.bindings.input.destination=error.so8400out.so8400
+
+spring.cloud.stream.bindings.output.destination=so8400out
+spring.cloud.stream.bindings.output.producer.partitioned=true
+
+spring.cloud.stream.bindings.parkingLot.destination=so8400in.parkingLot
+spring.cloud.stream.bindings.parkingLot.producer.partitioned=true
+
+spring.cloud.stream.kafka.binder.configuration.auto.offset.reset=earliest
+
+spring.cloud.stream.kafka.binder.headers=x-retries</pre><p>
+</p><p><b>Application.&nbsp;</b>
+</p><pre class="programlisting"><em><span class="hl-annotation" style="color: gray">@SpringBootApplication</span></em>
+<em><span class="hl-annotation" style="color: gray">@EnableBinding(TwoOutputProcessor.class)</span></em>
+<span xmlns:d="http://docbook.org/ns/docbook" class="hl-keyword">public</span> <span xmlns:d="http://docbook.org/ns/docbook" class="hl-keyword">class</span> ReRouteDlqKApplication <span xmlns:d="http://docbook.org/ns/docbook" class="hl-keyword">implements</span> CommandLineRunner {
+
+    <span xmlns:d="http://docbook.org/ns/docbook" class="hl-keyword">private</span> <span xmlns:d="http://docbook.org/ns/docbook" class="hl-keyword">static</span> <span xmlns:d="http://docbook.org/ns/docbook" class="hl-keyword">final</span> String X_RETRIES_HEADER = <span xmlns:d="http://docbook.org/ns/docbook" class="hl-string">"x-retries"</span>;
+
+    <span xmlns:d="http://docbook.org/ns/docbook" class="hl-keyword">public</span> <span xmlns:d="http://docbook.org/ns/docbook" class="hl-keyword">static</span> <span xmlns:d="http://docbook.org/ns/docbook" class="hl-keyword">void</span> main(String[] args) {
+        SpringApplication.run(ReRouteDlqKApplication.<span xmlns:d="http://docbook.org/ns/docbook" class="hl-keyword">class</span>, args).close();
+    }
+
+    <span xmlns:d="http://docbook.org/ns/docbook" class="hl-keyword">private</span> <span xmlns:d="http://docbook.org/ns/docbook" class="hl-keyword">final</span> AtomicInteger processed = <span xmlns:d="http://docbook.org/ns/docbook" class="hl-keyword">new</span> AtomicInteger();
+
+    <em><span class="hl-annotation" style="color: gray">@Autowired</span></em>
+    <span xmlns:d="http://docbook.org/ns/docbook" class="hl-keyword">private</span> MessageChannel parkingLot;
+
+    <em><span class="hl-annotation" style="color: gray">@StreamListener(Processor.INPUT)</span></em>
+    <em><span class="hl-annotation" style="color: gray">@SendTo(Processor.OUTPUT)</span></em>
+    <span xmlns:d="http://docbook.org/ns/docbook" class="hl-keyword">public</span> Message&lt;?&gt; reRoute(Message&lt;?&gt; failed) {
+        processed.incrementAndGet();
+        Integer retries = failed.getHeaders().get(X_RETRIES_HEADER, Integer.<span xmlns:d="http://docbook.org/ns/docbook" class="hl-keyword">class</span>);
+        <span xmlns:d="http://docbook.org/ns/docbook" class="hl-keyword">if</span> (retries == null) {
+            System.out.println(<span xmlns:d="http://docbook.org/ns/docbook" class="hl-string">"First retry for "</span> + failed);
+            <span xmlns:d="http://docbook.org/ns/docbook" class="hl-keyword">return</span> MessageBuilder.fromMessage(failed)
+                    .setHeader(X_RETRIES_HEADER, <span xmlns:d="http://docbook.org/ns/docbook" class="hl-keyword">new</span> Integer(<span class="hl-number">1</span>))
+                    .setHeader(BinderHeaders.PARTITION_OVERRIDE,
+                            failed.getHeaders().get(KafkaHeaders.RECEIVED_PARTITION_ID))
+                    .build();
+        }
+        <span xmlns:d="http://docbook.org/ns/docbook" class="hl-keyword">else</span> <span xmlns:d="http://docbook.org/ns/docbook" class="hl-keyword">if</span> (retries.intValue() &lt; <span class="hl-number">3</span>) {
+            System.out.println(<span xmlns:d="http://docbook.org/ns/docbook" class="hl-string">"Another retry for "</span> + failed);
+            <span xmlns:d="http://docbook.org/ns/docbook" class="hl-keyword">return</span> MessageBuilder.fromMessage(failed)
+                    .setHeader(X_RETRIES_HEADER, <span xmlns:d="http://docbook.org/ns/docbook" class="hl-keyword">new</span> Integer(retries.intValue() + <span class="hl-number">1</span>))
+                    .setHeader(BinderHeaders.PARTITION_OVERRIDE,
+                            failed.getHeaders().get(KafkaHeaders.RECEIVED_PARTITION_ID))
+                    .build();
+        }
+        <span xmlns:d="http://docbook.org/ns/docbook" class="hl-keyword">else</span> {
+            System.out.println(<span xmlns:d="http://docbook.org/ns/docbook" class="hl-string">"Retries exhausted for "</span> + failed);
+            parkingLot.send(MessageBuilder.fromMessage(failed)
+                    .setHeader(BinderHeaders.PARTITION_OVERRIDE,
+                            failed.getHeaders().get(KafkaHeaders.RECEIVED_PARTITION_ID))
+                    .build());
+        }
+        <span xmlns:d="http://docbook.org/ns/docbook" class="hl-keyword">return</span> null;
+    }
+
+    <em><span class="hl-annotation" style="color: gray">@Override</span></em>
+    <span xmlns:d="http://docbook.org/ns/docbook" class="hl-keyword">public</span> <span xmlns:d="http://docbook.org/ns/docbook" class="hl-keyword">void</span> run(String... args) <span xmlns:d="http://docbook.org/ns/docbook" class="hl-keyword">throws</span> Exception {
+        <span xmlns:d="http://docbook.org/ns/docbook" class="hl-keyword">while</span> (true) {
+            <span xmlns:d="http://docbook.org/ns/docbook" class="hl-keyword">int</span> count = <span xmlns:d="http://docbook.org/ns/docbook" class="hl-keyword">this</span>.processed.get();
+            Thread.sleep(<span class="hl-number">5000</span>);
+            <span xmlns:d="http://docbook.org/ns/docbook" class="hl-keyword">if</span> (count == <span xmlns:d="http://docbook.org/ns/docbook" class="hl-keyword">this</span>.processed.get()) {
+                System.out.println(<span xmlns:d="http://docbook.org/ns/docbook" class="hl-string">"Idle, terminating"</span>);
+                <span xmlns:d="http://docbook.org/ns/docbook" class="hl-keyword">return</span>;
+            }
+        }
+    }
+
+    <span xmlns:d="http://docbook.org/ns/docbook" class="hl-keyword">public</span> <span xmlns:d="http://docbook.org/ns/docbook" class="hl-keyword">interface</span> TwoOutputProcessor <span xmlns:d="http://docbook.org/ns/docbook" class="hl-keyword">extends</span> Processor {
+
+        <em><span class="hl-annotation" style="color: gray">@Output("parkingLot")</span></em>
+        MessageChannel parkingLot();
+
+    }
+
+}</pre><p>
+</p></div><div class="navfooter"><hr><table width="100%" summary="Navigation footer"><tr><td width="40%" align="left"><a accesskey="p" href="multi_kafka-tombstones.html">Prev</a>&nbsp;</td><td width="20%" align="center"><a accesskey="u" href="multi__reference_guide.html">Up</a></td><td width="40%" align="right">&nbsp;<a accesskey="n" href="multi__partitioning_with_the_kafka_binder.html">Next</a></td></tr><tr><td width="40%" align="left" valign="top">6.&nbsp;Tombstone Records (null record values)&nbsp;</td><td width="20%" align="center"><a accesskey="h" href="multi_spring-cloud-stream-binder-kafka.html">Home</a></td><td width="40%" align="right" valign="top">&nbsp;8.&nbsp;Partitioning with the Kafka Binder</td></tr></table></div></body></html>

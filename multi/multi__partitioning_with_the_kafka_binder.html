@@ -1,0 +1,72 @@
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
+   <title>8.&nbsp;Partitioning with the Kafka Binder</title><link rel="stylesheet" type="text/css" href="css/manual-multipage.css"><meta name="generator" content="DocBook XSL Stylesheets V1.79.1"><link rel="home" href="multi_spring-cloud-stream-binder-kafka.html" title="Spring Cloud Stream Kafka Binder Reference Guide"><link rel="up" href="multi__reference_guide.html" title="Part&nbsp;I.&nbsp;Reference Guide"><link rel="prev" href="multi_kafka-dlq-processing.html" title="7.&nbsp;Dead-Letter Topic Processing"><link rel="next" href="multi__appendices.html" title="Part&nbsp;II.&nbsp;Appendices"></head><body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF"><div class="navheader"><table width="100%" summary="Navigation header"><tr><th colspan="3" align="center">8.&nbsp;Partitioning with the Kafka Binder</th></tr><tr><td width="20%" align="left"><a accesskey="p" href="multi_kafka-dlq-processing.html">Prev</a>&nbsp;</td><th width="60%" align="center">Part&nbsp;I.&nbsp;Reference Guide</th><td width="20%" align="right">&nbsp;<a accesskey="n" href="multi__appendices.html">Next</a></td></tr></table><hr></div><div class="chapter"><div class="titlepage"><div><div><h2 class="title"><a name="_partitioning_with_the_kafka_binder" href="#_partitioning_with_the_kafka_binder"></a>8.&nbsp;Partitioning with the Kafka Binder</h2></div></div></div><p>Apache Kafka supports topic partitioning natively.</p><p>Sometimes it is advantageous to send data to specific partitions&#8201;&#8212;&#8201;for example, when you want to strictly order message processing (all messages for a particular customer should go to the same partition).</p><p>The following example shows how to configure the producer and consumer side:</p><pre class="programlisting"><em><span class="hl-annotation" style="color: gray">@SpringBootApplication</span></em>
+<em><span class="hl-annotation" style="color: gray">@EnableBinding(Source.class)</span></em>
+<span xmlns:d="http://docbook.org/ns/docbook" class="hl-keyword">public</span> <span xmlns:d="http://docbook.org/ns/docbook" class="hl-keyword">class</span> KafkaPartitionProducerApplication {
+
+    <span xmlns:d="http://docbook.org/ns/docbook" class="hl-keyword">private</span> <span xmlns:d="http://docbook.org/ns/docbook" class="hl-keyword">static</span> <span xmlns:d="http://docbook.org/ns/docbook" class="hl-keyword">final</span> Random RANDOM = <span xmlns:d="http://docbook.org/ns/docbook" class="hl-keyword">new</span> Random(System.currentTimeMillis());
+
+    <span xmlns:d="http://docbook.org/ns/docbook" class="hl-keyword">private</span> <span xmlns:d="http://docbook.org/ns/docbook" class="hl-keyword">static</span> <span xmlns:d="http://docbook.org/ns/docbook" class="hl-keyword">final</span> String[] data = <span xmlns:d="http://docbook.org/ns/docbook" class="hl-keyword">new</span> String[] {
+            <span xmlns:d="http://docbook.org/ns/docbook" class="hl-string">"foo1"</span>, <span xmlns:d="http://docbook.org/ns/docbook" class="hl-string">"bar1"</span>, <span xmlns:d="http://docbook.org/ns/docbook" class="hl-string">"qux1"</span>,
+            <span xmlns:d="http://docbook.org/ns/docbook" class="hl-string">"foo2"</span>, <span xmlns:d="http://docbook.org/ns/docbook" class="hl-string">"bar2"</span>, <span xmlns:d="http://docbook.org/ns/docbook" class="hl-string">"qux2"</span>,
+            <span xmlns:d="http://docbook.org/ns/docbook" class="hl-string">"foo3"</span>, <span xmlns:d="http://docbook.org/ns/docbook" class="hl-string">"bar3"</span>, <span xmlns:d="http://docbook.org/ns/docbook" class="hl-string">"qux3"</span>,
+            <span xmlns:d="http://docbook.org/ns/docbook" class="hl-string">"foo4"</span>, <span xmlns:d="http://docbook.org/ns/docbook" class="hl-string">"bar4"</span>, <span xmlns:d="http://docbook.org/ns/docbook" class="hl-string">"qux4"</span>,
+            };
+
+    <span xmlns:d="http://docbook.org/ns/docbook" class="hl-keyword">public</span> <span xmlns:d="http://docbook.org/ns/docbook" class="hl-keyword">static</span> <span xmlns:d="http://docbook.org/ns/docbook" class="hl-keyword">void</span> main(String[] args) {
+        <span xmlns:d="http://docbook.org/ns/docbook" class="hl-keyword">new</span> SpringApplicationBuilder(KafkaPartitionProducerApplication.<span xmlns:d="http://docbook.org/ns/docbook" class="hl-keyword">class</span>)
+            .web(false)
+            .run(args);
+    }
+
+    <em><span class="hl-annotation" style="color: gray">@InboundChannelAdapter(channel = Source.OUTPUT, poller = @Poller(fixedRate = "5000"))</span></em>
+    <span xmlns:d="http://docbook.org/ns/docbook" class="hl-keyword">public</span> Message&lt;?&gt; generate() {
+        String value = data[RANDOM.nextInt(data.length)];
+        System.out.println(<span xmlns:d="http://docbook.org/ns/docbook" class="hl-string">"Sending: "</span> + value);
+        <span xmlns:d="http://docbook.org/ns/docbook" class="hl-keyword">return</span> MessageBuilder.withPayload(value)
+                .setHeader(<span xmlns:d="http://docbook.org/ns/docbook" class="hl-string">"partitionKey"</span>, value)
+                .build();
+    }
+
+}</pre><p><b>application.yml.&nbsp;</b>
+</p><pre class="programlisting"><span xmlns:d="http://docbook.org/ns/docbook" class="hl-attribute">spring</span>:
+<span xmlns:d="http://docbook.org/ns/docbook" class="hl-attribute">  cloud</span>:
+<span xmlns:d="http://docbook.org/ns/docbook" class="hl-attribute">    stream</span>:
+<span xmlns:d="http://docbook.org/ns/docbook" class="hl-attribute">      bindings</span>:
+<span xmlns:d="http://docbook.org/ns/docbook" class="hl-attribute">        output</span>:
+<span xmlns:d="http://docbook.org/ns/docbook" class="hl-attribute">          destination</span>: partitioned.topic
+<span xmlns:d="http://docbook.org/ns/docbook" class="hl-attribute">          producer</span>:
+<span xmlns:d="http://docbook.org/ns/docbook" class="hl-attribute">            partitioned</span>: <span xmlns:d="http://docbook.org/ns/docbook" class="hl-keyword">true</span>
+<span xmlns:d="http://docbook.org/ns/docbook" class="hl-attribute">            partition-key-expression</span>: headers[<span xmlns:d="http://docbook.org/ns/docbook" class="hl-string">'partitionKey'</span><span xmlns:d="http://docbook.org/ns/docbook" class="hl-keyword">]</span>
+<span xmlns:d="http://docbook.org/ns/docbook" class="hl-attribute">            partition-count</span>: <span class="hl-number">12</span></pre><p>
+</p><div class="important" style="margin-left: 0.5in; margin-right: 0.5in;"><table border="0" summary="Important"><tr><td rowspan="2" align="center" valign="top" width="25"><img alt="[Important]" src="images/important.png"></td><th align="left">Important</th></tr><tr><td align="left" valign="top"><p>The topic must be provisioned to have enough partitions to achieve the desired concurrency for all consumer groups.
+The above configuration supports up to 12 consumer instances (6 if their <code class="literal">concurrency</code> is 2, 4 if their concurrency is 3, and so on).
+It is generally best to <span class="quote">&#8220;<span class="quote">over-provision</span>&#8221;</span> the partitions to allow for future increases in consumers or concurrency.</p></td></tr></table></div><div class="note" style="margin-left: 0.5in; margin-right: 0.5in;"><table border="0" summary="Note"><tr><td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="images/note.png"></td><th align="left">Note</th></tr><tr><td align="left" valign="top"><p>The preceding configuration uses the default partitioning (<code class="literal">key.hashCode() % partitionCount</code>).
+This may or may not provide a suitably balanced algorithm, depending on the key values.
+You can override this default by using the <code class="literal">partitionSelectorExpression</code> or <code class="literal">partitionSelectorClass</code> properties.</p></td></tr></table></div><p>Since partitions are natively handled by Kafka, no special configuration is needed on the consumer side.
+Kafka allocates partitions across the instances.</p><p>The following Spring Boot application listens to a Kafka stream and prints (to the console) the partition ID to which each message goes:</p><pre class="programlisting"><em><span class="hl-annotation" style="color: gray">@SpringBootApplication</span></em>
+<em><span class="hl-annotation" style="color: gray">@EnableBinding(Sink.class)</span></em>
+<span xmlns:d="http://docbook.org/ns/docbook" class="hl-keyword">public</span> <span xmlns:d="http://docbook.org/ns/docbook" class="hl-keyword">class</span> KafkaPartitionConsumerApplication {
+
+    <span xmlns:d="http://docbook.org/ns/docbook" class="hl-keyword">public</span> <span xmlns:d="http://docbook.org/ns/docbook" class="hl-keyword">static</span> <span xmlns:d="http://docbook.org/ns/docbook" class="hl-keyword">void</span> main(String[] args) {
+        <span xmlns:d="http://docbook.org/ns/docbook" class="hl-keyword">new</span> SpringApplicationBuilder(KafkaPartitionConsumerApplication.<span xmlns:d="http://docbook.org/ns/docbook" class="hl-keyword">class</span>)
+            .web(false)
+            .run(args);
+    }
+
+    <em><span class="hl-annotation" style="color: gray">@StreamListener(Sink.INPUT)</span></em>
+    <span xmlns:d="http://docbook.org/ns/docbook" class="hl-keyword">public</span> <span xmlns:d="http://docbook.org/ns/docbook" class="hl-keyword">void</span> listen(<em><span class="hl-annotation" style="color: gray">@Payload</span></em> String in, <em><span class="hl-annotation" style="color: gray">@Header(KafkaHeaders.RECEIVED_PARTITION_ID)</span></em> <span xmlns:d="http://docbook.org/ns/docbook" class="hl-keyword">int</span> partition) {
+        System.out.println(in + <span xmlns:d="http://docbook.org/ns/docbook" class="hl-string">" received from partition "</span> + partition);
+    }
+
+}</pre><p><b>application.yml.&nbsp;</b>
+</p><pre class="programlisting"><span xmlns:d="http://docbook.org/ns/docbook" class="hl-attribute">spring</span>:
+<span xmlns:d="http://docbook.org/ns/docbook" class="hl-attribute">  cloud</span>:
+<span xmlns:d="http://docbook.org/ns/docbook" class="hl-attribute">    stream</span>:
+<span xmlns:d="http://docbook.org/ns/docbook" class="hl-attribute">      bindings</span>:
+<span xmlns:d="http://docbook.org/ns/docbook" class="hl-attribute">        input</span>:
+<span xmlns:d="http://docbook.org/ns/docbook" class="hl-attribute">          destination</span>: partitioned.topic
+<span xmlns:d="http://docbook.org/ns/docbook" class="hl-attribute">          group</span>: myGroup</pre><p>
+</p><p>You can add instances as needed.
+Kafka rebalances the partition allocations.
+If the instance count (or <code class="literal">instance count * concurrency</code>) exceeds the number of partitions, some consumers are idle.</p></div><div class="navfooter"><hr><table width="100%" summary="Navigation footer"><tr><td width="40%" align="left"><a accesskey="p" href="multi_kafka-dlq-processing.html">Prev</a>&nbsp;</td><td width="20%" align="center"><a accesskey="u" href="multi__reference_guide.html">Up</a></td><td width="40%" align="right">&nbsp;<a accesskey="n" href="multi__appendices.html">Next</a></td></tr><tr><td width="40%" align="left" valign="top">7.&nbsp;Dead-Letter Topic Processing&nbsp;</td><td width="20%" align="center"><a accesskey="h" href="multi_spring-cloud-stream-binder-kafka.html">Home</a></td><td width="40%" align="right" valign="top">&nbsp;Part&nbsp;II.&nbsp;Appendices</td></tr></table></div></body></html>
