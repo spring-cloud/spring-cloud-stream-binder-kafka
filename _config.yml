@@ -26,7 +26,7 @@ name: Spring Cloud Stream Binder Kafka
 project: spring-cloud-stream-binder-kafka
 
 # Project github URL
-github_repo_url: http://github.com/spring-cloud/spring-cloud-stream
+github_repo_url: http://github.com/spring-cloud/spring-cloud-stream-binder-kafka
 
 # Project forum URL
 forum: http://stackoverflow.com/questions/tagged/spring-cloud
