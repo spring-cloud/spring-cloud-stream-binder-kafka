@@ -1,0 +1,65 @@
+---
+# The name of your project
+title: Spring Cloud Stream Binder Kafka
+
+badges:
+
+  # Specify your project's twitter handle, if any. Delete if none.
+  twitter: SpringCloudOSS
+
+  # Customize your project's badges. Delete any entries that do not apply.
+  custom:
+    - name: Source (GitHub)
+      url:  https://github.com/spring-cloud/spring-cloud-stream-binder-kafka
+      icon: github
+
+    - name: StackOverflow
+      url:  http://stackoverflow.com/questions/tagged/spring-cloud-stream
+      icon: stackoverflow
+
+---
+<!DOCTYPE HTML>
+<html lang="en-US">
+
+<!-- Specify the parent of this project (or delete if none) to influence the rendering of the breadcrumb -->
+{% capture parent_link %}
+[Spring Cloud]({{ site.projects_site_url }}/spring-cloud)
+{% endcapture %}
+
+{% capture billboard_description %}
+
+Spring Cloud Stream Kafka binder provides implementation of Spring Cloud Stream binding API for Apache Kafka, allowing transparent connectivity of Spring Cloud Stream microservices to Apache Kafka destinations (e.g., topics).
+
+<span id="quick-start"></span>
+
+## Quick Start
+
+<script type="text/javascript">{% include custom.js %}</script>
+{% include download_widget.md %}
+
+As long as Spring Cloud Stream and a [Spring Cloud Stream Kafka Binder](https://github.com/spring-cloud/spring-cloud-stream-binder-kafka) dependencies are on the classpath any Spring Boot application with `@EnableBinding` is capable to bind to Apache Kafka destinations.
+
+For more comprehansive step-by-step _getting started_ experience please refer to the
+[Quick Start](https://docs.spring.io/spring-cloud-stream/docs/Elmhurst.RELEASE/reference/htmlsingle/#_quick_start) section of the user guide.
+
+### Apache Kafka Client Compatibility
+Spring Cloud Stream supports a variety of Apache Kafka Client releases. To learn more about it, please refer to the [Apache Kafka Client Compatibility](https://github.com/spring-cloud/spring-cloud-stream/wiki/Kafka-Client-Compatibility) section in the Wiki page.
+
+{% endcapture %}
+
+{% capture related_resources %}
+
+### Sample Projects
+
+* [Spring Cloud Stream Samples](https://github.com/spring-cloud/spring-cloud-stream-samples)
+
+### Related Projects
+
+* [Spring Cloud Stream Applications](http://cloud.spring.io/spring-cloud-stream-app-starters/)
+* [Spring Cloud Data Flow](http://cloud.spring.io/spring-cloud-dataflow/)
+
+{% endcapture %}
+
+
+{% include project_page.html %}
+</html>
