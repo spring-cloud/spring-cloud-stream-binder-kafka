@@ -101,7 +101,6 @@ import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.ProducerListener;
 import org.springframework.kafka.support.SendResult;
 import org.springframework.kafka.support.TopicPartitionInitialOffset;
-import org.springframework.kafka.support.TopicPartitionInitialOffset.SeekPosition;
 import org.springframework.kafka.support.converter.MessagingMessageConverter;
 import org.springframework.kafka.transaction.KafkaTransactionManager;
 import org.springframework.messaging.MessageChannel;
@@ -490,7 +489,7 @@ public class KafkaMessageChannelBinder extends
 		final KafkaBindingRebalanceListener userRebalanceListener = this.rebalanceListener;
 		containerProperties.setConsumerRebalanceListener(new ConsumerAwareRebalanceListener() {
 
-			private boolean initial;
+			private boolean initial = true;
 
 			@Override
 			public void onPartitionsRevokedBeforeCommit(Consumer<?, ?> consumer,

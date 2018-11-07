@@ -17,8 +17,8 @@
 package org.springframework.cloud.stream.binder.kafka.integration;
 
 import java.util.Collection;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
@@ -136,7 +136,8 @@ public class KafkaBinderExtendedPropertiesTest {
 
 		RebalanceListener rebalanceListener = context.getBean(RebalanceListener.class);
 		assertThat(rebalanceListener.latch.await(10, TimeUnit.SECONDS)).isTrue();
-		assertThat(rebalanceListener.bindings).contains("standard-in", "custom-in");
+		assertThat(rebalanceListener.bindings.keySet()).contains("standard-in", "custom-in");
+		assertThat(rebalanceListener.bindings.values()).containsExactly(Boolean.TRUE, Boolean.TRUE);
 	}
 
 	@EnableBinding(CustomBindingForExtendedPropertyTesting.class)
@@ -179,7 +180,7 @@ public class KafkaBinderExtendedPropertiesTest {
 
 	public static class RebalanceListener implements KafkaBindingRebalanceListener {
 
-		private final Set<String> bindings = new HashSet<>();
+		private final Map<String, Boolean> bindings = new HashMap<>();
 
 		private final CountDownLatch latch = new CountDownLatch(2);
 
@@ -199,7 +200,7 @@ public class KafkaBinderExtendedPropertiesTest {
 		public void onPartitionsAssigned(String bindingName, Consumer<?, ?> consumer,
 				Collection<TopicPartition> partitions, boolean initial) {
 
-			this.bindings.add(bindingName);
+			this.bindings.put(bindingName, initial);
 			this.latch.countDown();
 		}
 
