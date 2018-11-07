@@ -235,6 +235,7 @@ public class KafkaStreamsMessageConversionDelegate {
 					}
 					else if (kstreamBinderConfigurationProperties.getSerdeError() == KafkaStreamsBinderConfigurationProperties.SerdeError.logAndContinue) {
 						//quietly pass through. No action needed, this is similar to log and continue.
+						LOG.error("Message Format not right "+message);
 					}
 				}
 			}
