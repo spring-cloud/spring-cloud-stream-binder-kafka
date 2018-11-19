@@ -34,14 +34,13 @@ import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.header.internals.RecordHeader;
 
 import org.springframework.kafka.support.AbstractKafkaHeaderMapper;
-import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.messaging.MessageHeaders;
 import org.springframework.util.Assert;
 import org.springframework.util.ClassUtils;
 
 /**
  * Default header mapper for Apache Kafka.
- * Most headers in {@link KafkaHeaders} are not mapped on outbound messages.
+ * Most headers in {@link org.springframework.kafka.support.KafkaHeaders} are not mapped on outbound messages.
  * The exceptions are correlation and reply headers for request/reply
  * messaging.
  * Header types are added to a special header {@link #JSON_TYPES}.
