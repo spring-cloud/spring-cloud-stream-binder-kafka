@@ -1413,12 +1413,6 @@ public class KafkaBinderTests extends
 		assertThat(receivedMessage2).isNotNull();
 		assertThat(new String(receivedMessage2.getPayload(), StandardCharsets.UTF_8)).isEqualTo(testPayload3);
 
-		Map<String, KafkaMessageChannelBinder.TopicInformation> topicsInUse = ((KafkaTestBinder)binder).getCoreBinder().getTopicsInUse();
-		assertThat(topicsInUse.keySet()).contains("defaultGroup.0");
-		KafkaMessageChannelBinder.TopicInformation topic = topicsInUse.get("defaultGroup.0");
-		assertThat(topic.isConsumerTopic()).isTrue();
-		assertThat(topic.getConsumerGroup()).startsWith("anonymous");
-
 		producerBinding.unbind();
 		binding1.unbind();
 		binding2.unbind();
