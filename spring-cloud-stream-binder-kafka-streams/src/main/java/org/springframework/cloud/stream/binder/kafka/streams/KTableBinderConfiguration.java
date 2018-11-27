@@ -40,7 +40,7 @@ public class KTableBinderConfiguration {
 
 	@Bean
 	@ConditionalOnBean(name = "outerContext")
-	public BeanFactoryPostProcessor outerContextBeanFactoryPostProcessor() {
+	public static BeanFactoryPostProcessor outerContextBeanFactoryPostProcessor() {
 		return (beanFactory) -> {
 			// It is safe to call getBean("outerContext") here, because this bean is registered as first
 			// and as independent from the parent context.
