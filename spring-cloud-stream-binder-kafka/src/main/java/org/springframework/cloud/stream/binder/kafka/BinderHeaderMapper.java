@@ -27,16 +27,19 @@ import java.util.Map;
 import java.util.Set;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.Module;
 import com.fasterxml.jackson.databind.ObjectMapper;
-
+import com.fasterxml.jackson.databind.module.SimpleModule;
 import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.header.internals.RecordHeader;
 
 import org.springframework.kafka.support.AbstractKafkaHeaderMapper;
+import org.springframework.kafka.support.MimeTypeJsonDeserializer;
 import org.springframework.messaging.MessageHeaders;
 import org.springframework.util.Assert;
 import org.springframework.util.ClassUtils;
+import org.springframework.util.MimeType;
 
 /**
  * Default header mapper for Apache Kafka.
@@ -137,6 +140,8 @@ public class BinderHeaderMapper extends AbstractKafkaHeaderMapper {
 		Assert.notNull(objectMapper, "'objectMapper' must not be null");
 		Assert.noNullElements(patterns, "'patterns' must not have null elements");
 		this.objectMapper = objectMapper;
+		Module module = new SimpleModule().addDeserializer(MimeType.class, new MimeTypeJsonDeserializer(objectMapper));
+		this.objectMapper.registerModule(module);
 	}
 
 	/**
