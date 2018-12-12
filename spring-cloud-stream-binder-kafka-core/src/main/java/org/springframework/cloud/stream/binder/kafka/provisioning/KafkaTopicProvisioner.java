@@ -279,11 +279,13 @@ public class KafkaTopicProvisioner implements ProvisioningProvider<ExtendedConsu
 		try {
 			createTopicIfNecessary(adminClient, name, partitionCount, tolerateLowerPartitionsOnBroker, properties);
 		}
+		//TODO: Remove catching Throwable. See this thread: https://github.com/spring-cloud/spring-cloud-stream-binder-kafka/pull/514#discussion_r241075940
 		catch (Throwable throwable) {
 			if (throwable instanceof Error) {
 				throw (Error) throwable;
 			}
 			else {
+				//TODO: https://github.com/spring-cloud/spring-cloud-stream-binder-kafka/pull/514#discussion_r241075940
 				throw new ProvisioningException("Provisioning exception", throwable);
 			}
 		}
@@ -418,9 +420,10 @@ public class KafkaTopicProvisioner implements ProvisioningProvider<ExtendedConsu
 							final DescribeTopicsResult describeTopicsResult = adminClient.describeTopics(Collections.singletonList(topicName));
 							try {
 								describeTopicsResult.all().get();
-							} catch (ExecutionException ex) {
+							}
+							catch (ExecutionException ex) {
 								if (ex.getCause() instanceof UnknownTopicOrPartitionException) {
-									throw ex.getCause();
+									throw new Exception(ex.getCause());
 								} else {
 									logger.warn("No partitions have been retrieved for the topic (" + topicName + "). This will affect the health check.");
 								}
@@ -443,7 +446,7 @@ public class KafkaTopicProvisioner implements ProvisioningProvider<ExtendedConsu
 						return partitions;
 					});
 		}
-		catch (Throwable ex) {
+		catch (Exception ex) {
 			this.logger.error("Cannot initialize Binder", ex);
 			throw new BinderException("Cannot initialize binder:", ex);
 		}
