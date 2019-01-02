@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2018 the original author or authors.
+ * Copyright 2016-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -33,6 +33,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.CreateTopicsResult;
@@ -2459,8 +2460,9 @@ public class KafkaBinderTests extends
 	public void testPolledConsumer() throws Exception {
 		KafkaTestBinder binder = getBinder();
 		PollableSource<MessageHandler> inboundBindTarget = new DefaultPollableMessageSource(this.messageConverter);
+		ExtendedConsumerProperties<KafkaConsumerProperties> consumerProps = createConsumerProperties();
 		Binding<PollableSource<MessageHandler>> binding = binder.bindPollableConsumer("pollable", "group",
-				inboundBindTarget, createConsumerProperties());
+				inboundBindTarget, consumerProps);
 		Map<String, Object> producerProps = KafkaTestUtils.producerProps(embeddedKafka);
 		KafkaTemplate template = new KafkaTemplate(new DefaultKafkaProducerFactory<>(producerProps));
 		template.send("pollable", "testPollable");
@@ -2475,7 +2477,14 @@ public class KafkaBinderTests extends
 			Thread.sleep(100);
 		}
 		assertThat(polled).isTrue();
+		// Bind a second pollable consumer GH-521
+		consumerProps.getExtension().getConfiguration().put(ConsumerConfig.CLIENT_ID_CONFIG, "pollable2");
+		PollableSource<MessageHandler> second = new DefaultPollableMessageSource(this.messageConverter);
+		Binding<PollableSource<MessageHandler>> binding2 = binder.bindPollableConsumer("pollable2",
+				"group-polledConsumer2", second, consumerProps);
+		second.poll(m -> { });
 		binding.unbind();
+		binding2.unbind();
 	}
 
 	@SuppressWarnings({ "rawtypes", "unchecked" })

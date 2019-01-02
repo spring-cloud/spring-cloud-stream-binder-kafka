@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-2018 the original author or authors.
+ * Copyright 2014-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -470,6 +470,7 @@ public class KafkaMessageChannelBinder extends
 	@Override
 	protected PolledConsumerResources createPolledConsumerResources(String name, String group,
 			ConsumerDestination destination, ExtendedConsumerProperties<KafkaConsumerProperties> consumerProperties) {
+
 		boolean anonymous = !StringUtils.hasText(group);
 		Assert.isTrue(!anonymous || !consumerProperties.getExtension().isEnableDlq(),
 				"DLQ support is not available for anonymous subscriptions");
@@ -479,6 +480,11 @@ public class KafkaMessageChannelBinder extends
 		KafkaMessageSource<?, ?> source = new KafkaMessageSource<>(consumerFactory, destination.getName());
 		source.setMessageConverter(getMessageConverter(consumerProperties));
 		source.setRawMessageHeader(consumerProperties.getExtension().isEnableDlq());
+		String clientId = name;
+		if (consumerProperties.getExtension().getConfiguration().containsKey(ConsumerConfig.CLIENT_ID_CONFIG)) {
+			clientId = consumerProperties.getExtension().getConfiguration().get(ConsumerConfig.CLIENT_ID_CONFIG);
+		}
+		source.setClientId(clientId);
 
 		// I copied this from the regular consumer - it looks bogus to me - includes all partitions
 		// not just the ones this binding is listening to; doesn't seem right for a health check.
