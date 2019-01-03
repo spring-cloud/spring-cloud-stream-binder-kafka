@@ -109,6 +109,59 @@ public class KafkaBinderUnitTests {
 	}
 
 	@Test
+	public void testConsumerGroupOverride() throws Exception {
+		KafkaProperties kafkaProperties = new TestKafkaProperties();
+		KafkaBinderConfigurationProperties binderConfigurationProperties =
+				new KafkaBinderConfigurationProperties(kafkaProperties);
+		KafkaTopicProvisioner provisioningProvider = new KafkaTopicProvisioner(binderConfigurationProperties, kafkaProperties);
+		KafkaMessageChannelBinder binder = new KafkaMessageChannelBinder(binderConfigurationProperties,
+				provisioningProvider);
+		KafkaConsumerProperties consumerProps = new KafkaConsumerProperties();
+		ExtendedConsumerProperties<KafkaConsumerProperties> ecp =
+				new ExtendedConsumerProperties<KafkaConsumerProperties>(consumerProps);
+		Method method = KafkaMessageChannelBinder.class.getDeclaredMethod("createKafkaConsumerFactory", boolean.class,
+				String.class, ExtendedConsumerProperties.class);
+		method.setAccessible(true);
+
+		// binder level group.id setting present
+		binderConfigurationProperties.setConfiguration(
+				Collections.singletonMap(ConsumerConfig.GROUP_ID_CONFIG, "group1"));
+		// createKafkaConsumerFactory gets invoked with channel specific group name
+		Object factory = method.invoke(binder, false, "group2", ecp);
+		Map<?, ?> configs = TestUtils.getPropertyValue(factory, "configs", Map.class);
+		// channel specific group name wins
+		assertThat(configs.get(ConsumerConfig.GROUP_ID_CONFIG)).isEqualTo("group2");
+
+		// binder level group.id setting present
+		binderConfigurationProperties.setConfiguration(
+				Collections.singletonMap(ConsumerConfig.GROUP_ID_CONFIG, "group1"));
+		// createKafkaConsumerFactory gets invoked with null group name
+		factory = method.invoke(binder, false, null, ecp);
+		configs = TestUtils.getPropertyValue(factory, "configs", Map.class);
+		// binder level group name wins
+		assertThat(configs.get(ConsumerConfig.GROUP_ID_CONFIG)).isEqualTo("group1");
+
+		// binder level group.id setting present
+		binderConfigurationProperties.setConfiguration(
+				Collections.singletonMap(ConsumerConfig.GROUP_ID_CONFIG, "group1"));
+		// createKafkaConsumerFactory gets invoked with anonymous group name
+		String anonGroupName = "anonymous." + java.util.UUID.randomUUID().toString();
+		factory = method.invoke(binder, true, anonGroupName, ecp);
+		configs = TestUtils.getPropertyValue(factory, "configs", Map.class);
+		// binder level group name wins
+		assertThat(configs.get(ConsumerConfig.GROUP_ID_CONFIG)).isEqualTo("group1");
+
+		// binder level group.id setting not set
+		binderConfigurationProperties.setConfiguration(Collections.emptyMap());
+		// createKafkaConsumerFactory gets invoked with anonymous group name
+		anonGroupName = "anonymous." + java.util.UUID.randomUUID().toString();
+		factory = method.invoke(binder, true, anonGroupName, ecp);
+		configs = TestUtils.getPropertyValue(factory, "configs", Map.class);
+		// anonymous group name wins
+		assertThat(configs.get(ConsumerConfig.GROUP_ID_CONFIG)).isEqualTo(anonGroupName);
+	}
+
+	@Test
 	public void testMergedConsumerProperties() {
 		KafkaProperties bootProps = new TestKafkaProperties();
 		bootProps.getConsumer().getProperties().put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "bar");

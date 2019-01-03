@@ -911,11 +911,13 @@ public class KafkaMessageChannelBinder extends
 		props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
 		props.put(ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG, 100);
 		props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, anonymous ? "latest" : "earliest");
-		props.put(ConsumerConfig.GROUP_ID_CONFIG, consumerGroup);
 
 		Map<String, Object> mergedConfig = this.configurationProperties.mergedConsumerConfiguration();
 		if (!ObjectUtils.isEmpty(mergedConfig)) {
 			props.putAll(mergedConfig);
+		}
+		if ((!anonymous && !ObjectUtils.isEmpty(consumerGroup)) || !props.containsKey(ConsumerConfig.GROUP_ID_CONFIG)) {
+			props.put(ConsumerConfig.GROUP_ID_CONFIG, consumerGroup);
 		}
 		if (ObjectUtils.isEmpty(props.get(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG))) {
 			props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, this.configurationProperties.getKafkaConnectionString());
