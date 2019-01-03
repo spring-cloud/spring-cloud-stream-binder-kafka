@@ -916,7 +916,7 @@ public class KafkaMessageChannelBinder extends
 		if (!ObjectUtils.isEmpty(mergedConfig)) {
 			props.putAll(mergedConfig);
 		}
-		if ((!anonymous && !ObjectUtils.isEmpty(consumerGroup)) || !props.containsKey(ConsumerConfig.GROUP_ID_CONFIG)) {
+		if ((!anonymous || !props.containsKey(ConsumerConfig.GROUP_ID_CONFIG)) && !ObjectUtils.isEmpty(consumerGroup)) {
 			props.put(ConsumerConfig.GROUP_ID_CONFIG, consumerGroup);
 		}
 		if (ObjectUtils.isEmpty(props.get(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG))) {
