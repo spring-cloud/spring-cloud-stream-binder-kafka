@@ -49,6 +49,7 @@ import org.springframework.util.StringUtils;
  * @author Soby Chacko
  * @author Gary Russell
  * @author Rafal Zukowski
+ * @author Aldo Sinanaj
  */
 @ConfigurationProperties(prefix = "spring.cloud.stream.kafka.binder")
 public class KafkaBinderConfigurationProperties {
@@ -772,6 +773,14 @@ public class KafkaBinderConfigurationProperties {
 
 		public void setAdmin(KafkaAdminProperties admin) {
 			this.kafkaProducerProperties.setAdmin(admin);
+		}
+
+		public KafkaTopicProperties getTopic() {
+			return this.kafkaProducerProperties.getTopic();
+		}
+
+		public void setTopic(KafkaTopicProperties topic) {
+			this.kafkaProducerProperties.setTopic(topic);
 		}
 
 		public KafkaProducerProperties getExtension() {
