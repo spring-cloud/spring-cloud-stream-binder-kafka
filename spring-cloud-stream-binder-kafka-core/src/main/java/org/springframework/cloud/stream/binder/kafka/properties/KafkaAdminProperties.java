@@ -16,7 +16,6 @@
 
 package org.springframework.cloud.stream.binder.kafka.properties;
 
-import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -30,14 +29,12 @@ import java.util.Map;
 @Deprecated
 public class KafkaAdminProperties extends KafkaTopicProperties {
 
-	private Map<String, String> configuration = new HashMap<>();
-
 	public Map<String, String> getConfiguration() {
-		return this.configuration;
+		return getProperties();
 	}
 
 	public void setConfiguration(Map<String, String> configuration) {
-		this.configuration = configuration;
+		setProperties(configuration);
 	}
 
 }

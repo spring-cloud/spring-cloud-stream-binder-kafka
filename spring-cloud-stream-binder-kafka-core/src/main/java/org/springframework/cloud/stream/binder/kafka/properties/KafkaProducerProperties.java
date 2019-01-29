@@ -116,6 +116,7 @@ public class KafkaProducerProperties {
 	@DeprecatedConfigurationProperty(reason = "Not used since 2.1.1, set properties such as this via 'topic'")
 	@SuppressWarnings("deprecation")
 	public KafkaAdminProperties getAdmin() {
+		// Temporary workaround to copy the topic properties to the admin one.
 		final KafkaAdminProperties kafkaAdminProperties = new KafkaAdminProperties();
 		kafkaAdminProperties.setReplicationFactor(this.topic.getReplicationFactor());
 		kafkaAdminProperties.setReplicasAssignments(this.topic.getReplicasAssignments());
@@ -123,13 +124,10 @@ public class KafkaProducerProperties {
 		return kafkaAdminProperties;
 	}
 
+	@Deprecated
+	@SuppressWarnings("deprecation")
 	public void setAdmin(KafkaAdminProperties admin) {
-		// Temporary workaround to copy the admin properties to the topic one. Not needed once the 'admin' field will be removed
-		final KafkaTopicProperties kafkaTopicProperties = new KafkaTopicProperties();
-		kafkaTopicProperties.setReplicationFactor(admin.getReplicationFactor());
-		kafkaTopicProperties.setReplicasAssignments(admin.getReplicasAssignments());
-		kafkaTopicProperties.setProperties(admin.getConfiguration());
-		this.topic = kafkaTopicProperties;
+		this.topic = admin;
 	}
 
 	public KafkaTopicProperties getTopic() {
