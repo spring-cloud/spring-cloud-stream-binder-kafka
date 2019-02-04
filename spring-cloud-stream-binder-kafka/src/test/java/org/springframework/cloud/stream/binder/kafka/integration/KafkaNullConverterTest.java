@@ -72,7 +72,7 @@ public class KafkaNullConverterTest {
 	public void testKafkaNullConverter() throws InterruptedException {
 		output.send(new GenericMessage<>(KafkaNull.INSTANCE));
 
-		assertThat(countDownLatch.await(500, TimeUnit.MILLISECONDS)).isTrue();
+		assertThat(countDownLatch.await(10, TimeUnit.SECONDS)).isTrue();
 	}
 
 	@TestConfiguration
