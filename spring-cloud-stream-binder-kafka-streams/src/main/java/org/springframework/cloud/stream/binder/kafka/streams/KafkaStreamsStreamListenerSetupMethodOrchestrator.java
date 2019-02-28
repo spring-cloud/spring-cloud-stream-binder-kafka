@@ -17,9 +17,11 @@
 package org.springframework.cloud.stream.binder.kafka.streams;
 
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
@@ -78,14 +80,15 @@ import org.springframework.util.StringUtils;
 /**
  * Kafka Streams specific implementation for {@link StreamListenerSetupMethodOrchestrator}
  * that overrides the default mechanisms for invoking StreamListener adapters.
- *
+ * <p>
  * The orchestration primarily focus on the following areas:
+ * <p>
+ * 1. Allow multiple KStream output bindings (KStream branching) by allowing more than one
+ * output values on {@link SendTo} 2. Allow multiple inbound bindings for multiple KStream
+ * and or KTable/GlobalKTable types. 3. Each StreamListener method that it orchestrates
+ * gets its own {@link StreamsBuilderFactoryBean} and {@link StreamsConfig}
  *
- * 1. Allow multiple KStream output bindings (KStream branching) by allowing more than one output values on {@link SendTo}
- * 2. Allow multiple inbound bindings for multiple KStream and or KTable/GlobalKTable types.
- * 3. Each StreamListener method that it orchestrates gets its own {@link StreamsBuilderFactoryBean} and {@link StreamsConfig}
- *
- * @author Soby Chacko
+ *  @author Soby Chacko
  * @author Lei Chen
  * @author Gary Russell
  */
@@ -106,6 +109,8 @@ class KafkaStreamsStreamListenerSetupMethodOrchestrator implements StreamListene
 	private final KafkaStreamsBindingInformationCatalogue kafkaStreamsBindingInformationCatalogue;
 
 	private final Map<Method, StreamsBuilderFactoryBean> methodStreamsBuilderFactoryBeanMap = new HashMap<>();
+
+	private final Map<Method, List<String>> registeredStoresPerMethod = new HashMap<>();
 
 	private final CleanupConfig cleanupConfig;
 
@@ -157,7 +162,8 @@ class KafkaStreamsStreamListenerSetupMethodOrchestrator implements StreamListene
 
 	@Override
 	@SuppressWarnings({"rawtypes", "unchecked"})
-	public void orchestrateStreamListenerSetupMethod(StreamListener streamListener, Method method, Object bean) {
+	public void orchestrateStreamListenerSetupMethod(StreamListener streamListener,
+													Method method, Object bean) {
 		String[] methodAnnotatedOutboundNames = getOutboundBindingTargetNames(method);
 		validateStreamListenerMethod(streamListener, method, methodAnnotatedOutboundNames);
 		String methodAnnotatedInboundName = streamListener.value();
@@ -250,11 +256,14 @@ class KafkaStreamsStreamListenerSetupMethodOrchestrator implements StreamListene
 					Topology.AutoOffsetReset autoOffsetReset = null;
 					if (startOffset != null) {
 						switch (startOffset) {
-							case earliest : autoOffsetReset = Topology.AutoOffsetReset.EARLIEST;
+							case earliest:
+								autoOffsetReset = Topology.AutoOffsetReset.EARLIEST;
 								break;
-							case latest : autoOffsetReset = Topology.AutoOffsetReset.LATEST;
+							case latest:
+								autoOffsetReset = Topology.AutoOffsetReset.LATEST;
 								break;
-							default: break;
+							default:
+								break;
 						}
 					}
 					if (extendedConsumerProperties.isResetOffsets()) {
@@ -385,10 +394,11 @@ class KafkaStreamsStreamListenerSetupMethodOrchestrator implements StreamListene
 		}
 	}
 
-	private KStream<?, ?> getkStream(String inboundName, KafkaStreamsStateStoreProperties storeSpec,
-									BindingProperties bindingProperties,
-									StreamsBuilder streamsBuilder,
-									Serde<?> keySerde, Serde<?> valueSerde, Topology.AutoOffsetReset autoOffsetReset) {
+	private KStream<?, ?> getkStream(String inboundName,
+									KafkaStreamsStateStoreProperties storeSpec,
+									BindingProperties bindingProperties, StreamsBuilder streamsBuilder,
+									Serde<?> keySerde, Serde<?> valueSerde,
+									Topology.AutoOffsetReset autoOffsetReset) {
 		if (storeSpec != null) {
 			StoreBuilder storeBuilder = buildStateStore(storeSpec);
 			streamsBuilder.addStateStore(storeBuilder);
@@ -426,8 +436,11 @@ class KafkaStreamsStreamListenerSetupMethodOrchestrator implements StreamListene
 		return stream;
 	}
 
-	private void enableNativeDecodingForKTableAlways(Class<?> parameterType, BindingProperties bindingProperties) {
-		if (parameterType.isAssignableFrom(KTable.class) || parameterType.isAssignableFrom(GlobalKTable.class)) {
+
+	private void enableNativeDecodingForKTableAlways(Class<?> parameterType,
+													BindingProperties bindingProperties) {
+		if (parameterType.isAssignableFrom(KTable.class)
+				|| parameterType.isAssignableFrom(GlobalKTable.class)) {
 			if (bindingProperties.getConsumer() == null) {
 				bindingProperties.setConsumer(new ConsumerProperties());
 			}
@@ -437,9 +450,10 @@ class KafkaStreamsStreamListenerSetupMethodOrchestrator implements StreamListene
 	}
 
 	@SuppressWarnings({"unchecked"})
-	private void buildStreamsBuilderAndRetrieveConfig(Method method, ApplicationContext applicationContext,
-															String inboundName) {
-		ConfigurableListableBeanFactory beanFactory = this.applicationContext.getBeanFactory();
+	private void buildStreamsBuilderAndRetrieveConfig(Method method,
+													ApplicationContext applicationContext, String inboundName) {
+		ConfigurableListableBeanFactory beanFactory = this.applicationContext
+				.getBeanFactory();
 
 		Map<String, Object> streamConfigGlobalProperties = applicationContext.getBean("streamConfigGlobalProperties", Map.class);
 
@@ -471,7 +485,8 @@ class KafkaStreamsStreamListenerSetupMethodOrchestrator implements StreamListene
 
 		StreamsBuilderFactoryBean streamsBuilder = this.cleanupConfig == null
 				? new StreamsBuilderFactoryBean(kafkaStreamsConfiguration)
-				: new StreamsBuilderFactoryBean(kafkaStreamsConfiguration, this.cleanupConfig);
+				: new StreamsBuilderFactoryBean(kafkaStreamsConfiguration,
+				this.cleanupConfig);
 		streamsBuilder.setAutoStartup(false);
 		BeanDefinition streamsBuilderBeanDefinition =
 				BeanDefinitionBuilder.genericBeanDefinition((Class<StreamsBuilderFactoryBean>) streamsBuilder.getClass(), () -> streamsBuilder)
@@ -486,7 +501,8 @@ class KafkaStreamsStreamListenerSetupMethodOrchestrator implements StreamListene
 		this.applicationContext = (ConfigurableApplicationContext) applicationContext;
 	}
 
-	private void validateStreamListenerMethod(StreamListener streamListener, Method method, String[] methodAnnotatedOutboundNames) {
+	private void validateStreamListenerMethod(StreamListener streamListener,
+											Method method, String[] methodAnnotatedOutboundNames) {
 		String methodAnnotatedInboundName = streamListener.value();
 		if (methodAnnotatedOutboundNames != null) {
 			for (String s : methodAnnotatedOutboundNames) {
@@ -541,21 +557,26 @@ class KafkaStreamsStreamListenerSetupMethodOrchestrator implements StreamListene
 	}
 
 	@SuppressWarnings({"unchecked"})
-	private static KafkaStreamsStateStoreProperties buildStateStoreSpec(Method method) {
-		KafkaStreamsStateStore spec = AnnotationUtils.findAnnotation(method, KafkaStreamsStateStore.class);
-		if (spec != null) {
-			Assert.isTrue(!ObjectUtils.isEmpty(spec.name()), "name cannot be empty");
-			Assert.isTrue(spec.name().length() >= 1, "name cannot be empty.");
-			KafkaStreamsStateStoreProperties props = new KafkaStreamsStateStoreProperties();
-			props.setName(spec.name());
-			props.setType(spec.type());
-			props.setLength(spec.lengthMs());
-			props.setKeySerdeString(spec.keySerde());
-			props.setRetention(spec.retentionMs());
-			props.setValueSerdeString(spec.valueSerde());
-			props.setCacheEnabled(spec.cache());
-			props.setLoggingDisabled(!spec.logging());
-			return props;
+	private KafkaStreamsStateStoreProperties buildStateStoreSpec(Method method) {
+		if (!this.registeredStoresPerMethod.containsKey(method)) {
+			KafkaStreamsStateStore spec = AnnotationUtils.findAnnotation(method,
+					KafkaStreamsStateStore.class);
+			if (spec != null) {
+				Assert.isTrue(!ObjectUtils.isEmpty(spec.name()), "name cannot be empty");
+				Assert.isTrue(spec.name().length() >= 1, "name cannot be empty.");
+				this.registeredStoresPerMethod.put(method, new ArrayList<>());
+				this.registeredStoresPerMethod.get(method).add(spec.name());
+				KafkaStreamsStateStoreProperties props = new KafkaStreamsStateStoreProperties();
+				props.setName(spec.name());
+				props.setType(spec.type());
+				props.setLength(spec.lengthMs());
+				props.setKeySerdeString(spec.keySerde());
+				props.setRetention(spec.retentionMs());
+				props.setValueSerdeString(spec.valueSerde());
+				props.setCacheEnabled(spec.cache());
+				props.setLoggingDisabled(!spec.logging());
+				return props;
+			}
 		}
 		return null;
 	}
