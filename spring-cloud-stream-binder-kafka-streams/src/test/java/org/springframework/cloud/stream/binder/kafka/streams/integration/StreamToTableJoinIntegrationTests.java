@@ -69,32 +69,6 @@ public class StreamToTableJoinIntegrationTests {
 
 	private static EmbeddedKafkaBroker embeddedKafka = embeddedKafkaRule.getEmbeddedKafka();
 
-	@EnableBinding(KafkaStreamsProcessorX.class)
-	@EnableAutoConfiguration
-	@EnableConfigurationProperties(KafkaStreamsApplicationSupportProperties.class)
-	public static class CountClicksPerRegionApplication {
-
-		@StreamListener
-		@SendTo("output")
-		public KStream<String, Long> process(@Input("input") KStream<String, Long> userClicksStream,
-											@Input("input-x") KTable<String, String> userRegionsTable) {
-
-			return userClicksStream
-					.leftJoin(userRegionsTable, (clicks, region) -> new RegionWithClicks(region == null ? "UNKNOWN" : region, clicks),
-							Joined.with(Serdes.String(), Serdes.Long(), null))
-					.map((user, regionWithClicks) -> new KeyValue<>(regionWithClicks.getRegion(), regionWithClicks.getClicks()))
-					.groupByKey(Serialized.with(Serdes.String(), Serdes.Long()))
-					.reduce((firstClicks, secondClicks) -> firstClicks + secondClicks)
-					.toStream();
-		}
-	}
-
-	interface KafkaStreamsProcessorX extends KafkaStreamsProcessor {
-
-		@Input("input-x")
-		KTable<?, ?> inputX();
-	}
-
 	@Test
 	public void testStreamToTable() throws Exception {
 		SpringApplication app = new SpringApplication(CountClicksPerRegionApplication.class);
@@ -338,6 +312,69 @@ public class StreamToTableJoinIntegrationTests {
 		finally {
 			consumer.close();
 		}
+	}
+
+	@Test
+	public void testTrivialSingleKTableInputAsNonDeclarative() {
+		SpringApplication app = new SpringApplication(
+				TrivialKTableApp.class);
+		app.setWebApplicationType(WebApplicationType.NONE);
+		app.run("--server.port=0",
+				"--spring.cloud.stream.kafka.streams.binder.brokers="
+						+ embeddedKafka.getBrokersAsString(),
+				"--spring.cloud.stream.kafka.streams.bindings.input-y.consumer.application-id=" +
+						"testTrivialSingleKTableInputAsNonDeclarative");
+		//All we are verifying is that this application didn't throw any errors.
+		//See this issue: https://github.com/spring-cloud/spring-cloud-stream-binder-kafka/issues/536
+	}
+
+	@EnableBinding(KafkaStreamsProcessorX.class)
+	@EnableAutoConfiguration
+	@EnableConfigurationProperties(KafkaStreamsApplicationSupportProperties.class)
+	public static class CountClicksPerRegionApplication {
+
+		@StreamListener
+		@SendTo("output")
+		public KStream<String, Long> process(
+				@Input("input") KStream<String, Long> userClicksStream,
+				@Input("input-x") KTable<String, String> userRegionsTable) {
+
+			return userClicksStream
+					.leftJoin(userRegionsTable,
+							(clicks, region) -> new RegionWithClicks(
+									region == null ? "UNKNOWN" : region, clicks),
+							Joined.with(Serdes.String(), Serdes.Long(), null))
+					.map((user, regionWithClicks) -> new KeyValue<>(
+							regionWithClicks.getRegion(), regionWithClicks.getClicks()))
+					.groupByKey(Serialized.with(Serdes.String(), Serdes.Long()))
+					.reduce((firstClicks, secondClicks) -> firstClicks + secondClicks)
+					.toStream();
+		}
+
+	}
+
+	@EnableBinding(KafkaStreamsProcessorY.class)
+	@EnableAutoConfiguration
+	public static class TrivialKTableApp {
+
+		@StreamListener("input-y")
+		public void process(KTable<String, String> inputTable) {
+			inputTable.toStream().foreach((key, value) -> System.out.println("key : value " + key + " : " + value));
+		}
+	}
+
+	interface KafkaStreamsProcessorX extends KafkaStreamsProcessor {
+
+		@Input("input-x")
+		KTable<?, ?> inputX();
+
+	}
+
+	interface KafkaStreamsProcessorY {
+
+		@Input("input-y")
+		KTable<?, ?> inputY();
+
 	}
 
 	/**
