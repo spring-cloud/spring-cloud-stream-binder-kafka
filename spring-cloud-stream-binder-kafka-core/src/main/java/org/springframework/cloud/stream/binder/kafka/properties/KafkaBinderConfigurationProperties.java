@@ -373,6 +373,10 @@ public class KafkaBinderConfigurationProperties {
 		return this.requiredAcks;
 	}
 
+	public void setRequiredAcks(int requiredAcks) {
+		this.requiredAcks = String.valueOf(requiredAcks);
+	}
+
 	public void setRequiredAcks(String requiredAcks) {
 		this.requiredAcks = requiredAcks;
 	}
