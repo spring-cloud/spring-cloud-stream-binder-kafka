@@ -20,11 +20,14 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 
 import javax.validation.constraints.AssertTrue;
 import javax.validation.constraints.Min;
 import javax.validation.constraints.NotNull;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
 
@@ -55,6 +58,8 @@ import org.springframework.util.StringUtils;
 public class KafkaBinderConfigurationProperties {
 
 	private static final String DEFAULT_KAFKA_CONNECTION_STRING = "localhost:9092";
+
+	private final Log logger = LogFactory.getLog(getClass());
 
 	private final Transaction transaction = new Transaction();
 
@@ -529,6 +534,7 @@ public class KafkaBinderConfigurationProperties {
 			}
 		}
 		consumerConfiguration.putAll(this.consumerProperties);
+		filterStreamManagedConfiguration(consumerConfiguration);
 		// Override Spring Boot bootstrap server setting if left to default with the value
 		// configured in the binder
 		return getConfigurationWithBootstrapServer(consumerConfiguration,
@@ -557,6 +563,17 @@ public class KafkaBinderConfigurationProperties {
 		// configured in the binder
 		return getConfigurationWithBootstrapServer(producerConfiguration,
 				ProducerConfig.BOOTSTRAP_SERVERS_CONFIG);
+	}
+
+	private void filterStreamManagedConfiguration(Map<String, Object> configuration) {
+		Stream.of(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, ConsumerConfig.GROUP_ID_CONFIG)
+				.forEach(streamManagedConfiguration -> {
+					if (configuration.containsKey(streamManagedConfiguration)) {
+						logger.warn("Ignoring provided value(s) for '" + streamManagedConfiguration + "'. " +
+								"This configuration (and related functionality) is managed by Spring Cloud Stream.");
+						configuration.remove(streamManagedConfiguration);
+					}
+				});
 	}
 
 	private Map<String, Object> getConfigurationWithBootstrapServer(
