@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <?asciidoc-toc maxdepth="4"?>
 <?asciidoc-numbered?>
-<book xmlns="http://docbook.org/ns/docbook" xmlns:xl="http://www.w3.org/1999/xlink" version="5.0" xml:lang="en">
+<book xmlns="https://docbook.org/ns/docbook" xmlns:xl="https://www.w3.org/1999/xlink" version="5.0" xml:lang="en">
 <info>
 <title>Spring Cloud Stream Kafka Binder Reference Guide</title>
 <date>2018-12-13</date>
@@ -41,7 +41,7 @@ In addition, this guide explains the Kafka Streams binding capabilities of Sprin
 <title>Kafka Binder</title>
 <mediaobject>
 <imageobject>
-<imagedata fileref="http://raw.github.com/spring-cloud/spring-cloud-stream-binder-kafka/master/docs/src/main/asciidoc/images/kafka-binder.png" width="50%"/>
+<imagedata fileref="https://raw.github.com/spring-cloud/spring-cloud-stream-binder-kafka/master/docs/src/main/asciidoc/images/kafka-binder.png" width="50%"/>
 </imageobject>
 <textobject><phrase>kafka binder</phrase></textobject>
 </mediaobject>
@@ -473,12 +473,12 @@ public class ManuallyAcknowdledgingConsumer {
 <section xml:id="_example_security_configuration">
 <title>Example: Security Configuration</title>
 <simpara>Apache Kafka 0.9 supports secure connections between client and brokers.
-To take advantage of this feature, follow the guidelines in the <link xl:href="http://kafka.apache.org/090/documentation.html#security_configclients">Apache Kafka Documentation</link> as well as the Kafka 0.9 <link xl:href="http://docs.confluent.io/2.0.0/kafka/security.html">security guidelines from the Confluent documentation</link>.
+To take advantage of this feature, follow the guidelines in the <link xl:href="https://kafka.apache.org/090/documentation.html#security_configclients">Apache Kafka Documentation</link> as well as the Kafka 0.9 <link xl:href="https://docs.confluent.io/2.0.0/kafka/security.html">security guidelines from the Confluent documentation</link>.
 Use the <literal>spring.cloud.stream.kafka.binder.configuration</literal> option to set security properties for all clients created by the binder.</simpara>
 <simpara>For example, to set <literal>security.protocol</literal> to <literal>SASL_SSL</literal>, set the following property:</simpara>
 <screen>spring.cloud.stream.kafka.binder.configuration.security.protocol=SASL_SSL</screen>
 <simpara>All the other security properties can be set in a similar manner.</simpara>
-<simpara>When using Kerberos, follow the instructions in the <link xl:href="http://kafka.apache.org/090/documentation.html#security_sasl_clientconfig">reference documentation</link> for creating and referencing the JAAS configuration.</simpara>
+<simpara>When using Kerberos, follow the instructions in the <link xl:href="https://kafka.apache.org/090/documentation.html#security_sasl_clientconfig">reference documentation</link> for creating and referencing the JAAS configuration.</simpara>
 <simpara>Spring Cloud Stream supports passing JAAS configuration information to the application by using a JAAS configuration file and using Spring Boot properties.</simpara>
 <section xml:id="_using_jaas_configuration_files">
 <title>Using JAAS Configuration Files</title>
@@ -883,7 +883,7 @@ Maven coordinates:</simpara>
 <simpara>Spring Cloud Stream&#8217;s Apache Kafka support also includes a binder implementation designed explicitly for Apache Kafka
 Streams binding. With this native integration, a Spring Cloud Stream "processor" application can directly use the
 <link xl:href="https://kafka.apache.org/documentation/streams/developer-guide">Apache Kafka Streams</link> APIs in the core business logic.</simpara>
-<simpara>Kafka Streams binder implementation builds on the foundation provided by the <link xl:href="http://docs.spring.io/spring-kafka/reference/html/_reference.html#kafka-streams">Kafka Streams in Spring Kafka</link>
+<simpara>Kafka Streams binder implementation builds on the foundation provided by the <link xl:href="https://docs.spring.io/spring-kafka/reference/html/_reference.html#kafka-streams">Kafka Streams in Spring Kafka</link>
 project.</simpara>
 <simpara>Kafka Streams binder provides binding capabilities for the three major types in Kafka Streams - KStream, KTable and GlobalKTable.</simpara>
 <simpara>As part of this native integration, the high-level <link xl:href="https://docs.confluent.io/current/streams/developer-guide/dsl-api.html">Streams DSL</link>
@@ -1474,7 +1474,7 @@ source control.</simpara>
 </note>
 <simpara>The projects that require middleware generally include a
 <literal>docker-compose.yml</literal>, so consider using
-<link xl:href="http://compose.docker.io/">Docker Compose</link> to run the middeware servers
+<link xl:href="https://compose.docker.io/">Docker Compose</link> to run the middeware servers
 in Docker containers.</simpara>
 </section>
 <section xml:id="_documentation">
@@ -1484,13 +1484,13 @@ in Docker containers.</simpara>
 <section xml:id="_working_with_the_code">
 <title>Working with the code</title>
 <simpara>If you don&#8217;t have an IDE preference we would recommend that you use
-<link xl:href="http://www.springsource.com/developer/sts">Spring Tools Suite</link> or
-<link xl:href="http://eclipse.org">Eclipse</link> when working with the code. We use the
-<link xl:href="http://eclipse.org/m2e/">m2eclipe</link> eclipse plugin for maven support. Other IDEs and tools
+<link xl:href="https://www.springsource.com/developer/sts">Spring Tools Suite</link> or
+<link xl:href="https://eclipse.org">Eclipse</link> when working with the code. We use the
+<link xl:href="https://eclipse.org/m2e/">m2eclipe</link> eclipse plugin for maven support. Other IDEs and tools
 should also work without issue.</simpara>
 <section xml:id="_importing_into_eclipse_with_m2eclipse">
 <title>Importing into eclipse with m2eclipse</title>
-<simpara>We recommend the <link xl:href="http://eclipse.org/m2e/">m2eclipe</link> eclipse plugin when working with
+<simpara>We recommend the <link xl:href="https://eclipse.org/m2e/">m2eclipe</link> eclipse plugin when working with
 eclipse. If you don&#8217;t already have m2eclipse installed it is available from the "eclipse
 marketplace".</simpara>
 <simpara>Unfortunately m2e does not yet support Maven 3.3, so once the projects
@@ -1542,7 +1542,7 @@ you can import formatter settings using the
 <literal>eclipse-code-formatter.xml</literal> file from the
 <link xl:href="https://github.com/spring-cloud/build/tree/master/eclipse-coding-conventions.xml">Spring
 Cloud Build</link> project. If using IntelliJ, you can use the
-<link xl:href="http://plugins.jetbrains.com/plugin/6546">Eclipse Code Formatter
+<link xl:href="https://plugins.jetbrains.com/plugin/6546">Eclipse Code Formatter
 Plugin</link> to import the same file.</simpara>
 </listitem>
 <listitem>
@@ -1569,7 +1569,7 @@ than cosmetic changes).</simpara>
 other target branch in the main project).</simpara>
 </listitem>
 <listitem>
-<simpara>When writing a commit message please follow <link xl:href="http://tbaggery.com/2008/04/19/a-note-about-git-commit-messages.html">these conventions</link>,
+<simpara>When writing a commit message please follow <link xl:href="https://tbaggery.com/2008/04/19/a-note-about-git-commit-messages.html">these conventions</link>,
 if you are fixing an existing issue please add <literal>Fixes gh-XXXX</literal> at the end of the commit
 message (where XXXX is the issue number).</simpara>
 </listitem>
