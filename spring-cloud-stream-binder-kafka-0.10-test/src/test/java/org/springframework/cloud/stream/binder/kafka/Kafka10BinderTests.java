@@ -192,7 +192,7 @@ public class Kafka10BinderTests extends KafkaBinderTests {
 		final ZkUtils zkUtils = new ZkUtils(zkClient, null, false);
 		Map<String, Object> schemaRegistryProps = new HashMap<>();
 		schemaRegistryProps.put("kafkastore.connection.url", configurationProperties.getZkConnectionString());
-		schemaRegistryProps.put("listeners", "http://0.0.0.0:8082");
+		schemaRegistryProps.put("listeners", "https://0.0.0.0:8082");
 		schemaRegistryProps.put("port", "8082");
 		schemaRegistryProps.put("kafkastore.topic", "_schemas");
 		SchemaRegistryConfig config = new SchemaRegistryConfig(schemaRegistryProps);
