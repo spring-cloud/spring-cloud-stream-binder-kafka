@@ -246,7 +246,7 @@ public class ManuallyAcknowdledgingConsumer {
 ==== Example: security configuration
 
 Apache Kafka 0.9 supports secure connections between client and brokers.
-To take advantage of this feature, follow the guidelines in the http://kafka.apache.org/090/documentation.html#security_configclients[Apache Kafka Documentation] as well as the Kafka 0.9 http://docs.confluent.io/2.0.0/kafka/security.html[security guidelines from the Confluent documentation].
+To take advantage of this feature, follow the guidelines in the https://kafka.apache.org/090/documentation.html#security_configclients[Apache Kafka Documentation] as well as the Kafka 0.9 https://docs.confluent.io/2.0.0/kafka/security.html[security guidelines from the Confluent documentation].
 Use the `spring.cloud.stream.kafka.binder.configuration` option to set security properties for all clients created by the binder.
 
 For example, for setting `security.protocol` to `SASL_SSL`, set:
@@ -258,7 +258,7 @@ spring.cloud.stream.kafka.binder.configuration.security.protocol=SASL_SSL
 
 All the other security properties can be set in a similar manner.
 
-When using Kerberos, follow the instructions in the http://kafka.apache.org/090/documentation.html#security_sasl_clientconfig[reference documentation] for creating and referencing the JAAS configuration.
+When using Kerberos, follow the instructions in the https://kafka.apache.org/090/documentation.html#security_sasl_clientconfig[reference documentation] for creating and referencing the JAAS configuration.
 
 Spring Cloud Stream supports passing JAAS configuration information to the application using a JAAS configuration file and using Spring Boot properties.
 
@@ -441,7 +441,7 @@ Spring Cloud Stream Kafka support also includes a binder specifically designed f
 Using this binder, applications can be written that leverage the Kafka Streams API.
 For more information on Kafka Streams, see https://kafka.apache.org/documentation/streams/developer-guide[Kafka Streams API Developer Manual]
 
-Kafka Streams support in Spring Cloud Stream is based on the foundations provided by the Spring Kafka project. For details on that support, see http://docs.spring.io/spring-kafka/reference/html/_reference.html#kafka-streams[Kafaka Streams Support in Spring Kafka].
+Kafka Streams support in Spring Cloud Stream is based on the foundations provided by the Spring Kafka project. For details on that support, see https://docs.spring.io/spring-kafka/reference/html/_reference.html#kafka-streams[Kafaka Streams Support in Spring Kafka].
 
 Here are the maven coordinates for the Spring Cloud Stream KStream binder artifact.
 
