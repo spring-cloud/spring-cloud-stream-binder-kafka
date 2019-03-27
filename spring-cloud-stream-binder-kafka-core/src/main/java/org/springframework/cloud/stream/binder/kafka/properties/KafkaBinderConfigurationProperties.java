@@ -20,7 +20,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Stream;
 
 import javax.validation.constraints.AssertTrue;
 import javax.validation.constraints.Min;
@@ -566,14 +565,22 @@ public class KafkaBinderConfigurationProperties {
 	}
 
 	private void filterStreamManagedConfiguration(Map<String, Object> configuration) {
-		Stream.of(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, ConsumerConfig.GROUP_ID_CONFIG)
-				.forEach(streamManagedConfiguration -> {
-					if (configuration.containsKey(streamManagedConfiguration)) {
-						logger.warn("Ignoring provided value(s) for '" + streamManagedConfiguration + "'. " +
-								"This configuration (and related functionality) is managed by Spring Cloud Stream.");
-						configuration.remove(streamManagedConfiguration);
-					}
-				});
+		if (configuration.containsKey(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG)
+				&& configuration.get(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG).equals(true)) {
+			logger.warn(constructIgnoredConfigMessage(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG) +
+					ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG + "=true is not supported by the Kafka binder");
+			configuration.remove(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG);
+		}
+		if (configuration.containsKey(ConsumerConfig.GROUP_ID_CONFIG)) {
+			logger.warn(constructIgnoredConfigMessage(ConsumerConfig.GROUP_ID_CONFIG) +
+					"Use spring.cloud.stream.default.group or spring.cloud.stream.binding.<name>.group to specify " +
+					"the group instead of " + ConsumerConfig.GROUP_ID_CONFIG);
+			configuration.remove(ConsumerConfig.GROUP_ID_CONFIG);
+		}
+	}
+
+	private String constructIgnoredConfigMessage(String config) {
+		return String.format("Ignoring provided value(s) for '%s'. ", config);
 	}
 
 	private Map<String, Object> getConfigurationWithBootstrapServer(
