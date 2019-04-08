@@ -214,7 +214,9 @@ public class KafkaMessageChannelBinder extends
 					Producer<byte[], byte[]> producer = producerFB.createProducer();
 					List<PartitionInfo> partitionsFor = producer.partitionsFor(destination.getName());
 					producer.close();
-					((DisposableBean) producerFB).destroy();
+					if (this.transactionManager == null) {
+						((DisposableBean) producerFB).destroy();
+					}
 					return partitionsFor;
 				});
 		this.topicsInUse.put(destination.getName(), new TopicInformation(null, partitions));
