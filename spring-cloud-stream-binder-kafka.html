@@ -34,7 +34,7 @@
 	color: #ffffff;
 }
 </style>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/zepto/1.2.0/zepto.min.js"></script>
+<script src="http://cdnjs.cloudflare.com/ajax/libs/zepto/1.2.0/zepto.min.js"></script>
 <script type="text/javascript">
 function addBlockSwitches() {
 	$('.primary').each(function() {
@@ -364,7 +364,7 @@ In the latter case, if the topics do not exist, the binder fails to start.</p>
 <i class="fa icon-note" title="Note"></i>
 </td>
 <td class="content">
-This setting is independent of the <code>auto.topic.create.enable</code> setting of the broker and does not influence it.
+This setting is independent of the <code>auto.create.topics.enable</code> setting of the broker and does not influence it.
 If the server is set to auto-create topics, they may be created as part of the metadata retrieval request, with default broker settings.
 </td>
 </tr>
@@ -412,6 +412,18 @@ Use this, for example, if you wish to customize the trusted packages in a <code>
 </div>
 <div class="sect3">
 <h4 id="kafka-consumer-properties"><a class="link" href="#kafka-consumer-properties">1.3.2. Kafka Consumer Properties</a></h4>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+To avoid repetition, Spring Cloud Stream supports setting values for all channels, in the format of <code>spring.cloud.stream.default.&lt;property&gt;=&lt;value&gt;</code>.
+</td>
+</tr>
+</table>
+</div>
 <div class="paragraph">
 <p>The following properties are available for Kafka consumers only and
 must be prefixed with <code>spring.cloud.stream.kafka.bindings.&lt;channelName&gt;.consumer.</code>.</p>
@@ -592,6 +604,18 @@ Ignored if <code>replicas-assignments</code> is present.</p>
 </div>
 <div class="sect3">
 <h4 id="kafka-producer-properties"><a class="link" href="#kafka-producer-properties">1.3.3. Kafka Producer Properties</a></h4>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+To avoid repetition, Spring Cloud Stream supports setting values for all channels, in the format of <code>spring.cloud.stream.default.&lt;property&gt;=&lt;value&gt;</code>.
+</td>
+</tr>
+</table>
+</div>
 <div class="paragraph">
 <p>The following properties are available for Kafka producers only and
 must be prefixed with <code>spring.cloud.stream.kafka.bindings.&lt;channelName&gt;.producer.</code>.</p>
