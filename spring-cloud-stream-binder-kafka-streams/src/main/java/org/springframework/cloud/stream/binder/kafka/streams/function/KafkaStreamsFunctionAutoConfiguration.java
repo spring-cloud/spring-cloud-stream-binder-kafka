@@ -44,5 +44,4 @@ public class KafkaStreamsFunctionAutoConfiguration {
 	public KafkaStreamsFunctionBeanPostProcessor kafkaStreamsFunctionBeanPostProcessor() {
 		return new KafkaStreamsFunctionBeanPostProcessor();
 	}
-
 }

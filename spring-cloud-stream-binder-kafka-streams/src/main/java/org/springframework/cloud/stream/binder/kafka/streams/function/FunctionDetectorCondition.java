@@ -16,14 +16,23 @@
 
 package org.springframework.cloud.stream.binder.kafka.streams.function;
 
+import java.lang.reflect.Method;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
+import org.apache.kafka.streams.kstream.GlobalKTable;
+import org.apache.kafka.streams.kstream.KStream;
+import org.apache.kafka.streams.kstream.KTable;
+
+import org.springframework.beans.factory.annotation.AnnotatedBeanDefinition;
 import org.springframework.boot.autoconfigure.condition.ConditionOutcome;
 import org.springframework.boot.autoconfigure.condition.SpringBootCondition;
 import org.springframework.context.annotation.ConditionContext;
+import org.springframework.core.ResolvableType;
 import org.springframework.core.type.AnnotatedTypeMetadata;
+import org.springframework.util.ClassUtils;
 
 /**
  * Custom {@link org.springframework.context.annotation.Condition} that detects the presence
@@ -37,10 +46,14 @@ public class FunctionDetectorCondition extends SpringBootCondition {
 	@Override
 	public ConditionOutcome getMatchOutcome(ConditionContext context, AnnotatedTypeMetadata metadata) {
 		if (context != null &&  context.getBeanFactory() != null) {
+
 			final Map<String, Function> functionTypes = context.getBeanFactory().getBeansOfType(Function.class);
 			final Map<String, Consumer> consumerTypes = context.getBeanFactory().getBeansOfType(Consumer.class);
 
-			if (!functionTypes.isEmpty() || !consumerTypes.isEmpty()) {
+			final Map<String, Function> prunedFunctionMap = pruneFunctionBeansForKafkaStreams(functionTypes, context);
+			final Map<String, Consumer> prunedConsumerMap = pruneFunctionBeansForKafkaStreams(consumerTypes, context);
+
+			if (!prunedFunctionMap.isEmpty() || !prunedConsumerMap.isEmpty()) {
 				return ConditionOutcome.match("Matched. Function/Consumer beans found");
 			}
 			else {
@@ -48,5 +61,29 @@ public class FunctionDetectorCondition extends SpringBootCondition {
 			}
 		}
 		return ConditionOutcome.noMatch("No match. No Function/Consumer beans found");
+	}
+
+	private static <T> Map<String, T> pruneFunctionBeansForKafkaStreams(Map<String, T> originalFunctionBeans,
+																		ConditionContext context) {
+		final Map<String, T> prunedMap = new HashMap<>();
+
+		for (String key : originalFunctionBeans.keySet()) {
+			final Class<?> classObj = ClassUtils.resolveClassName(((AnnotatedBeanDefinition)
+							context.getBeanFactory().getBeanDefinition(key))
+							.getMetadata().getClassName(),
+					ClassUtils.getDefaultClassLoader());
+			try {
+				Method method = classObj.getMethod(key);
+				ResolvableType resolvableType = ResolvableType.forMethodReturnType(method, classObj);
+				final Class<?> rawClass = resolvableType.getGeneric(0).getRawClass();
+				if (rawClass == KStream.class || rawClass == KTable.class || rawClass == GlobalKTable.class) {
+					prunedMap.put(key, originalFunctionBeans.get(key));
+				}
+			}
+			catch (NoSuchMethodException e) {
+				//ignore
+			}
+		}
+		return prunedMap;
 	}
 }
