@@ -28,6 +28,7 @@ import org.assertj.core.api.Assertions;
 import org.eclipse.jetty.server.Server;
 import org.junit.Before;
 import org.junit.ClassRule;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.springframework.cloud.stream.binder.Binder;
 import org.springframework.cloud.stream.binder.Binding;
@@ -179,6 +180,7 @@ public class Kafka_0_10_1_BinderTests extends Kafka_0_10_2_BinderTests {
 		return new DefaultKafkaConsumerFactory<>(props, keyDecoder, valueDecoder);
 	}
 
+	@Ignore
 	@Test
 	@SuppressWarnings("unchecked")
 	public void testCustomAvroSerialization() throws Exception {
