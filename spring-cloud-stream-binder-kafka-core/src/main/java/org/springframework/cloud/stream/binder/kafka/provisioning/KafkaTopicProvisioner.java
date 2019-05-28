@@ -418,9 +418,9 @@ public class KafkaTopicProvisioner implements ProvisioningProvider<ExtendedConsu
 							this.logger.error("Failed to obtain partition information", ex);
 						}
 						if (CollectionUtils.isEmpty(partitions)) {
-							final AdminClient adminClient = AdminClient.create(this.adminClientProperties);
-							final DescribeTopicsResult describeTopicsResult = adminClient.describeTopics(Collections.singletonList(topicName));
-							try {
+							try (AdminClient adminClient = AdminClient.create(this.adminClientProperties)) {
+								final DescribeTopicsResult describeTopicsResult = adminClient
+										.describeTopics(Collections.singletonList(topicName));
 								describeTopicsResult.all().get();
 							}
 							catch (ExecutionException ex) {
