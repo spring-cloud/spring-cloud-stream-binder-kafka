@@ -77,7 +77,6 @@ import org.springframework.cloud.stream.provisioning.ProducerDestination;
 import org.springframework.context.Lifecycle;
 import org.springframework.expression.common.LiteralExpression;
 import org.springframework.expression.spel.standard.SpelExpressionParser;
-import org.springframework.integration.IntegrationMessageHeaderAccessor;
 import org.springframework.integration.StaticMessageHeaderAccessor;
 import org.springframework.integration.acks.AcknowledgmentCallback;
 import org.springframework.integration.channel.ChannelInterceptorAware;
@@ -886,7 +885,7 @@ public class KafkaMessageChannelBinder extends
 
 			return (message) -> {
 
-				ConsumerRecord<Object, Object> record = message.getHeaders().get(IntegrationMessageHeaderAccessor.SOURCE_DATA, ConsumerRecord.class);
+				ConsumerRecord<Object, Object> record = StaticMessageHeaderAccessor.getSourceData(message);
 
 				if (properties.isUseNativeDecoding()) {
 					if (record != null) {
