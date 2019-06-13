@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2018 the original author or authors.
+ * Copyright 2017-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -120,9 +120,9 @@ class KStreamBinder extends
 		this.kafkaTopicProvisioner.provisionProducerDestination(name,
 				extendedProducerProperties);
 		Serde<?> keySerde = this.keyValueSerdeResolver
-				.getOuboundKeySerde(properties.getExtension());
+				.getOuboundKeySerde(properties.getExtension(), kafkaStreamsBindingInformationCatalogue.getOutboundResolvable());
 		Serde<?> valueSerde = this.keyValueSerdeResolver.getOutboundValueSerde(properties,
-				properties.getExtension());
+				properties.getExtension(), kafkaStreamsBindingInformationCatalogue.getOutboundResolvable());
 		to(properties.isUseNativeEncoding(), name, outboundBindTarget,
 				(Serde<Object>) keySerde, (Serde<Object>) valueSerde);
 		return new DefaultBinding<>(name, null, outboundBindTarget, null);
