@@ -189,7 +189,7 @@ public class KafkaStreamsFunctionProcessor implements ApplicationContextAware {
 					i++;
 				}
 				if (result != null) {
-					kafkaStreamsBindingInformationCatalogue.addOutputKStreamResolvable(
+					kafkaStreamsBindingInformationCatalogue.setOutboundKStreamResolvable(
 							outboundResolvableType != null ? outboundResolvableType : resolvableType.getGeneric(1));
 					final Set<String> outputs = new TreeSet<>(origOutputs);
 					final Iterator<String> iterator = outputs.iterator();
@@ -259,16 +259,14 @@ public class KafkaStreamsFunctionProcessor implements ApplicationContextAware {
 							this.kafkaStreamsExtendedBindingProperties.getExtendedConsumerProperties(input);
 					//get state store spec
 
-					Serde<?> keySerde;
+					Serde<?> keySerde = this.keyValueSerdeResolver.getInboundKeySerde(extendedConsumerProperties, stringResolvableTypeMap.get(input));
 					Serde<?> valueSerde;
 
 					if (bindingServiceProperties.getConsumerProperties(input).isUseNativeDecoding()) {
-						keySerde = this.keyValueSerdeResolver.getInboundKeySerde(extendedConsumerProperties, stringResolvableTypeMap.get(input));
 						valueSerde = this.keyValueSerdeResolver.getInboundValueSerde(
 								bindingProperties.getConsumer(), extendedConsumerProperties, stringResolvableTypeMap.get(input));
 					}
 					else {
-						keySerde = Serdes.ByteArray();
 						valueSerde = Serdes.ByteArray();
 					}
 

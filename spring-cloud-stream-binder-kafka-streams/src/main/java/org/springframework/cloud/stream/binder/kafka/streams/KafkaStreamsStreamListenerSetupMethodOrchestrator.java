@@ -192,7 +192,7 @@ class KafkaStreamsStreamListenerSetupMethodOrchestrator
 					Assert.isTrue(methodAnnotatedOutboundNames.length == 1,
 							"Result does not match with the number of declared outbounds");
 				}
-				kafkaStreamsBindingInformationCatalogue.addOutputKStreamResolvable(ResolvableType.forMethodReturnType(method));
+				kafkaStreamsBindingInformationCatalogue.setOutboundKStreamResolvable(ResolvableType.forMethodReturnType(method));
 				if (result.getClass().isArray()) {
 					Object[] outboundKStreams = (Object[]) result;
 					int i = 0;
@@ -272,18 +272,16 @@ class KafkaStreamsStreamListenerSetupMethodOrchestrator
 					// get state store spec
 					KafkaStreamsStateStoreProperties spec = buildStateStoreSpec(method);
 
-					Serde<?> keySerde;
+					Serde<?> keySerde = this.keyValueSerdeResolver
+							.getInboundKeySerde(extendedConsumerProperties, ResolvableType.forMethodParameter(methodParameter));
 					Serde<?> valueSerde;
 
 					if (bindingServiceProperties.getConsumerProperties(inboundName).isUseNativeDecoding()) {
-
-						keySerde = this.keyValueSerdeResolver
-								.getInboundKeySerde(extendedConsumerProperties, ResolvableType.forMethodParameter(methodParameter));
 						valueSerde = this.keyValueSerdeResolver.getInboundValueSerde(
 								bindingProperties.getConsumer(), extendedConsumerProperties, ResolvableType.forMethodParameter(methodParameter));
 					}
 					else {
-						keySerde = Serdes.ByteArray();
+						//keySerde = Serdes.ByteArray();
 						valueSerde = Serdes.ByteArray();
 					}
 

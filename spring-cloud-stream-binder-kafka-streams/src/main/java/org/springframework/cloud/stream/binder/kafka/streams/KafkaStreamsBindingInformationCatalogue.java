@@ -47,7 +47,7 @@ class KafkaStreamsBindingInformationCatalogue {
 
 	private final Set<StreamsBuilderFactoryBean> streamsBuilderFactoryBeans = new HashSet<>();
 
-	private ResolvableType outboundResolvable;
+	private ResolvableType outboundKStreamResolvable;
 
 	/**
 	 * For a given bounded {@link KStream}, retrieve it's corresponding destination on the
@@ -125,11 +125,11 @@ class KafkaStreamsBindingInformationCatalogue {
 		return this.streamsBuilderFactoryBeans;
 	}
 
-	public void addOutputKStreamResolvable(ResolvableType outboundResolvable) {
-		this.outboundResolvable = outboundResolvable;
+	public void setOutboundKStreamResolvable(ResolvableType outboundResolvable) {
+		this.outboundKStreamResolvable = outboundResolvable;
 	}
 
-	public ResolvableType getOutboundResolvable() {
-		return outboundResolvable;
+	public ResolvableType getOutboundKStreamResolvable() {
+		return outboundKStreamResolvable;
 	}
 }
