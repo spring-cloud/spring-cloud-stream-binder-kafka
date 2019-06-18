@@ -28,9 +28,9 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
@@ -507,6 +507,7 @@ public class KafkaMessageChannelBinder extends
 	public void setupRebalanceListener(
 			final ExtendedConsumerProperties<KafkaConsumerProperties> extendedConsumerProperties,
 			final ContainerProperties containerProperties) {
+
 		Assert.isTrue(!extendedConsumerProperties.getExtension().isResetOffsets(),
 				"'resetOffsets' cannot be set when a KafkaBindingRebalanceListener is provided");
 		final String bindingName = bindingNameHolder.get();
@@ -515,7 +516,7 @@ public class KafkaMessageChannelBinder extends
 		final KafkaBindingRebalanceListener userRebalanceListener = this.rebalanceListener;
 		containerProperties.setConsumerRebalanceListener(new ConsumerAwareRebalanceListener() {
 
-			private boolean initial = true;
+		private final ThreadLocal<Boolean> initialAssignment = new ThreadLocal<>();
 
 			@Override
 			public void onPartitionsRevokedBeforeCommit(Consumer<?, ?> consumer,
@@ -532,15 +533,20 @@ public class KafkaMessageChannelBinder extends
 			}
 
 			@Override
-			public void onPartitionsAssigned(Consumer<?, ?> consumer, Collection<TopicPartition> partitions) {
+			public void onPartitionsAssigned(Consumer<?, ?> consumer,
+					Collection<TopicPartition> partitions) {
 				try {
-					userRebalanceListener.onPartitionsAssigned(bindingName, consumer, partitions, this.initial);
+					Boolean initial = this.initialAssignment.get();
+					if (initial == null) {
+						initial = Boolean.TRUE;
+					}
+					userRebalanceListener.onPartitionsAssigned(bindingName,
+							consumer, partitions, initial);
 				}
 				finally {
-					this.initial = false;
+					this.initialAssignment.set(Boolean.FALSE);
 				}
 			}
-
 		});
 	}
 
@@ -581,20 +587,25 @@ public class KafkaMessageChannelBinder extends
 			final ContainerProperties containerProperties) {
 
 		boolean resetOffsets = extendedConsumerProperties.getExtension().isResetOffsets();
-		final Object resetTo = consumerFactory.getConfigurationProperties().get(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG);
-		final AtomicBoolean initialAssignment = new AtomicBoolean(true);
+		final Object resetTo = consumerFactory.getConfigurationProperties()
+				.get(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG);
 		if (!"earliest".equals(resetTo) && !"latest".equals(resetTo)) {
 			logger.warn("no (or unknown) " + ConsumerConfig.AUTO_OFFSET_RESET_CONFIG +
 					" property cannot reset");
 			resetOffsets = false;
 		}
 		if (groupManagement && resetOffsets) {
+			Set<TopicPartition> sought = ConcurrentHashMap.newKeySet();
 			containerProperties.setConsumerRebalanceListener(new ConsumerAwareRebalanceListener() {
 
-				@Override
-				public void onPartitionsRevokedBeforeCommit(Consumer<?, ?> consumer, Collection<TopicPartition> tps) {
-					// no op
-				}
+						@Override
+						public void onPartitionsRevokedBeforeCommit(
+								Consumer<?, ?> consumer, Collection<TopicPartition> tps) {
+
+							if (logger.isInfoEnabled()) {
+								logger.info("Partitions revoked: " + tps);
+							}
+						}
 
 				@Override
 				public void onPartitionsRevokedAfterCommit(Consumer<?, ?> consumer, Collection<TopicPartition> tps) {
@@ -603,12 +614,22 @@ public class KafkaMessageChannelBinder extends
 
 				@Override
 				public void onPartitionsAssigned(Consumer<?, ?> consumer, Collection<TopicPartition> tps) {
-					if (initialAssignment.getAndSet(false)) {
+					if (logger.isInfoEnabled()) {
+						logger.info("Partitions assigned: " + tps);
+					}
+					List<TopicPartition> toSeek = tps.stream()
+						.filter(tp -> {
+							boolean shouldSeek = !sought.contains(tp);
+							sought.add(tp);
+							return shouldSeek;
+						})
+						.collect(Collectors.toList());
+					if (toSeek.size() > 0) {
 						if ("earliest".equals(resetTo)) {
-							consumer.seekToBeginning(tps);
+							consumer.seekToBeginning(toSeek);
 						}
 						else if ("latest".equals(resetTo)) {
-							consumer.seekToEnd(tps);
+							consumer.seekToEnd(toSeek);
 						}
 					}
 				}
