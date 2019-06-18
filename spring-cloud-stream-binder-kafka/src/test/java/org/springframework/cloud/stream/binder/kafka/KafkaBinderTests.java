@@ -30,7 +30,9 @@ import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.IntStream;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -2523,6 +2525,80 @@ public class KafkaBinderTests extends
 		assertThat(deadLetter.value()).isEqualTo("testPollableDLQ");
 		binding.unbind();
 		consumer.close();
+	}
+
+	@Test
+	@SuppressWarnings("unchecked")
+	public void testResetOffsets() throws Exception {
+		Binding<?> producerBinding = null;
+		Binding<?> consumerBinding = null;
+		try {
+			String testPayload = "test";
+
+			ExtendedProducerProperties<KafkaProducerProperties> producerProperties = createProducerProperties();
+
+			DirectChannel moduleOutputChannel = createBindableChannel("output",
+					createProducerBindingProperties(producerProperties));
+
+			ExtendedConsumerProperties<KafkaConsumerProperties> consumerProperties = createConsumerProperties();
+			consumerProperties.setConcurrency(2);
+			consumerProperties.setInstanceCount(5); // 10 partitions across 2 threads
+			consumerProperties.getExtension().setResetOffsets(true);
+
+			DirectChannel moduleInputChannel = createBindableChannel("input",
+					createConsumerBindingProperties(consumerProperties));
+
+			String testTopicName = "existing" + System.currentTimeMillis();
+			KafkaBinderConfigurationProperties configurationProperties = createConfigurationProperties();
+			configurationProperties.setAutoAddPartitions(true);
+			Binder binder = getBinder(configurationProperties);
+			producerBinding = binder.bindProducer(testTopicName, moduleOutputChannel,
+					producerProperties);
+
+			consumerBinding = binder.bindConsumer(testTopicName, "testReset",
+					moduleInputChannel, consumerProperties);
+			// Let the consumer actually bind to the producer before sending a msg
+			binderBindUnbindLatency();
+			IntStream.range(0, 10).forEach(i -> moduleOutputChannel.send(MessageBuilder.withPayload(testPayload)
+					.setHeader(MessageHeaders.CONTENT_TYPE, MimeTypeUtils.TEXT_PLAIN)
+					.setHeader(KafkaHeaders.PARTITION_ID, i)
+					.build()));
+			CountDownLatch latch1 = new CountDownLatch(10);
+			CountDownLatch latch2 = new CountDownLatch(20);
+			AtomicReference<Message<String>> inboundMessageRef = new AtomicReference<>();
+			AtomicInteger received = new AtomicInteger();
+			moduleInputChannel.subscribe(message1 -> {
+				try {
+					inboundMessageRef.set((Message<String>) message1);
+				}
+				finally {
+					received.incrementAndGet();
+					latch1.countDown();
+					latch2.countDown();
+				}
+			});
+			assertThat(latch1.await(10, TimeUnit.SECONDS)).as("Failed to receive messages").isTrue();
+			consumerBinding.unbind();
+			consumerBinding = binder.bindConsumer(testTopicName, "testReset",
+					moduleInputChannel, consumerProperties);
+			assertThat(latch2.await(10, TimeUnit.SECONDS)).as("Failed to receive message").isTrue();
+			binder.bindConsumer(testTopicName + "-x", "testReset",
+					moduleInputChannel, consumerProperties).unbind(); // cause another rebalance
+			assertThat(received.get()).as("Unexpected reset").isEqualTo(20);
+
+			assertThat(inboundMessageRef.get()).isNotNull();
+			assertThat(inboundMessageRef.get().getPayload()).isEqualTo("test");
+			assertThat(inboundMessageRef.get().getHeaders()).containsEntry("contentType",
+					MimeTypeUtils.TEXT_PLAIN);
+		}
+		finally {
+			if (producerBinding != null) {
+				producerBinding.unbind();
+			}
+			if (consumerBinding != null) {
+				consumerBinding.unbind();
+			}
+		}
 	}
 
 	private final class FailingInvocationCountingMessageHandler implements MessageHandler {
