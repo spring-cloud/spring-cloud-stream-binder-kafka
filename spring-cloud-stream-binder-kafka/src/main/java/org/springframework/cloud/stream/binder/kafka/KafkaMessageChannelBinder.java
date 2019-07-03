@@ -79,7 +79,6 @@ import org.springframework.expression.common.LiteralExpression;
 import org.springframework.expression.spel.standard.SpelExpressionParser;
 import org.springframework.integration.StaticMessageHeaderAccessor;
 import org.springframework.integration.acks.AcknowledgmentCallback;
-import org.springframework.integration.channel.ChannelInterceptorAware;
 import org.springframework.integration.core.MessageProducer;
 import org.springframework.integration.kafka.inbound.KafkaMessageDrivenChannelAdapter;
 import org.springframework.integration.kafka.inbound.KafkaMessageSource;
@@ -111,6 +110,7 @@ import org.springframework.messaging.MessageHeaders;
 import org.springframework.messaging.MessagingException;
 import org.springframework.messaging.support.ChannelInterceptor;
 import org.springframework.messaging.support.ErrorMessage;
+import org.springframework.messaging.support.InterceptableChannel;
 import org.springframework.util.Assert;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.ObjectUtils;
@@ -334,8 +334,8 @@ public class KafkaMessageChannelBinder extends
 						+ partitions.size()
 						+ " for the topic. The larger number will be used instead.");
 			}
-			List<ChannelInterceptor> interceptors = ((ChannelInterceptorAware) channel)
-					.getChannelInterceptors();
+			List<ChannelInterceptor> interceptors = ((InterceptableChannel) channel)
+					.getInterceptors();
 			interceptors.forEach((interceptor) -> {
 				if (interceptor instanceof PartitioningInterceptor) {
 					((PartitioningInterceptor) interceptor)
@@ -352,6 +352,9 @@ public class KafkaMessageChannelBinder extends
 				kafkaTemplate, destination.getName(), producerProperties, producerFB);
 		if (errorChannel != null) {
 			handler.setSendFailureChannel(errorChannel);
+		}
+		if (StringUtils.hasText(producerProperties.getExtension().getRecordMetadataChannel())) {
+			handler.setSendSuccessChannelName(producerProperties.getExtension().getRecordMetadataChannel());
 		}
 		KafkaHeaderMapper mapper = null;
 		if (this.configurationProperties.getHeaderMapperBeanName() != null) {
