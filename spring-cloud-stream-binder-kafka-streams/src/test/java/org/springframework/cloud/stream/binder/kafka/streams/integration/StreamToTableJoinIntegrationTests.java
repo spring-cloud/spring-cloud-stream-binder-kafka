@@ -46,8 +46,14 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.cloud.stream.annotation.EnableBinding;
 import org.springframework.cloud.stream.annotation.Input;
 import org.springframework.cloud.stream.annotation.StreamListener;
+import org.springframework.cloud.stream.binder.Binder;
+import org.springframework.cloud.stream.binder.BinderFactory;
+import org.springframework.cloud.stream.binder.ConsumerProperties;
+import org.springframework.cloud.stream.binder.ExtendedPropertiesBinder;
+import org.springframework.cloud.stream.binder.ProducerProperties;
 import org.springframework.cloud.stream.binder.kafka.streams.annotations.KafkaStreamsProcessor;
 import org.springframework.cloud.stream.binder.kafka.streams.properties.KafkaStreamsApplicationSupportProperties;
+import org.springframework.cloud.stream.binder.kafka.streams.properties.KafkaStreamsConsumerProperties;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
@@ -90,7 +96,7 @@ public class StreamToTableJoinIntegrationTests {
 		consumer = cf.createConsumer();
 		embeddedKafka.consumeFromAnEmbeddedTopic(consumer, "output-topic-1");
 
-		try (ConfigurableApplicationContext ignored = app.run("--server.port=0",
+		ConfigurableApplicationContext context = app.run("--server.port=0",
 				"--spring.jmx.enabled=false",
 				"--spring.cloud.stream.bindings.input.destination=user-clicks-1",
 				"--spring.cloud.stream.bindings.input-x.destination=user-regions-1",
@@ -117,10 +123,25 @@ public class StreamToTableJoinIntegrationTests {
 				"--spring.cloud.stream.kafka.streams.binder.configuration.commit.interval.ms=10000",
 				"--spring.cloud.stream.kafka.streams.bindings.input.consumer.applicationId"
 						+ "=StreamToTableJoinIntegrationTests-abc",
+				"--spring.cloud.stream.kafka.streams.bindings.input-x.consumer.topic.properties.cleanup.policy=compact",
 				"--spring.cloud.stream.kafka.streams.binder.brokers="
 						+ embeddedKafka.getBrokersAsString(),
 				"--spring.cloud.stream.kafka.streams.binder.zkNodes="
-						+ embeddedKafka.getZookeeperConnectionString())) {
+						+ embeddedKafka.getZookeeperConnectionString());
+		try {
+			// Testing certain ancillary configuration of GlobalKTable around topics creation.
+			// See this issue: https://github.com/spring-cloud/spring-cloud-stream-binder-kafka/issues/687
+			BinderFactory binderFactory = context.getBeanFactory()
+					.getBean(BinderFactory.class);
+
+			Binder<KTable, ? extends ConsumerProperties, ? extends ProducerProperties> ktableBinder = binderFactory
+					.getBinder("ktable", KTable.class);
+
+			KafkaStreamsConsumerProperties inputX = (KafkaStreamsConsumerProperties) ((ExtendedPropertiesBinder) ktableBinder)
+					.getExtendedConsumerProperties("input-x");
+			String cleanupPolicyX = inputX.getTopic().getProperties().get("cleanup.policy");
+
+			assertThat(cleanupPolicyX).isEqualTo("compact");
 
 			// Input 1: Region per user (multiple records allowed per user).
 			List<KeyValue<String, String>> userRegions = Arrays.asList(new KeyValue<>(
@@ -193,6 +214,7 @@ public class StreamToTableJoinIntegrationTests {
 		}
 		finally {
 			consumer.close();
+			context.close();
 		}
 	}
 

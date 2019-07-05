@@ -25,6 +25,7 @@ import org.springframework.boot.autoconfigure.kafka.KafkaProperties;
 import org.springframework.cloud.stream.binder.kafka.properties.KafkaBinderConfigurationProperties;
 import org.springframework.cloud.stream.binder.kafka.provisioning.KafkaTopicProvisioner;
 import org.springframework.cloud.stream.binder.kafka.streams.properties.KafkaStreamsBinderConfigurationProperties;
+import org.springframework.cloud.stream.binder.kafka.streams.properties.KafkaStreamsExtendedBindingProperties;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -67,10 +68,14 @@ public class GlobalKTableBinderConfiguration {
 	@Bean
 	public GlobalKTableBinder GlobalKTableBinder(
 			KafkaStreamsBinderConfigurationProperties binderConfigurationProperties,
+			KafkaStreamsExtendedBindingProperties kafkaStreamsExtendedBindingProperties,
 			KafkaTopicProvisioner kafkaTopicProvisioner,
 			@Qualifier("kafkaStreamsDlqDispatchers") Map<String, KafkaStreamsDlqDispatch> kafkaStreamsDlqDispatchers) {
-		return new GlobalKTableBinder(binderConfigurationProperties,
+		GlobalKTableBinder globalKTableBinder = new GlobalKTableBinder(binderConfigurationProperties,
 				kafkaTopicProvisioner, kafkaStreamsDlqDispatchers);
+		globalKTableBinder.setKafkaStreamsExtendedBindingProperties(
+				kafkaStreamsExtendedBindingProperties);
+		return globalKTableBinder;
 	}
 
 }
