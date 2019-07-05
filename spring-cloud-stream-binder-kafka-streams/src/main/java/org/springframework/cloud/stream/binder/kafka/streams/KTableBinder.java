@@ -99,4 +99,9 @@ class KTableBinder extends
 	public Class<? extends BinderSpecificPropertiesProvider> getExtendedPropertiesEntryClass() {
 		return this.kafkaStreamsExtendedBindingProperties.getExtendedPropertiesEntryClass();
 	}
+
+	public void setKafkaStreamsExtendedBindingProperties(
+			KafkaStreamsExtendedBindingProperties kafkaStreamsExtendedBindingProperties) {
+		this.kafkaStreamsExtendedBindingProperties = kafkaStreamsExtendedBindingProperties;
+	}
 }
