@@ -122,6 +122,8 @@ class KStreamBinder extends
 				extendedProducerProperties);
 		Serde<?> keySerde = this.keyValueSerdeResolver
 				.getOuboundKeySerde(properties.getExtension(), kafkaStreamsBindingInformationCatalogue.getOutboundKStreamResolvable());
+		LOG.info("Key Serde used for (outbound) " + name + ": " + keySerde.getClass().getName());
+
 		Serde<?> valueSerde;
 		if (properties.isUseNativeEncoding()) {
 			valueSerde = this.keyValueSerdeResolver.getOutboundValueSerde(properties,
@@ -130,6 +132,8 @@ class KStreamBinder extends
 		else {
 			valueSerde = Serdes.ByteArray();
 		}
+		LOG.info("Key Serde used for (outbound) " + name + ": " + valueSerde.getClass().getName());
+
 		to(properties.isUseNativeEncoding(), name, outboundBindTarget,
 				(Serde<Object>) keySerde, (Serde<Object>) valueSerde);
 		return new DefaultBinding<>(name, null, outboundBindTarget, null);
