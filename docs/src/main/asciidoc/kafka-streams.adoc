@@ -24,7 +24,7 @@ Spring Cloud Stream includes a binder implementation designed explicitly for htt
 With this native integration, a Spring Cloud Stream "processor" application can directly use the
 https://kafka.apache.org/documentation/streams/developer-guide[Apache Kafka Streams] APIs in the core business logic.
 
-Kafka Streams binder implementation builds on the foundations provided by the https://docs.spring.io/spring-kafka/reference/html/#kafka-streams[Spring for Apache Kafka] project
+Kafka Streams binder implementation builds on the foundations provided by the https://docs.spring.io/spring-kafka/reference/html/#kafka-streams[Spring for Apache Kafka] project.
 
 Kafka Streams binder provides binding capabilities for the three major types in Kafka Streams - KStream, KTable and GlobalKTable.
 
@@ -68,7 +68,7 @@ The bean method is of type `java.util.function.Consumer` which is parameterized 
 Then in the implementation, we are returning a Consumer object that is essentially a lambda expression.
 Inside the lambda expression, the code for processing the data is provided.
 
-In this application, there is a single input binding that is of type KStream.
+In this application, there is a single input binding that is of type `KStream`.
 The binder creates this binding for the application with a name `process_in`, i.e. the name of the function bean name followed by an underscore and the literal `in`.
 You use this binding name to set other properties such as destination.
 For example, `spring.cloud.stream.bindings.process_in.destinaion=my-topic`.
@@ -218,7 +218,7 @@ public Function<KStream<Long, Order>,
 In this model, we have 3 partial functions as inputs. The first function has the first input binding of the application (`Order`) and its output is another function.
 This output function's input is the second input binding for the application (`Customer`) and its output is another function.
 This output function's input is the third input for the application (Product) and its output is a KStream which is final output binding for the application.
-The input from the three partial functions which are KStream, GlobalKTable, GlobalKTable respectively are available for you in the method body for implementing the business logic as part of the lambda expression.
+The input from the three partial functions which are `KStream`, `GlobalKTable`, `GlobalKTable` respectively are available for you in the method body for implementing the business logic as part of the lambda expression.
 
 Input bindings are named as `process_in_0`, `process_in_1` and `process_in_2` respectively. Output binding is named as `process_out`.
 
@@ -256,7 +256,7 @@ public Function<KStream<Object, String>, KStream<?, WordCount>[]> process() {
 The programming model remains the same, however the outbound parameterized type is `KStream[]`.
 The default output binding names are `process_out_0`, `process_out_1`, `process_out_2` respectively.
 
-===== Summary of various functional styles
+===== Function based Programming Styles for Kafka Streams
 
 In summary, the following table shows the various options that can be used in the functional paradigm.
 
@@ -265,13 +265,13 @@ In summary, the following table shows the various options that can be used in th
 
 |1|0|java.util.function.Consumer
 |2|0|java.util.function.BiConsumer
-|1|1..n (*)|java.util.function.Function
-|2|1..n (*)|java.util.function.BiFunction
-|>= 3 |0..n (*) |Use curried functions
+|1|1..n |java.util.function.Function
+|2|1..n |java.util.function.BiFunction
+|>= 3 |0..n |Use curried functions
 
 |===
 
-*In the case of more then one output, the type simply becomes `KStream[]`.
+* In the case of more than one output in this table, the type simply becomes `KStream[]`.
 
 ==== Imperative programming model.
 
@@ -472,11 +472,11 @@ public static class WordCountProcessorApplication {
 }
 ----
 
-In this secion, we saw the various ways the Kafka Streams binder enables the applications to be written in vaious programming styles.
+To recap, we have reviewed the various programming model choices when using the Kafka Streams binder.
 
-The binder provides bining capabilities for `KStream`, `KTable` and `GlobalKTable` on the input.
-KTable and GlobalKTable bindings are only available on the input.
-Binder supports both input and output bindings for KStream.
+The binder provides binding capabilities for `KStream`, `KTable` and `GlobalKTable` on the input.
+`KTable` and `GlobalKTable` bindings are only available on the input.
+Binder supports both input and output bindings for `KStream`.
 
 The upshot of the programming model of Kafka Streams binder is that the binder provides you the flexibility of going with a fully functional programming model or using the `StreamListener` based imperative approach.
 
@@ -531,14 +531,13 @@ Please keep in mind that when you rely on this, each time you start the applicat
 In the case of functional model, the generated application ID will be the function bean name followed by a `UUID` which is then postfixed with the literal `applicationID`.
 In the case of `StreamListener`, instead of using the function bean name, the generated application ID will be use the containing class name followed by the method name.
 
-Here is the order of precedence for application ID in a nutshell (from lowest to highest)
+====== Summary of setting Application ID
 
-* Auto generated by the binder
-* spring.kafka.streams.applicationId or spring.application.name (Can only be used if you have a single processor in the application)
-* binder level (spring.cloud.stream.binder.kafka.streams.applicationId) (only use if you have single processor)
-* binding level (spring.cloud.stream.kafka.streams.bindings.process_in.applicationId _change process_in accordingly_.)
+* Auto generated by the binder per processor in the application. This can be overridden by setting at the binding level such as `spring.cloud.stream.kafka.streams.bindings.process_in.applicationId`.
+When you have more than one processor, then you have to choose one of these options - either fall back to the defaults or override per input binding.
+* If you have a single processor, then you can use `spring.kafka.streams.applicationId`, `spring.application.name` or `spring.cloud.stream.binder.kafka.streams.applicationId`.
 
-==== Overriding default input/output binding names generated by the binder when using the functional style.
+==== Custom bindings in the functional style
 
 By default, the binder uses the strategy discussed out above to generate the binding name when using the functional style, i.e. <function-bean-name>_<in>|<out>_[0..n], for e.g. process_in, process_in_0 etc.
 If you want to override those binding names, you can do that by specifying the following properties.
