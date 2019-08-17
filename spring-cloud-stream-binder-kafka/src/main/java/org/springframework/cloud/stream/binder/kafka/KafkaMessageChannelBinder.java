@@ -1161,6 +1161,9 @@ public class KafkaMessageChannelBinder extends
 			if (producerProperties.getExtension().isSync()) {
 				setSync(true);
 			}
+			if (producerProperties.getExtension().getSendTimeoutExpression() != null) {
+				setSendTimeoutExpression(producerProperties.getExtension().getSendTimeoutExpression());
+			}
 			this.producerFactory = producerFactory;
 		}
 
