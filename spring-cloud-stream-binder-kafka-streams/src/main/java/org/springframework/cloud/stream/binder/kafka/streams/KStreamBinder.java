@@ -102,7 +102,7 @@ class KStreamBinder extends
 	protected Binding<KStream<Object, Object>> doBindProducer(String name, KStream<Object, Object> outboundBindTarget,
 															ExtendedProducerProperties<KafkaStreamsProducerProperties> properties) {
 		ExtendedProducerProperties<KafkaProducerProperties> extendedProducerProperties = new ExtendedProducerProperties<>(
-				new KafkaProducerProperties());
+				properties.getExtension());
 		this.kafkaTopicProvisioner.provisionProducerDestination(name, extendedProducerProperties);
 		Serde<?> keySerde = this.keyValueSerdeResolver.getOuboundKeySerde(properties.getExtension());
 		Serde<?> valueSerde = this.keyValueSerdeResolver.getOutboundValueSerde(properties, properties.getExtension());
