@@ -120,6 +120,11 @@ public class KafkaConsumerProperties {
 
 	private KafkaTopicProperties topic = new KafkaTopicProperties();
 
+	/**
+	 * Timeout used for polling in pollable consumers.
+	 */
+	private long pollTimeout = org.springframework.kafka.listener.ConsumerProperties.DEFAULT_POLL_TIMEOUT;
+
 	public boolean isAckEachRecord() {
 		return this.ackEachRecord;
 	}
@@ -291,4 +296,11 @@ public class KafkaConsumerProperties {
 		this.topic = topic;
 	}
 
+	public long getPollTimeout() {
+		return pollTimeout;
+	}
+
+	public void setPollTimeout(long pollTimeout) {
+		this.pollTimeout = pollTimeout;
+	}
 }
