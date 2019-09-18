@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<!--[if IE]><meta http-equiv="X-UA-Compatible" content="IE=edge"><![endif]-->
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="generator" content="Asciidoctor 1.5.7.1">
+<title>Partitioning with the Kafka Binder</title>
+<link rel="stylesheet" href="css/spring.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+
+<style>
+.hidden {
+	display: none;
+}
+
+.switch {
+	border-width: 1px 1px 0 1px;
+	border-style: solid;
+	border-color: #7a2518;
+	display: inline-block;
+}
+
+.switch--item {
+	padding: 10px;
+	background-color: #ffffff;
+	color: #7a2518;
+	display: inline-block;
+	cursor: pointer;
+}
+
+.switch--item:not(:first-child) {
+	border-width: 0 0 0 1px;
+	border-style: solid;
+	border-color: #7a2518;
+}
+
+.switch--item.selected {
+	background-color: #7a2519;
+	color: #ffffff;
+}
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/zepto/1.2.0/zepto.min.js"></script>
+<script type="text/javascript">
+function addBlockSwitches() {
+	$('.primary').each(function() {
+		primary = $(this);
+		createSwitchItem(primary, createBlockSwitch(primary)).item.addClass("selected");
+		primary.children('.title').remove();
+	});
+	$('.secondary').each(function(idx, node) {
+		secondary = $(node);
+		primary = findPrimary(secondary);
+		switchItem = createSwitchItem(secondary, primary.children('.switch'));
+		switchItem.content.addClass('hidden');
+		findPrimary(secondary).append(switchItem.content);
+		secondary.remove();
+	});
+}
+
+function createBlockSwitch(primary) {
+	blockSwitch = $('<div class="switch"></div>');
+	primary.prepend(blockSwitch);
+	return blockSwitch;
+}
+
+function findPrimary(secondary) {
+	candidate = secondary.prev();
+	while (!candidate.is('.primary')) {
+		candidate = candidate.prev();
+	}
+	return candidate;
+}
+
+function createSwitchItem(block, blockSwitch) {
+	blockName = block.children('.title').text();
+	content = block.children('.content').first().append(block.next('.colist'));
+	item = $('<div class="switch--item">' + blockName + '</div>');
+	item.on('click', '', content, function(e) {
+		$(this).addClass('selected');
+		$(this).siblings().removeClass('selected');
+		e.data.siblings('.content').addClass('hidden');
+		e.data.removeClass('hidden');
+	});
+	blockSwitch.append(item);
+	return {'item': item, 'content': content};
+}
+
+$(addBlockSwitches);
+</script>
+
+</head>
+<body class="book toc2 toc-left">
+<div id="header">
+<div id="toc" class="toc2">
+<div id="toctitle">Table of Contents</div>
+<ul class="sectlevel2">
+<li><a href="#_partitioning_with_the_kafka_binder">Partitioning with the Kafka Binder</a></li>
+</ul>
+</div>
+</div>
+<div id="content">
+<div class="sect2">
+<h3 id="_partitioning_with_the_kafka_binder"><a class="link" href="#_partitioning_with_the_kafka_binder">Partitioning with the Kafka Binder</a></h3>
+<div class="paragraph">
+<p>Apache Kafka supports topic partitioning natively.</p>
+</div>
+<div class="paragraph">
+<p>Sometimes it is advantageous to send data to specific partitions&#8201;&#8212;&#8201;for example, when you want to strictly order message processing (all messages for a particular customer should go to the same partition).</p>
+</div>
+<div class="paragraph">
+<p>The following example shows how to configure the producer and consumer side:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">@SpringBootApplication
+@EnableBinding(Source.class)
+public class KafkaPartitionProducerApplication {
+
+    private static final Random RANDOM = new Random(System.currentTimeMillis());
+
+    private static final String[] data = new String[] {
+            "foo1", "bar1", "qux1",
+            "foo2", "bar2", "qux2",
+            "foo3", "bar3", "qux3",
+            "foo4", "bar4", "qux4",
+            };
+
+    public static void main(String[] args) {
+        new SpringApplicationBuilder(KafkaPartitionProducerApplication.class)
+            .web(false)
+            .run(args);
+    }
+
+    @InboundChannelAdapter(channel = Source.OUTPUT, poller = @Poller(fixedRate = "5000"))
+    public Message&lt;?&gt; generate() {
+        String value = data[RANDOM.nextInt(data.length)];
+        System.out.println("Sending: " + value);
+        return MessageBuilder.withPayload(value)
+                .setHeader("partitionKey", value)
+                .build();
+    }
+
+}</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="title">application.yml</div>
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-yaml hljs" data-lang="yaml">spring:
+  cloud:
+    stream:
+      bindings:
+        output:
+          destination: partitioned.topic
+          producer:
+            partition-key-expression: headers['partitionKey']
+            partition-count: 12</code></pre>
+</div>
+</div>
+<div class="admonitionblock important">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-important" title="Important"></i>
+</td>
+<td class="content">
+The topic must be provisioned to have enough partitions to achieve the desired concurrency for all consumer groups.
+The above configuration supports up to 12 consumer instances (6 if their <code>concurrency</code> is 2, 4 if their concurrency is 3, and so on).
+It is generally best to &#8220;over-provision&#8221; the partitions to allow for future increases in consumers or concurrency.
+</td>
+</tr>
+</table>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+The preceding configuration uses the default partitioning (<code>key.hashCode() % partitionCount</code>).
+This may or may not provide a suitably balanced algorithm, depending on the key values.
+You can override this default by using the <code>partitionSelectorExpression</code> or <code>partitionSelectorClass</code> properties.
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>Since partitions are natively handled by Kafka, no special configuration is needed on the consumer side.
+Kafka allocates partitions across the instances.</p>
+</div>
+<div class="paragraph">
+<p>The following Spring Boot application listens to a Kafka stream and prints (to the console) the partition ID to which each message goes:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">@SpringBootApplication
+@EnableBinding(Sink.class)
+public class KafkaPartitionConsumerApplication {
+
+    public static void main(String[] args) {
+        new SpringApplicationBuilder(KafkaPartitionConsumerApplication.class)
+            .web(false)
+            .run(args);
+    }
+
+    @StreamListener(Sink.INPUT)
+    public void listen(@Payload String in, @Header(KafkaHeaders.RECEIVED_PARTITION_ID) int partition) {
+        System.out.println(in + " received from partition " + partition);
+    }
+
+}</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="title">application.yml</div>
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-yaml hljs" data-lang="yaml">spring:
+  cloud:
+    stream:
+      bindings:
+        input:
+          destination: partitioned.topic
+          group: myGroup</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>You can add instances as needed.
+Kafka rebalances the partition allocations.
+If the instance count (or <code>instance count * concurrency</code>) exceeds the number of partitions, some consumers are idle.</p>
+</div>
+</div>
+</div>
+<script type="text/javascript" src="js/tocbot/tocbot.min.js"></script>
+<script type="text/javascript" src="js/toc.js"></script>
+<link rel="stylesheet" href="js/highlight/styles/atom-one-dark-reasonable.min.css">
+<script src="js/highlight/highlight.min.js"></script>
+<script>hljs.initHighlighting()</script>
+</body>
+</html>

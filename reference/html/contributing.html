@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<!--[if IE]><meta http-equiv="X-UA-Compatible" content="IE=edge"><![endif]-->
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="generator" content="Asciidoctor 1.5.7.1">
+<title>Sign the Contributor License Agreement</title>
+<link rel="stylesheet" href="css/spring.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+
+<style>
+.hidden {
+	display: none;
+}
+
+.switch {
+	border-width: 1px 1px 0 1px;
+	border-style: solid;
+	border-color: #7a2518;
+	display: inline-block;
+}
+
+.switch--item {
+	padding: 10px;
+	background-color: #ffffff;
+	color: #7a2518;
+	display: inline-block;
+	cursor: pointer;
+}
+
+.switch--item:not(:first-child) {
+	border-width: 0 0 0 1px;
+	border-style: solid;
+	border-color: #7a2518;
+}
+
+.switch--item.selected {
+	background-color: #7a2519;
+	color: #ffffff;
+}
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/zepto/1.2.0/zepto.min.js"></script>
+<script type="text/javascript">
+function addBlockSwitches() {
+	$('.primary').each(function() {
+		primary = $(this);
+		createSwitchItem(primary, createBlockSwitch(primary)).item.addClass("selected");
+		primary.children('.title').remove();
+	});
+	$('.secondary').each(function(idx, node) {
+		secondary = $(node);
+		primary = findPrimary(secondary);
+		switchItem = createSwitchItem(secondary, primary.children('.switch'));
+		switchItem.content.addClass('hidden');
+		findPrimary(secondary).append(switchItem.content);
+		secondary.remove();
+	});
+}
+
+function createBlockSwitch(primary) {
+	blockSwitch = $('<div class="switch"></div>');
+	primary.prepend(blockSwitch);
+	return blockSwitch;
+}
+
+function findPrimary(secondary) {
+	candidate = secondary.prev();
+	while (!candidate.is('.primary')) {
+		candidate = candidate.prev();
+	}
+	return candidate;
+}
+
+function createSwitchItem(block, blockSwitch) {
+	blockName = block.children('.title').text();
+	content = block.children('.content').first().append(block.next('.colist'));
+	item = $('<div class="switch--item">' + blockName + '</div>');
+	item.on('click', '', content, function(e) {
+		$(this).addClass('selected');
+		$(this).siblings().removeClass('selected');
+		e.data.siblings('.content').addClass('hidden');
+		e.data.removeClass('hidden');
+	});
+	blockSwitch.append(item);
+	return {'item': item, 'content': content};
+}
+
+$(addBlockSwitches);
+</script>
+
+</head>
+<body class="book toc2 toc-left">
+<div id="header">
+<div id="toc" class="toc2">
+<div id="toctitle">Table of Contents</div>
+<ul class="sectlevel2">
+<li><a href="#_sign_the_contributor_license_agreement">Sign the Contributor License Agreement</a></li>
+<li><a href="#_code_conventions_and_housekeeping">Code Conventions and Housekeeping</a></li>
+</ul>
+</div>
+</div>
+<div id="content">
+<div id="preamble">
+<div class="sectionbody">
+<div class="paragraph">
+<p>[[contributing]
+== Contributing</p>
+</div>
+<div class="paragraph">
+<p>Spring Cloud is released under the non-restrictive Apache 2.0 license,
+and follows a very standard Github development process, using Github
+tracker for issues and merging pull requests into master. If you want
+to contribute even something trivial please do not hesitate, but
+follow the guidelines below.</p>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_sign_the_contributor_license_agreement"><a class="link" href="#_sign_the_contributor_license_agreement">Sign the Contributor License Agreement</a></h3>
+<div class="paragraph">
+<p>Before we accept a non-trivial patch or pull request we will need you to sign the
+<a href="https://support.springsource.com/spring_committer_signup">contributor&#8217;s agreement</a>.
+Signing the contributor&#8217;s agreement does not grant anyone commit rights to the main
+repository, but it does mean that we can accept your contributions, and you will get an
+author credit if we do.  Active contributors might be asked to join the core team, and
+given the ability to merge pull requests.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_code_conventions_and_housekeeping"><a class="link" href="#_code_conventions_and_housekeeping">Code Conventions and Housekeeping</a></h3>
+<div class="paragraph">
+<p>None of these is essential for a pull request, but they will all help.  They can also be
+added after the original pull request but before a merge.</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Use the Spring Framework code format conventions. If you use Eclipse
+you can import formatter settings using the
+<code>eclipse-code-formatter.xml</code> file from the
+<a href="https://github.com/spring-cloud/build/tree/master/eclipse-coding-conventions.xml">Spring
+Cloud Build</a> project. If using IntelliJ, you can use the
+<a href="https://plugins.jetbrains.com/plugin/6546">Eclipse Code Formatter
+Plugin</a> to import the same file.</p>
+</li>
+<li>
+<p>Make sure all new <code>.java</code> files to have a simple Javadoc class comment with at least an
+<code>@author</code> tag identifying you, and preferably at least a paragraph on what the class is
+for.</p>
+</li>
+<li>
+<p>Add the ASF license header comment to all new <code>.java</code> files (copy from existing files
+in the project)</p>
+</li>
+<li>
+<p>Add yourself as an <code>@author</code> to the .java files that you modify substantially (more
+than cosmetic changes).</p>
+</li>
+<li>
+<p>Add some Javadocs and, if you change the namespace, some XSD doc elements.</p>
+</li>
+<li>
+<p>A few unit tests would help a lot as well&#8201;&#8212;&#8201;someone has to do it.</p>
+</li>
+<li>
+<p>If no-one else is using your branch, please rebase it against the current master (or
+other target branch in the main project).</p>
+</li>
+<li>
+<p>When writing a commit message please follow <a href="https://tbaggery.com/2008/04/19/a-note-about-git-commit-messages.html">these conventions</a>,
+if you are fixing an existing issue please add <code>Fixes gh-XXXX</code> at the end of the commit
+message (where XXXX is the issue number).</p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+<script type="text/javascript" src="js/tocbot/tocbot.min.js"></script>
+<script type="text/javascript" src="js/toc.js"></script>
+<link rel="stylesheet" href="js/highlight/styles/atom-one-dark-reasonable.min.css">
+<script src="js/highlight/highlight.min.js"></script>
+<script>hljs.initHighlighting()</script>
+</body>
+</html>

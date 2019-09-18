@@ -1,0 +1,1102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<!--[if IE]><meta http-equiv="X-UA-Compatible" content="IE=edge"><![endif]-->
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="generator" content="Asciidoctor 1.5.7.1">
+<title>Apache Kafka Binder</title>
+<link rel="stylesheet" href="css/spring.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+
+<style>
+.hidden {
+	display: none;
+}
+
+.switch {
+	border-width: 1px 1px 0 1px;
+	border-style: solid;
+	border-color: #7a2518;
+	display: inline-block;
+}
+
+.switch--item {
+	padding: 10px;
+	background-color: #ffffff;
+	color: #7a2518;
+	display: inline-block;
+	cursor: pointer;
+}
+
+.switch--item:not(:first-child) {
+	border-width: 0 0 0 1px;
+	border-style: solid;
+	border-color: #7a2518;
+}
+
+.switch--item.selected {
+	background-color: #7a2519;
+	color: #ffffff;
+}
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/zepto/1.2.0/zepto.min.js"></script>
+<script type="text/javascript">
+function addBlockSwitches() {
+	$('.primary').each(function() {
+		primary = $(this);
+		createSwitchItem(primary, createBlockSwitch(primary)).item.addClass("selected");
+		primary.children('.title').remove();
+	});
+	$('.secondary').each(function(idx, node) {
+		secondary = $(node);
+		primary = findPrimary(secondary);
+		switchItem = createSwitchItem(secondary, primary.children('.switch'));
+		switchItem.content.addClass('hidden');
+		findPrimary(secondary).append(switchItem.content);
+		secondary.remove();
+	});
+}
+
+function createBlockSwitch(primary) {
+	blockSwitch = $('<div class="switch"></div>');
+	primary.prepend(blockSwitch);
+	return blockSwitch;
+}
+
+function findPrimary(secondary) {
+	candidate = secondary.prev();
+	while (!candidate.is('.primary')) {
+		candidate = candidate.prev();
+	}
+	return candidate;
+}
+
+function createSwitchItem(block, blockSwitch) {
+	blockName = block.children('.title').text();
+	content = block.children('.content').first().append(block.next('.colist'));
+	item = $('<div class="switch--item">' + blockName + '</div>');
+	item.on('click', '', content, function(e) {
+		$(this).addClass('selected');
+		$(this).siblings().removeClass('selected');
+		e.data.siblings('.content').addClass('hidden');
+		e.data.removeClass('hidden');
+	});
+	blockSwitch.append(item);
+	return {'item': item, 'content': content};
+}
+
+$(addBlockSwitches);
+</script>
+
+</head>
+<body class="book toc2 toc-left">
+<div id="header">
+<div id="toc" class="toc2">
+<div id="toctitle">Table of Contents</div>
+<ul class="sectlevel1">
+<li><a href="#_apache_kafka_binder">Apache Kafka Binder</a>
+<ul class="sectlevel2">
+<li><a href="#_usage">Usage</a></li>
+<li><a href="#_overview">Overview</a></li>
+<li><a href="#_configuration_options">Configuration Options</a></li>
+<li><a href="#kafka-transactional-binder">Transactional Binder</a></li>
+<li><a href="#kafka-error-channels">Error Channels</a></li>
+<li><a href="#kafka-metrics">Kafka Metrics</a></li>
+<li><a href="#kafka-tombstones">Tombstone Records (null record values)</a></li>
+<li><a href="#rebalance-listener">Using a KafkaRebalanceListener</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+<div id="content">
+<div id="preamble">
+<div class="sectionbody">
+
+</div>
+</div>
+<div class="sect1">
+<h2 id="_apache_kafka_binder"><a class="link" href="#_apache_kafka_binder">Apache Kafka Binder</a></h2>
+<div class="sectionbody">
+<div class="sect2">
+<h3 id="_usage"><a class="link" href="#_usage">Usage</a></h3>
+<div class="paragraph">
+<p>To use Apache Kafka binder, you need to add <code>spring-cloud-stream-binder-kafka</code> as a dependency to your Spring Cloud Stream application, as shown in the following example for Maven:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-xml hljs" data-lang="xml">&lt;dependency&gt;
+  &lt;groupId&gt;org.springframework.cloud&lt;/groupId&gt;
+  &lt;artifactId&gt;spring-cloud-stream-binder-kafka&lt;/artifactId&gt;
+&lt;/dependency&gt;</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Alternatively, you can also use the Spring Cloud Stream Kafka Starter, as shown inn the following example for Maven:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-xml hljs" data-lang="xml">&lt;dependency&gt;
+  &lt;groupId&gt;org.springframework.cloud&lt;/groupId&gt;
+  &lt;artifactId&gt;spring-cloud-starter-stream-kafka&lt;/artifactId&gt;
+&lt;/dependency&gt;</code></pre>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_overview"><a class="link" href="#_overview">Overview</a></h3>
+<div class="paragraph">
+<p>The following image shows a simplified diagram of how the Apache Kafka binder operates:</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="https://raw.githubusercontent.com/spring-cloud/spring-cloud-stream-binder-kafka/master/docs/src/main/asciidoc/images/kafka-binder.png" alt="kafka binder" width="300">
+</div>
+<div class="title">Figure 1. Kafka Binder</div>
+</div>
+<div class="paragraph">
+<p>The Apache Kafka Binder implementation maps each destination to an Apache Kafka topic.
+The consumer group maps directly to the same Apache Kafka concept.
+Partitioning also maps directly to Apache Kafka partitions as well.</p>
+</div>
+<div class="paragraph">
+<p>The binder currently uses the Apache Kafka <code>kafka-clients</code> 1.0.0 jar and is designed to be used with a broker of at least that version.
+This client can communicate with older brokers (see the Kafka documentation), but certain features may not be available.
+For example, with versions earlier than 0.11.x.x, native headers are not supported.
+Also, 0.11.x.x does not support the <code>autoAddPartitions</code> property.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_configuration_options"><a class="link" href="#_configuration_options">Configuration Options</a></h3>
+<div class="paragraph">
+<p>This section contains the configuration options used by the Apache Kafka binder.</p>
+</div>
+<div class="paragraph">
+<p>For common configuration options and properties pertaining to binder, see the <a href="#binding-properties">core documentation</a>.</p>
+</div>
+<div class="sect3">
+<h4 id="_kafka_binder_properties"><a class="link" href="#_kafka_binder_properties">Kafka Binder Properties</a></h4>
+<div class="dlist">
+<dl>
+<dt class="hdlist1">spring.cloud.stream.kafka.binder.brokers</dt>
+<dd>
+<p>A list of brokers to which the Kafka binder connects.</p>
+<div class="paragraph">
+<p>Default: <code>localhost</code>.</p>
+</div>
+</dd>
+<dt class="hdlist1">spring.cloud.stream.kafka.binder.defaultBrokerPort</dt>
+<dd>
+<p><code>brokers</code> allows hosts specified with or without port information (for example, <code>host1,host2:port2</code>).
+This sets the default port when no port is configured in the broker list.</p>
+<div class="paragraph">
+<p>Default: <code>9092</code>.</p>
+</div>
+</dd>
+<dt class="hdlist1">spring.cloud.stream.kafka.binder.configuration</dt>
+<dd>
+<p>Key/Value map of client properties (both producers and consumer) passed to all clients created by the binder.
+Due to the fact that these properties are used by both producers and consumers, usage should be restricted to common properties&#8201;&#8212;&#8201;for example, security settings.
+Unknown Kafka producer or consumer properties provided through this configuration are filtered out and not allowed to propagate.
+Properties here supersede any properties set in boot.</p>
+<div class="paragraph">
+<p>Default: Empty map.</p>
+</div>
+</dd>
+<dt class="hdlist1">spring.cloud.stream.kafka.binder.consumerProperties</dt>
+<dd>
+<p>Key/Value map of arbitrary Kafka client consumer properties.
+In addition to support known Kafka consumer properties, unknown consumer properties are allowed here as well.
+Properties here supersede any properties set in boot and in the <code>configuration</code> property above.</p>
+<div class="paragraph">
+<p>Default: Empty map.</p>
+</div>
+</dd>
+<dt class="hdlist1">spring.cloud.stream.kafka.binder.headers</dt>
+<dd>
+<p>The list of custom headers that are transported by the binder.
+Only required when communicating with older applications (&#8656; 1.3.x) with a <code>kafka-clients</code> version &lt; 0.11.0.0. Newer versions support headers natively.</p>
+<div class="paragraph">
+<p>Default: empty.</p>
+</div>
+</dd>
+<dt class="hdlist1">spring.cloud.stream.kafka.binder.healthTimeout</dt>
+<dd>
+<p>The time to wait to get partition information, in seconds.
+Health reports as down if this timer expires.</p>
+<div class="paragraph">
+<p>Default: 10.</p>
+</div>
+</dd>
+<dt class="hdlist1">spring.cloud.stream.kafka.binder.requiredAcks</dt>
+<dd>
+<p>The number of required acks on the broker.
+See the Kafka documentation for the producer <code>acks</code> property.</p>
+<div class="paragraph">
+<p>Default: <code>1</code>.</p>
+</div>
+</dd>
+<dt class="hdlist1">spring.cloud.stream.kafka.binder.minPartitionCount</dt>
+<dd>
+<p>Effective only if <code>autoCreateTopics</code> or <code>autoAddPartitions</code> is set.
+The global minimum number of partitions that the binder configures on topics on which it produces or consumes data.
+It can be superseded by the <code>partitionCount</code> setting of the producer or by the value of <code>instanceCount * concurrency</code> settings of the producer (if either is larger).</p>
+<div class="paragraph">
+<p>Default: <code>1</code>.</p>
+</div>
+</dd>
+<dt class="hdlist1">spring.cloud.stream.kafka.binder.producerProperties</dt>
+<dd>
+<p>Key/Value map of arbitrary Kafka client producer properties.
+In addition to support known Kafka producer properties, unknown producer properties are allowed here as well.
+Properties here supersede any properties set in boot and in the <code>configuration</code> property above.</p>
+<div class="paragraph">
+<p>Default: Empty map.</p>
+</div>
+</dd>
+<dt class="hdlist1">spring.cloud.stream.kafka.binder.replicationFactor</dt>
+<dd>
+<p>The replication factor of auto-created topics if <code>autoCreateTopics</code> is active.
+Can be overridden on each binding.</p>
+<div class="paragraph">
+<p>Default: <code>1</code>.</p>
+</div>
+</dd>
+<dt class="hdlist1">spring.cloud.stream.kafka.binder.autoCreateTopics</dt>
+<dd>
+<p>If set to <code>true</code>, the binder creates new topics automatically.
+If set to <code>false</code>, the binder relies on the topics being already configured.
+In the latter case, if the topics do not exist, the binder fails to start.</p>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+This setting is independent of the <code>auto.create.topics.enable</code> setting of the broker and does not influence it.
+If the server is set to auto-create topics, they may be created as part of the metadata retrieval request, with default broker settings.
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>Default: <code>true</code>.</p>
+</div>
+</dd>
+<dt class="hdlist1">spring.cloud.stream.kafka.binder.autoAddPartitions</dt>
+<dd>
+<p>If set to <code>true</code>, the binder creates new partitions if required.
+If set to <code>false</code>, the binder relies on the partition size of the topic being already configured.
+If the partition count of the target topic is smaller than the expected value, the binder fails to start.</p>
+<div class="paragraph">
+<p>Default: <code>false</code>.</p>
+</div>
+</dd>
+<dt class="hdlist1">spring.cloud.stream.kafka.binder.transaction.transactionIdPrefix</dt>
+<dd>
+<p>Enables transactions in the binder. See <code>transaction.id</code> in the Kafka documentation and <a href="https://docs.spring.io/spring-kafka/reference/html/_reference.html#transactions">Transactions</a> in the <code>spring-kafka</code> documentation.
+When transactions are enabled, individual <code>producer</code> properties are ignored and all producers use the <code>spring.cloud.stream.kafka.binder.transaction.producer.*</code> properties.</p>
+<div class="paragraph">
+<p>Default <code>null</code> (no transactions)</p>
+</div>
+</dd>
+<dt class="hdlist1">spring.cloud.stream.kafka.binder.transaction.producer.*</dt>
+<dd>
+<p>Global producer properties for producers in a transactional binder.
+See <code>spring.cloud.stream.kafka.binder.transaction.transactionIdPrefix</code> and <a href="#kafka-producer-properties">Kafka Producer Properties</a> and the general producer properties supported by all binders.</p>
+<div class="paragraph">
+<p>Default: See individual producer properties.</p>
+</div>
+</dd>
+<dt class="hdlist1">spring.cloud.stream.kafka.binder.headerMapperBeanName</dt>
+<dd>
+<p>The bean name of a <code>KafkaHeaderMapper</code> used for mapping <code>spring-messaging</code> headers to and from Kafka headers.
+Use this, for example, if you wish to customize the trusted packages in a <code>DefaultKafkaHeaderMapper</code> that uses JSON deserialization for the headers.</p>
+<div class="paragraph">
+<p>Default: none.</p>
+</div>
+</dd>
+</dl>
+</div>
+</div>
+<div class="sect3">
+<h4 id="kafka-consumer-properties"><a class="link" href="#kafka-consumer-properties">Kafka Consumer Properties</a></h4>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+To avoid repetition, Spring Cloud Stream supports setting values for all channels, in the format of <code>spring.cloud.stream.default.&lt;property&gt;=&lt;value&gt;</code>.
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>The following properties are available for Kafka consumers only and
+must be prefixed with <code>spring.cloud.stream.kafka.bindings.&lt;channelName&gt;.consumer.</code>.</p>
+</div>
+<div class="dlist">
+<dl>
+<dt class="hdlist1">admin.configuration</dt>
+<dd>
+<p>Since version 2.1.1, this property is deprecated in favor of <code>topic.properties</code>, and support for it will be removed in a future version.</p>
+</dd>
+<dt class="hdlist1">admin.replicas-assignment</dt>
+<dd>
+<p>Since version 2.1.1, this property is deprecated in favor of <code>topic.replicas-assignment</code>, and support for it will be removed in a future version.</p>
+</dd>
+<dt class="hdlist1">admin.replication-factor</dt>
+<dd>
+<p>Since version 2.1.1, this property is deprecated in favor of <code>topic.replication-factor</code>, and support for it will be removed in a future version.</p>
+</dd>
+<dt class="hdlist1">autoRebalanceEnabled</dt>
+<dd>
+<p>When <code>true</code>, topic partitions is automatically rebalanced between the members of a consumer group.
+When <code>false</code>, each consumer is assigned a fixed set of partitions based on <code>spring.cloud.stream.instanceCount</code> and <code>spring.cloud.stream.instanceIndex</code>.
+This requires both the <code>spring.cloud.stream.instanceCount</code> and <code>spring.cloud.stream.instanceIndex</code> properties to be set appropriately on each launched instance.
+The value of the <code>spring.cloud.stream.instanceCount</code> property must typically be greater than 1 in this case.</p>
+<div class="paragraph">
+<p>Default: <code>true</code>.</p>
+</div>
+</dd>
+<dt class="hdlist1">ackEachRecord</dt>
+<dd>
+<p>When <code>autoCommitOffset</code> is <code>true</code>, this setting dictates whether to commit the offset after each record is processed.
+By default, offsets are committed after all records in the batch of records returned by <code>consumer.poll()</code> have been processed.
+The number of records returned by a poll can be controlled with the <code>max.poll.records</code> Kafka property, which is set through the consumer <code>configuration</code> property.
+Setting this to <code>true</code> may cause a degradation in performance, but doing so reduces the likelihood of redelivered records when a failure occurs.
+Also, see the binder <code>requiredAcks</code> property, which also affects the performance of committing offsets.</p>
+<div class="paragraph">
+<p>Default: <code>false</code>.</p>
+</div>
+</dd>
+<dt class="hdlist1">autoCommitOffset</dt>
+<dd>
+<p>Whether to autocommit offsets when a message has been processed.
+If set to <code>false</code>, a header with the key <code>kafka_acknowledgment</code> of the type <code>org.springframework.kafka.support.Acknowledgment</code> header is present in the inbound message.
+Applications may use this header for acknowledging messages.
+See the examples section for details.
+When this property is set to <code>false</code>, Kafka binder sets the ack mode to <code>org.springframework.kafka.listener.AbstractMessageListenerContainer.AckMode.MANUAL</code> and the application is responsible for acknowledging records.
+Also see <code>ackEachRecord</code>.</p>
+<div class="paragraph">
+<p>Default: <code>true</code>.</p>
+</div>
+</dd>
+<dt class="hdlist1">autoCommitOnError</dt>
+<dd>
+<p>Effective only if <code>autoCommitOffset</code> is set to <code>true</code>.
+If set to <code>false</code>, it suppresses auto-commits for messages that result in errors and commits only for successful messages. It allows a stream to automatically replay from the last successfully processed message, in case of persistent failures.
+If set to <code>true</code>, it always auto-commits (if auto-commit is enabled).
+If not set (the default), it effectively has the same value as <code>enableDlq</code>, auto-committing erroneous messages if they are sent to a DLQ and not committing them otherwise.</p>
+<div class="paragraph">
+<p>Default: not set.</p>
+</div>
+</dd>
+<dt class="hdlist1">resetOffsets</dt>
+<dd>
+<p>Whether to reset offsets on the consumer to the value provided by startOffset.
+Must be false if a <code>KafkaRebalanceListener</code> is provided; see <a href="#rebalance-listener">Using a KafkaRebalanceListener</a>.</p>
+<div class="paragraph">
+<p>Default: <code>false</code>.</p>
+</div>
+</dd>
+<dt class="hdlist1">startOffset</dt>
+<dd>
+<p>The starting offset for new groups.
+Allowed values: <code>earliest</code> and <code>latest</code>.
+If the consumer group is set explicitly for the consumer 'binding' (through <code>spring.cloud.stream.bindings.&lt;channelName&gt;.group</code>), 'startOffset' is set to <code>earliest</code>. Otherwise, it is set to <code>latest</code> for the <code>anonymous</code> consumer group.
+Also see <code>resetOffsets</code> (earlier in this list).</p>
+<div class="paragraph">
+<p>Default: null (equivalent to <code>earliest</code>).</p>
+</div>
+</dd>
+<dt class="hdlist1">enableDlq</dt>
+<dd>
+<p>When set to true, it enables DLQ behavior for the consumer.
+By default, messages that result in errors are forwarded to a topic named <code>error.&lt;destination&gt;.&lt;group&gt;</code>.
+The DLQ topic name can be configurable by setting the <code>dlqName</code> property.
+This provides an alternative option to the more common Kafka replay scenario for the case when the number of errors is relatively small and replaying the entire original topic may be too cumbersome.
+See <a href="#kafka-dlq-processing">[kafka-dlq-processing]</a> processing for more information.
+Starting with version 2.0, messages sent to the DLQ topic are enhanced with the following headers: <code>x-original-topic</code>, <code>x-exception-message</code>, and <code>x-exception-stacktrace</code> as <code>byte[]</code>.
+<strong>Not allowed when <code>destinationIsPattern</code> is <code>true</code>.</strong></p>
+<div class="paragraph">
+<p>Default: <code>false</code>.</p>
+</div>
+</dd>
+<dt class="hdlist1">configuration</dt>
+<dd>
+<p>Map with a key/value pair containing generic Kafka consumer properties.
+In addition to having Kafka consumer properties, other configuration properties can be passed here.
+For example some properties needed by the application such as <code>spring.cloud.stream.kafka.bindings.input.consumer.configuration.foo=bar</code>.</p>
+<div class="paragraph">
+<p>Default: Empty map.</p>
+</div>
+</dd>
+<dt class="hdlist1">dlqName</dt>
+<dd>
+<p>The name of the DLQ topic to receive the error messages.</p>
+<div class="paragraph">
+<p>Default: null (If not specified, messages that result in errors are forwarded to a topic named <code>error.&lt;destination&gt;.&lt;group&gt;</code>).</p>
+</div>
+</dd>
+<dt class="hdlist1">dlqProducerProperties</dt>
+<dd>
+<p>Using this, DLQ-specific producer properties can be set.
+All the properties available through kafka producer properties can be set through this property.
+When native decoding is enabled on the consumer (i.e., useNativeDecoding: true) , the application must provide corresponding key/value serializers for DLQ.
+This must be provided in the form  of <code>dlqProducerProperties.configuration.key.serializer</code> and <code>dlqProducerProperties.configuration.value.serializer</code>.</p>
+<div class="paragraph">
+<p>Default: Default Kafka producer properties.</p>
+</div>
+</dd>
+<dt class="hdlist1">standardHeaders</dt>
+<dd>
+<p>Indicates which standard headers are populated by the inbound channel adapter.
+Allowed values: <code>none</code>, <code>id</code>, <code>timestamp</code>, or <code>both</code>.
+Useful if using native deserialization and the first component to receive a message needs an <code>id</code> (such as an aggregator that is configured to use a JDBC message store).</p>
+<div class="paragraph">
+<p>Default: <code>none</code></p>
+</div>
+</dd>
+<dt class="hdlist1">converterBeanName</dt>
+<dd>
+<p>The name of a bean that implements <code>RecordMessageConverter</code>. Used in the inbound channel adapter to replace the default <code>MessagingMessageConverter</code>.</p>
+<div class="paragraph">
+<p>Default: <code>null</code></p>
+</div>
+</dd>
+<dt class="hdlist1">idleEventInterval</dt>
+<dd>
+<p>The interval, in milliseconds, between events indicating that no messages have recently been received.
+Use an <code>ApplicationListener&lt;ListenerContainerIdleEvent&gt;</code> to receive these events.
+See <a href="#pause-resume">Example: Pausing and Resuming the Consumer</a> for a usage example.</p>
+<div class="paragraph">
+<p>Default: <code>30000</code></p>
+</div>
+</dd>
+<dt class="hdlist1">destinationIsPattern</dt>
+<dd>
+<p>When true, the destination is treated as a regular expression <code>Pattern</code> used to match topic names by the broker.
+When true, topics are not provisioned, and <code>enableDlq</code> is not allowed, because the binder does not know the topic names during the provisioning phase.
+Note, the time taken to detect new topics that match the pattern is controlled by the consumer property <code>metadata.max.age.ms</code>, which (at the time of writing) defaults to 300,000ms (5 minutes).
+This can be configured using the <code>configuration</code> property above.</p>
+<div class="paragraph">
+<p>Default: <code>false</code></p>
+</div>
+</dd>
+<dt class="hdlist1">topic.properties</dt>
+<dd>
+<p>A <code>Map</code> of Kafka topic properties used when provisioning new topics&#8201;&#8212;&#8201;for example, <code>spring.cloud.stream.kafka.bindings.input.consumer.topic.properties.message.format.version=0.9.0.0</code></p>
+<div class="paragraph">
+<p>Default: none.</p>
+</div>
+</dd>
+<dt class="hdlist1">topic.replicas-assignment</dt>
+<dd>
+<p>A Map&lt;Integer, List&lt;Integer&gt;&gt; of replica assignments, with the key being the partition and the value being the assignments.
+Used when provisioning new topics.
+See the <code>NewTopic</code> Javadocs in the <code>kafka-clients</code> jar.</p>
+<div class="paragraph">
+<p>Default: none.</p>
+</div>
+</dd>
+<dt class="hdlist1">topic.replication-factor</dt>
+<dd>
+<p>The replication factor to use when provisioning topics. Overrides the binder-wide setting.
+Ignored if <code>replicas-assignments</code> is present.</p>
+<div class="paragraph">
+<p>Default: none (the binder-wide default of 1 is used).</p>
+</div>
+</dd>
+<dt class="hdlist1">pollTimeout</dt>
+<dd>
+<p>Timeout used for polling in pollable consumers.</p>
+<div class="paragraph">
+<p>Default: 5 seconds.</p>
+</div>
+</dd>
+</dl>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_consuming_batches"><a class="link" href="#_consuming_batches">Consuming Batches</a></h4>
+<div class="paragraph">
+<p>Starting with version 3.0, when <code>spring.cloud.stream.binding.&lt;name&gt;.consumer.batch-mode</code> is set to <code>true</code>, all of the records received by polling the Kafka <code>Consumer</code> will be presented as a <code>List&lt;?&gt;</code> to the listener method.
+Otherwise, the method will be called with one record at a time.
+The size of the batch is controlled by Kafka consumer properties <code>max.poll.records</code>, <code>min.fetch.bytes</code>, <code>fetch.max.wait.ms</code>; refer to the Kafka documentation for more information.</p>
+</div>
+<div class="admonitionblock important">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-important" title="Important"></i>
+</td>
+<td class="content">
+Retry within the binder is not supported when using batch mode, so <code>maxAttempts</code> will be overridden to 1.
+You can configure a <code>SeekToCurrentBatchErrorHandler</code> (using a <code>ListenerContainerCustomizer</code>) to achieve similar functionality to retry in the binder.
+You can also use a manual <code>AckMode</code> and call <code>Ackowledgment.nack(index, sleep)</code> to commit the offsets for a partial batch and have the remaining records redelivered.
+Refer to the <a href="https://docs.spring.io/spring-kafka/docs/2.3.0.BUILD-SNAPSHOT/reference/html/#committing-offsets">Spring for Apache Kafka documentation</a> for more information about these techniques.
+</td>
+</tr>
+</table>
+</div>
+</div>
+<div class="sect3">
+<h4 id="kafka-producer-properties"><a class="link" href="#kafka-producer-properties">Kafka Producer Properties</a></h4>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+To avoid repetition, Spring Cloud Stream supports setting values for all channels, in the format of <code>spring.cloud.stream.default.&lt;property&gt;=&lt;value&gt;</code>.
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>The following properties are available for Kafka producers only and
+must be prefixed with <code>spring.cloud.stream.kafka.bindings.&lt;channelName&gt;.producer.</code>.</p>
+</div>
+<div class="dlist">
+<dl>
+<dt class="hdlist1">admin.configuration</dt>
+<dd>
+<p>Since version 2.1.1, this property is deprecated in favor of <code>topic.properties</code>, and support for it will be removed in a future version.</p>
+</dd>
+<dt class="hdlist1">admin.replicas-assignment</dt>
+<dd>
+<p>Since version 2.1.1, this property is deprecated in favor of <code>topic.replicas-assignment</code>, and support for it will be removed in a future version.</p>
+</dd>
+<dt class="hdlist1">admin.replication-factor</dt>
+<dd>
+<p>Since version 2.1.1, this property is deprecated in favor of <code>topic.replication-factor</code>, and support for it will be removed in a future version.</p>
+</dd>
+<dt class="hdlist1">bufferSize</dt>
+<dd>
+<p>Upper limit, in bytes, of how much data the Kafka producer attempts to batch before sending.</p>
+<div class="paragraph">
+<p>Default: <code>16384</code>.</p>
+</div>
+</dd>
+<dt class="hdlist1">sync</dt>
+<dd>
+<p>Whether the producer is synchronous.</p>
+<div class="paragraph">
+<p>Default: <code>false</code>.</p>
+</div>
+</dd>
+<dt class="hdlist1">sendTimeoutExpression</dt>
+<dd>
+<p>A SpEL expression evaluated against the outgoing message used to evaluate the time to wait for ack when synchronous publish is enabled&#8201;&#8212;&#8201;for example, <code>headers['mySendTimeout']</code>.
+The value of the timeout is in milliseconds.
+With versions before 3.0, the payload could not be used unless native encoding was being used because, by the time this expression was evaluated, the payload was already in the form of a <code>byte[]</code>.
+Now, the expression is evaluated before the payload is converted.</p>
+<div class="paragraph">
+<p>Default: <code>none</code>.</p>
+</div>
+</dd>
+<dt class="hdlist1">batchTimeout</dt>
+<dd>
+<p>How long the producer waits to allow more messages to accumulate in the same batch before sending the messages.
+(Normally, the producer does not wait at all and simply sends all the messages that accumulated while the previous send was in progress.) A non-zero value may increase throughput at the expense of latency.</p>
+<div class="paragraph">
+<p>Default: <code>0</code>.</p>
+</div>
+</dd>
+<dt class="hdlist1">messageKeyExpression</dt>
+<dd>
+<p>A SpEL expression evaluated against the outgoing message used to populate the key of the produced Kafka message&#8201;&#8212;&#8201;for example, <code>headers['myKey']</code>.
+With versions before 3.0, the payload could not be used unless native encoding was being used because, by the time this expression was evaluated, the payload was already in the form of a <code>byte[]</code>.
+Now, the expression is evaluated before the payload is converted.</p>
+<div class="paragraph">
+<p>Default: <code>none</code>.</p>
+</div>
+</dd>
+<dt class="hdlist1">headerPatterns</dt>
+<dd>
+<p>A comma-delimited list of simple patterns to match Spring messaging headers to be mapped to the Kafka <code>Headers</code> in the <code>ProducerRecord</code>.
+Patterns can begin or end with the wildcard character (asterisk).
+Patterns can be negated by prefixing with <code>!</code>.
+Matching stops after the first match (positive or negative).
+For example <code>!ask,as*</code> will pass <code>ash</code> but not <code>ask</code>.
+<code>id</code> and <code>timestamp</code> are never mapped.</p>
+<div class="paragraph">
+<p>Default: <code>*</code> (all headers - except the <code>id</code> and <code>timestamp</code>)</p>
+</div>
+</dd>
+<dt class="hdlist1">configuration</dt>
+<dd>
+<p>Map with a key/value pair containing generic Kafka producer properties.</p>
+<div class="paragraph">
+<p>Default: Empty map.</p>
+</div>
+</dd>
+<dt class="hdlist1">topic.properties</dt>
+<dd>
+<p>A <code>Map</code> of Kafka topic properties used when provisioning new topics&#8201;&#8212;&#8201;for example, <code>spring.cloud.stream.kafka.bindings.output.producer.topic.properties.message.format.version=0.9.0.0</code></p>
+</dd>
+<dt class="hdlist1">topic.replicas-assignment</dt>
+<dd>
+<p>A Map&lt;Integer, List&lt;Integer&gt;&gt; of replica assignments, with the key being the partition and the value being the assignments.
+Used when provisioning new topics.
+See the <code>NewTopic</code> Javadocs in the <code>kafka-clients</code> jar.</p>
+<div class="paragraph">
+<p>Default: none.</p>
+</div>
+</dd>
+<dt class="hdlist1">topic.replication-factor</dt>
+<dd>
+<p>The replication factor to use when provisioning topics. Overrides the binder-wide setting.
+Ignored if <code>replicas-assignments</code> is present.</p>
+<div class="paragraph">
+<p>Default: none (the binder-wide default of 1 is used).</p>
+</div>
+</dd>
+<dt class="hdlist1">useTopicHeader</dt>
+<dd>
+<p>Set to <code>true</code> to override the default binding destination (topic name) with the value of the <code>KafkaHeaders.TOPIC</code> message header in the outbound message.
+If the header is not present, the default binding destination is used.
+Default: <code>false</code>.</p>
+</dd>
+<dt class="hdlist1">recordMetadataChannel</dt>
+<dd>
+<p>The bean name of a <code>MessageChannel</code> to which successful send results should be sent; the bean must exist in the application context.
+The message sent to the channel is the sent message (after conversion, if any) with an additional header <code>KafkaHeaders.RECORD_METADATA</code>.
+The header contains a <code>RecordMetadata</code> object provided by the Kafka client; it includes the partition and offset where the record was written in the topic.</p>
+</dd>
+</dl>
+</div>
+<div class="paragraph">
+<p><code>ResultMetadata meta = sendResultMsg.getHeaders().get(KafkaHeaders.RECORD_METADATA, RecordMetadata.class)</code></p>
+</div>
+<div class="paragraph">
+<p>Failed sends go the producer error channel (if configured); see <a href="#kafka-error-channels">Error Channels</a>.
+Default: null</p>
+</div>
+<div class="paragraph">
+<p>+</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+The Kafka binder uses the <code>partitionCount</code> setting of the producer as a hint to create a topic with the given partition count (in conjunction with the <code>minPartitionCount</code>, the maximum of the two being the value being used).
+Exercise caution when configuring both <code>minPartitionCount</code> for a binder and <code>partitionCount</code> for an application, as the larger value is used.
+If a topic already exists with a smaller partition count and <code>autoAddPartitions</code> is disabled (the default), the binder fails to start.
+If a topic already exists with a smaller partition count and <code>autoAddPartitions</code> is enabled, new partitions are added.
+If a topic already exists with a larger number of partitions than the maximum of (<code>minPartitionCount</code> or <code>partitionCount</code>), the existing partition count is used.
+</td>
+</tr>
+</table>
+</div>
+<div class="dlist">
+<dl>
+<dt class="hdlist1">compression</dt>
+<dd>
+<p>Set the <code>compression.type</code> producer property.
+Supported values are <code>none</code>, <code>gzip</code>, <code>snappy</code> and <code>lz4</code>.
+If you override the <code>kafka-clients</code> jar to 2.1.0 (or later), as discussed in the <a href="https://docs.spring.io/spring-kafka/docs/2.2.x/reference/html/deps-for-21x.html">Spring for Apache Kafka documentation</a>, and wish to use <code>zstd</code> compression, use <code>spring.cloud.stream.kafka.bindings.&lt;binding-name&gt;.producer.configuration.compression.type=zstd</code>.</p>
+<div class="paragraph">
+<p>Default: <code>none</code>.</p>
+</div>
+</dd>
+</dl>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_usage_examples"><a class="link" href="#_usage_examples">Usage examples</a></h4>
+<div class="paragraph">
+<p>In this section, we show the use of the preceding properties for specific scenarios.</p>
+</div>
+<div class="sect4">
+<h5 id="_example_setting_autocommitoffset_to_false_and_relying_on_manual_acking"><a class="link" href="#_example_setting_autocommitoffset_to_false_and_relying_on_manual_acking">Example: Setting <code>autoCommitOffset</code> to <code>false</code> and Relying on Manual Acking</a></h5>
+<div class="paragraph">
+<p>This example illustrates how one may manually acknowledge offsets in a consumer application.</p>
+</div>
+<div class="paragraph">
+<p>This example requires that <code>spring.cloud.stream.kafka.bindings.input.consumer.autoCommitOffset</code> be set to <code>false</code>.
+Use the corresponding input channel name for your example.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code>@SpringBootApplication
+@EnableBinding(Sink.class)
+public class ManuallyAcknowdledgingConsumer {
+
+ public static void main(String[] args) {
+     SpringApplication.run(ManuallyAcknowdledgingConsumer.class, args);
+ }
+
+ @StreamListener(Sink.INPUT)
+ public void process(Message&lt;?&gt; message) {
+     Acknowledgment acknowledgment = message.getHeaders().get(KafkaHeaders.ACKNOWLEDGMENT, Acknowledgment.class);
+     if (acknowledgment != null) {
+         System.out.println("Acknowledgment provided");
+         acknowledgment.acknowledge();
+     }
+ }
+}</code></pre>
+</div>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_example_security_configuration"><a class="link" href="#_example_security_configuration">Example: Security Configuration</a></h5>
+<div class="paragraph">
+<p>Apache Kafka 0.9 supports secure connections between client and brokers.
+To take advantage of this feature, follow the guidelines in the <a href="https://kafka.apache.org/090/documentation.html#security_configclients">Apache Kafka Documentation</a> as well as the Kafka 0.9 <a href="https://docs.confluent.io/2.0.0/kafka/security.html">security guidelines from the Confluent documentation</a>.
+Use the <code>spring.cloud.stream.kafka.binder.configuration</code> option to set security properties for all clients created by the binder.</p>
+</div>
+<div class="paragraph">
+<p>For example, to set <code>security.protocol</code> to <code>SASL_SSL</code>, set the following property:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code>spring.cloud.stream.kafka.binder.configuration.security.protocol=SASL_SSL</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>All the other security properties can be set in a similar manner.</p>
+</div>
+<div class="paragraph">
+<p>When using Kerberos, follow the instructions in the <a href="https://kafka.apache.org/090/documentation.html#security_sasl_clientconfig">reference documentation</a> for creating and referencing the JAAS configuration.</p>
+</div>
+<div class="paragraph">
+<p>Spring Cloud Stream supports passing JAAS configuration information to the application by using a JAAS configuration file and using Spring Boot properties.</p>
+</div>
+<div class="sect5">
+<h6 id="_using_jaas_configuration_files"><a class="link" href="#_using_jaas_configuration_files">Using JAAS Configuration Files</a></h6>
+<div class="paragraph">
+<p>The JAAS and (optionally) krb5 file locations can be set for Spring Cloud Stream applications by using system properties.
+The following example shows how to launch a Spring Cloud Stream application with SASL and Kerberos by using a JAAS configuration file:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash"> java -Djava.security.auth.login.config=/path.to/kafka_client_jaas.conf -jar log.jar \
+   --spring.cloud.stream.kafka.binder.brokers=secure.server:9092 \
+   --spring.cloud.stream.bindings.input.destination=stream.ticktock \
+   --spring.cloud.stream.kafka.binder.configuration.security.protocol=SASL_PLAINTEXT</code></pre>
+</div>
+</div>
+</div>
+<div class="sect5">
+<h6 id="_using_spring_boot_properties"><a class="link" href="#_using_spring_boot_properties">Using Spring Boot Properties</a></h6>
+<div class="paragraph">
+<p>As an alternative to having a JAAS configuration file, Spring Cloud Stream provides a mechanism for setting up the JAAS configuration for Spring Cloud Stream applications by using Spring Boot properties.</p>
+</div>
+<div class="paragraph">
+<p>The following properties can be used to configure the login context of the Kafka client:</p>
+</div>
+<div class="dlist">
+<dl>
+<dt class="hdlist1">spring.cloud.stream.kafka.binder.jaas.loginModule</dt>
+<dd>
+<p>The login module name. Not necessary to be set in normal cases.</p>
+<div class="paragraph">
+<p>Default: <code>com.sun.security.auth.module.Krb5LoginModule</code>.</p>
+</div>
+</dd>
+<dt class="hdlist1">spring.cloud.stream.kafka.binder.jaas.controlFlag</dt>
+<dd>
+<p>The control flag of the login module.</p>
+<div class="paragraph">
+<p>Default: <code>required</code>.</p>
+</div>
+</dd>
+<dt class="hdlist1">spring.cloud.stream.kafka.binder.jaas.options</dt>
+<dd>
+<p>Map with a key/value pair containing the login module options.</p>
+<div class="paragraph">
+<p>Default: Empty map.</p>
+</div>
+</dd>
+</dl>
+</div>
+<div class="paragraph">
+<p>The following example shows how to launch a Spring Cloud Stream application with SASL and Kerberos by using Spring Boot configuration properties:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash"> java --spring.cloud.stream.kafka.binder.brokers=secure.server:9092 \
+   --spring.cloud.stream.bindings.input.destination=stream.ticktock \
+   --spring.cloud.stream.kafka.binder.autoCreateTopics=false \
+   --spring.cloud.stream.kafka.binder.configuration.security.protocol=SASL_PLAINTEXT \
+   --spring.cloud.stream.kafka.binder.jaas.options.useKeyTab=true \
+   --spring.cloud.stream.kafka.binder.jaas.options.storeKey=true \
+   --spring.cloud.stream.kafka.binder.jaas.options.keyTab=/etc/security/keytabs/kafka_client.keytab \
+   --spring.cloud.stream.kafka.binder.jaas.options.principal=kafka-client-1@EXAMPLE.COM</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The preceding example represents the equivalent of the following JAAS file:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code>KafkaClient {
+    com.sun.security.auth.module.Krb5LoginModule required
+    useKeyTab=true
+    storeKey=true
+    keyTab="/etc/security/keytabs/kafka_client.keytab"
+    principal="kafka-client-1@EXAMPLE.COM";
+};</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>If the topics required already exist on the broker or will be created by an administrator, autocreation can be turned off and only client JAAS properties need to be sent.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+Do not mix JAAS configuration files and Spring Boot properties in the same application.
+If the <code>-Djava.security.auth.login.config</code> system property is already present, Spring Cloud Stream ignores the Spring Boot properties.
+</td>
+</tr>
+</table>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+Be careful when using the <code>autoCreateTopics</code> and <code>autoAddPartitions</code> with Kerberos.
+Usually, applications may use principals that do not have administrative rights in Kafka and Zookeeper.
+Consequently, relying on Spring Cloud Stream to create/modify topics may fail.
+In secure environments, we strongly recommend creating topics and managing ACLs administratively by using Kafka tooling.
+</td>
+</tr>
+</table>
+</div>
+</div>
+</div>
+<div class="sect4">
+<h5 id="pause-resume"><a class="link" href="#pause-resume">Example: Pausing and Resuming the Consumer</a></h5>
+<div class="paragraph">
+<p>If you wish to suspend consumption but not cause a partition rebalance, you can pause and resume the consumer.
+This is facilitated by adding the <code>Consumer</code> as a parameter to your <code>@StreamListener</code>.
+To resume, you need an <code>ApplicationListener</code> for <code>ListenerContainerIdleEvent</code> instances.
+The frequency at which events are published is controlled by the <code>idleEventInterval</code> property.
+Since the consumer is not thread-safe, you must call these methods on the calling thread.</p>
+</div>
+<div class="paragraph">
+<p>The following simple application shows how to pause and resume:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">@SpringBootApplication
+@EnableBinding(Sink.class)
+public class Application {
+
+	public static void main(String[] args) {
+		SpringApplication.run(Application.class, args);
+	}
+
+	@StreamListener(Sink.INPUT)
+	public void in(String in, @Header(KafkaHeaders.CONSUMER) Consumer&lt;?, ?&gt; consumer) {
+		System.out.println(in);
+		consumer.pause(Collections.singleton(new TopicPartition("myTopic", 0)));
+	}
+
+	@Bean
+	public ApplicationListener&lt;ListenerContainerIdleEvent&gt; idleListener() {
+		return event -&gt; {
+			System.out.println(event);
+			if (event.getConsumer().paused().size() &gt; 0) {
+				event.getConsumer().resume(event.getConsumer().paused());
+			}
+		};
+	}
+
+}</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="kafka-transactional-binder"><a class="link" href="#kafka-transactional-binder">Transactional Binder</a></h3>
+<div class="paragraph">
+<p>Enable transactions by setting <code>spring.cloud.stream.kafka.binder.transaction.transactionIdPrefix</code> to a non-empty value, e.g. <code>tx-</code>.
+When used in a processor application, the consumer starts the transaction; any records sent on the consumer thread participate in the same transaction.
+When the listener exits normally, the listener container will send the offset to the transaction and commit it.
+A common producer factory is used for all producer bindings configured using <code>spring.cloud.stream.kafka.binder.transaction.producer.*</code> properties; individual binding Kafka producer properties are ignored.</p>
+</div>
+<div class="paragraph">
+<p>If you wish to use transactions in a source application, or from some arbitrary thread for producer-only transaction (e.g. <code>@Scheduled</code> method), you must get a reference to the transactional producer factory and define a <code>KafkaTransactionManager</code> bean using it.</p>
+</div>
+<div class="exampleblock">
+<div class="content">
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">@Bean
+public PlatformTransactionManager transactionManager(BinderFactory binders) {
+    ProducerFactory&lt;byte[], byte[]&gt; pf = ((KafkaMessageChannelBinder) binders.getBinder(null,
+            MessageChannel.class)).getTransactionalProducerFactory();
+    return new KafkaTransactionManager&lt;&gt;(pf);
+}</code></pre>
+</div>
+</div>
+</div>
+</div>
+<div class="paragraph">
+<p>Notice that we get a reference to the binder using the <code>BinderFactory</code>; use <code>null</code> in the first argument when there is only one binder configured.
+If more than one binder is configured, use the binder name to get the reference.
+Once we have a reference to the binder, we can obtain a reference to the <code>ProducerFactory</code> and create a transaction manager.</p>
+</div>
+<div class="paragraph">
+<p>Then you would use normal Spring transaction support, e.g. <code>TransactionTemplate</code> or <code>@Transactional</code>, for example:</p>
+</div>
+<div class="exampleblock">
+<div class="content">
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">public static class Sender {
+
+    @Transactional
+    public void doInTransaction(MessageChannel output, List&lt;String&gt; stuffToSend) {
+        stuffToSend.forEach(stuff -&gt; output.send(new GenericMessage&lt;&gt;(stuff)));
+    }
+
+}</code></pre>
+</div>
+</div>
+</div>
+</div>
+<div class="paragraph">
+<p>If you wish to synchronize producer-only transactions with those from some other transaction manager, use a <code>ChainedTransactionManager</code>.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="kafka-error-channels"><a class="link" href="#kafka-error-channels">Error Channels</a></h3>
+<div class="paragraph">
+<p>Starting with version 1.3, the binder unconditionally sends exceptions to an error channel for each consumer destination and can also be configured to send async producer send failures to an error channel.
+See <a href="#spring-cloud-stream-overview-error-handling">[spring-cloud-stream-overview-error-handling]</a> for more information.</p>
+</div>
+<div class="paragraph">
+<p>The payload of the <code>ErrorMessage</code> for a send failure is a <code>KafkaSendFailureException</code> with properties:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>failedMessage</code>: The Spring Messaging <code>Message&lt;?&gt;</code> that failed to be sent.</p>
+</li>
+<li>
+<p><code>record</code>: The raw <code>ProducerRecord</code> that was created from the <code>failedMessage</code></p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>There is no automatic handling of producer exceptions (such as sending to a <a href="#kafka-dlq-processing">Dead-Letter queue</a>).
+You can consume these exceptions with your own Spring Integration flow.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="kafka-metrics"><a class="link" href="#kafka-metrics">Kafka Metrics</a></h3>
+<div class="paragraph">
+<p>Kafka binder module exposes the following metrics:</p>
+</div>
+<div class="paragraph">
+<p><code>spring.cloud.stream.binder.kafka.offset</code>: This metric indicates how many messages have not been yet consumed from a given binder&#8217;s topic by a given consumer group.
+The metrics provided are based on the Mircometer metrics library. The metric contains the consumer group information, topic and the actual lag in committed offset from the latest offset on the topic.
+This metric is particularly useful for providing auto-scaling feedback to a PaaS platform.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="kafka-tombstones"><a class="link" href="#kafka-tombstones">Tombstone Records (null record values)</a></h3>
+<div class="paragraph">
+<p>When using compacted topics, a record with a <code>null</code> value (also called a tombstone record) represents the deletion of a key.
+To receive such messages in a <code>@StreamListener</code> method, the parameter must be marked as not required to receive a <code>null</code> value argument.</p>
+</div>
+<div class="exampleblock">
+<div class="content">
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">@StreamListener(Sink.INPUT)
+public void in(@Header(KafkaHeaders.RECEIVED_MESSAGE_KEY) byte[] key,
+               @Payload(required = false) Customer customer) {
+    // customer is null if a tombstone record
+    ...
+}</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="rebalance-listener"><a class="link" href="#rebalance-listener">Using a KafkaRebalanceListener</a></h3>
+<div class="paragraph">
+<p>Applications may wish to seek topics/partitions to arbitrary offsets when the partitions are initially assigned, or perform other operations on the consumer.
+Starting with version 2.1, if you provide a single <code>KafkaRebalanceListener</code> bean in the application context, it will be wired into all Kafka consumer bindings.</p>
+</div>
+<div class="exampleblock">
+<div class="content">
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">public interface KafkaBindingRebalanceListener {
+
+	/**
+	 * Invoked by the container before any pending offsets are committed.
+	 * @param bindingName the name of the binding.
+	 * @param consumer the consumer.
+	 * @param partitions the partitions.
+	 */
+	default void onPartitionsRevokedBeforeCommit(String bindingName, Consumer&lt;?, ?&gt; consumer,
+			Collection&lt;TopicPartition&gt; partitions) {
+
+	}
+
+	/**
+	 * Invoked by the container after any pending offsets are committed.
+	 * @param bindingName the name of the binding.
+	 * @param consumer the consumer.
+	 * @param partitions the partitions.
+	 */
+	default void onPartitionsRevokedAfterCommit(String bindingName, Consumer&lt;?, ?&gt; consumer, Collection&lt;TopicPartition&gt; partitions) {
+
+	}
+
+	/**
+	 * Invoked when partitions are initially assigned or after a rebalance.
+	 * Applications might only want to perform seek operations on an initial assignment.
+	 * @param bindingName the name of the binding.
+	 * @param consumer the consumer.
+	 * @param partitions the partitions.
+	 * @param initial true if this is the initial assignment.
+	 */
+	default void onPartitionsAssigned(String bindingName, Consumer&lt;?, ?&gt; consumer, Collection&lt;TopicPartition&gt; partitions,
+			boolean initial) {
+
+	}
+
+}</code></pre>
+</div>
+</div>
+</div>
+</div>
+<div class="paragraph">
+<p>You cannot set the <code>resetOffsets</code> consumer property to <code>true</code> when you provide a rebalance listener.</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<script type="text/javascript" src="js/tocbot/tocbot.min.js"></script>
+<script type="text/javascript" src="js/toc.js"></script>
+<link rel="stylesheet" href="js/highlight/styles/atom-one-dark-reasonable.min.css">
+<script src="js/highlight/highlight.min.js"></script>
+<script>hljs.initHighlighting()</script>
+</body>
+</html>

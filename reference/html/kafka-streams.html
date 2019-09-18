@@ -1,0 +1,1580 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<!--[if IE]><meta http-equiv="X-UA-Compatible" content="IE=edge"><![endif]-->
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="generator" content="Asciidoctor 1.5.7.1">
+<title>Kafka Streams Binder</title>
+<link rel="stylesheet" href="css/spring.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+
+<style>
+.hidden {
+	display: none;
+}
+
+.switch {
+	border-width: 1px 1px 0 1px;
+	border-style: solid;
+	border-color: #7a2518;
+	display: inline-block;
+}
+
+.switch--item {
+	padding: 10px;
+	background-color: #ffffff;
+	color: #7a2518;
+	display: inline-block;
+	cursor: pointer;
+}
+
+.switch--item:not(:first-child) {
+	border-width: 0 0 0 1px;
+	border-style: solid;
+	border-color: #7a2518;
+}
+
+.switch--item.selected {
+	background-color: #7a2519;
+	color: #ffffff;
+}
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/zepto/1.2.0/zepto.min.js"></script>
+<script type="text/javascript">
+function addBlockSwitches() {
+	$('.primary').each(function() {
+		primary = $(this);
+		createSwitchItem(primary, createBlockSwitch(primary)).item.addClass("selected");
+		primary.children('.title').remove();
+	});
+	$('.secondary').each(function(idx, node) {
+		secondary = $(node);
+		primary = findPrimary(secondary);
+		switchItem = createSwitchItem(secondary, primary.children('.switch'));
+		switchItem.content.addClass('hidden');
+		findPrimary(secondary).append(switchItem.content);
+		secondary.remove();
+	});
+}
+
+function createBlockSwitch(primary) {
+	blockSwitch = $('<div class="switch"></div>');
+	primary.prepend(blockSwitch);
+	return blockSwitch;
+}
+
+function findPrimary(secondary) {
+	candidate = secondary.prev();
+	while (!candidate.is('.primary')) {
+		candidate = candidate.prev();
+	}
+	return candidate;
+}
+
+function createSwitchItem(block, blockSwitch) {
+	blockName = block.children('.title').text();
+	content = block.children('.content').first().append(block.next('.colist'));
+	item = $('<div class="switch--item">' + blockName + '</div>');
+	item.on('click', '', content, function(e) {
+		$(this).addClass('selected');
+		$(this).siblings().removeClass('selected');
+		e.data.siblings('.content').addClass('hidden');
+		e.data.removeClass('hidden');
+	});
+	blockSwitch.append(item);
+	return {'item': item, 'content': content};
+}
+
+$(addBlockSwitches);
+</script>
+
+</head>
+<body class="book toc2 toc-left">
+<div id="header">
+<div id="toc" class="toc2">
+<div id="toctitle">Table of Contents</div>
+<ul class="sectlevel1">
+<li><a href="#_kafka_streams_binder">Kafka Streams Binder</a>
+<ul class="sectlevel2">
+<li><a href="#_usage">Usage</a></li>
+<li><a href="#_overview">Overview</a></li>
+<li><a href="#_programming_model">Programming Model</a></li>
+<li><a href="#_ancillary_to_the_programming_model">Ancillary to the programming model</a></li>
+<li><a href="#_record_serialization_and_deserialization">Record serialization and deserialization</a></li>
+<li><a href="#_configuration_options">Configuration Options</a></li>
+<li><a href="#_materializing_ktable_as_a_state_store">Materializing KTable as a State Store.</a></li>
+<li><a href="#_error_handling">Error Handling</a></li>
+<li><a href="#_handling_deserialization_exceptions">Handling Deserialization Exceptions</a></li>
+<li><a href="#_state_store">State Store</a></li>
+<li><a href="#_interactive_queries">Interactive Queries</a></li>
+<li><a href="#_accessing_the_underlying_kafkastreams_object">Accessing the underlying KafkaStreams object</a></li>
+<li><a href="#_state_cleanup">State Cleanup</a></li>
+<li><a href="#_health_indicator">Health Indicator</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+<div id="content">
+<div class="sect1">
+<h2 id="_kafka_streams_binder"><a class="link" href="#_kafka_streams_binder">Kafka Streams Binder</a></h2>
+<div class="sectionbody">
+<div class="sect2">
+<h3 id="_usage"><a class="link" href="#_usage">Usage</a></h3>
+<div class="paragraph">
+<p>For using the Kafka Streams binder, you just need to add it to your Spring Cloud Stream application, using the following
+Maven coordinates:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-xml hljs" data-lang="xml">&lt;dependency&gt;
+  &lt;groupId&gt;org.springframework.cloud&lt;/groupId&gt;
+  &lt;artifactId&gt;spring-cloud-stream-binder-kafka-streams&lt;/artifactId&gt;
+&lt;/dependency&gt;</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>A quick way to bootstrap a new project for Kafka Streams binder is to use <a href="http://start.spring.io">Spring Initializr</a> and then select "Cloud Streams" and "Spring for Kafka Streams" as shown below</p>
+</div>
+<div class="imageblock" style="text-align: center">
+<div class="content">
+<img src="https://raw.githubusercontent.com/spring-cloud/spring-cloud-stream-binder-kafka/master/docs/src/main/asciidoc/images/spring-initializr-kafka-streams.png" alt="spring initializr kafka streams" width="800">
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_overview"><a class="link" href="#_overview">Overview</a></h3>
+<div class="paragraph">
+<p>Spring Cloud Stream includes a binder implementation designed explicitly for <a href="https://kafka.apache.org/documentation/streams/">Apache Kafka Streams</a> binding.
+With this native integration, a Spring Cloud Stream "processor" application can directly use the
+<a href="https://kafka.apache.org/documentation/streams/developer-guide">Apache Kafka Streams</a> APIs in the core business logic.</p>
+</div>
+<div class="paragraph">
+<p>Kafka Streams binder implementation builds on the foundations provided by the <a href="https://docs.spring.io/spring-kafka/reference/html/#kafka-streams">Spring for Apache Kafka</a> project.</p>
+</div>
+<div class="paragraph">
+<p>Kafka Streams binder provides binding capabilities for the three major types in Kafka Streams - KStream, KTable and GlobalKTable.</p>
+</div>
+<div class="paragraph">
+<p>Kafka Streams applications typically follow a model in which the records are read from an inbound topic, apply business logic, and then write the transformed records to an outbound topic.
+Alternatively, a Processor application with no outbound destination can be defined as well.</p>
+</div>
+<div class="paragraph">
+<p>In the following sections, we are going to look at the details of Spring Cloud Stream&#8217;s integration with Kafka Streams.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_programming_model"><a class="link" href="#_programming_model">Programming Model</a></h3>
+<div class="paragraph">
+<p>When using the programming model provided by Kafka Streams binder, both the high-level <a href="https://docs.confluent.io/current/streams/developer-guide/dsl-api.html">Streams DSL</a> and the lower level <a href="https://docs.confluent.io/current/streams/developer-guide/processor-api.html">Processor-API</a> can be used as options.</p>
+</div>
+<div class="sect3">
+<h4 id="_functional_style"><a class="link" href="#_functional_style">Functional Style</a></h4>
+<div class="paragraph">
+<p>Starting with Spring Cloud Stream 3.0, Kafka Streams binder allows the applications to be designed and developed using the functional programming style that is available in Java 8.
+This means that the applications can be concisely represented as a lambda expression of types <code>java.util.function.Function</code> or <code>java.util.function.Consumer</code>.</p>
+</div>
+<div class="paragraph">
+<p>Let&#8217;s take a very basic example.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code>@SpringBootApplication
+public class SimpleConsumerApplication {
+
+    @Bean
+    public java.util.function.Consumer&lt;KStream&lt;Object, String&gt;&gt; process() {
+
+        return input -&gt;
+                input.foreach((key, value) -&gt; {
+                    System.out.println("Key: " + key + " Value: " + value);
+                });
+    }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Albeit simple, this is a complete standalone Spring Boot application that is leveraging Kafka Streams for stream processing.
+This is a consumer application with no outbound binding and only a single inbound binding.
+The application consumes data and it simply logs the transformation as standard output.
+The application contains the <code>SpringBootApplication</code> annotation and a method that is marked as <code>Bean</code>.
+The bean method is of type <code>java.util.function.Consumer</code> which is parameterized with <code>KStream</code>.
+Then in the implementation, we are returning a Consumer object that is essentially a lambda expression.
+Inside the lambda expression, the code for processing the data is provided.</p>
+</div>
+<div class="paragraph">
+<p>In this application, there is a single input binding that is of type <code>KStream</code>.
+The binder creates this binding for the application with a name <code>process_in</code>, i.e. the name of the function bean name followed by an underscore and the literal <code>in</code>.
+You use this binding name to set other properties such as destination.
+For example, <code>spring.cloud.stream.bindings.process_in.destinaion=my-topic</code>.</p>
+</div>
+<div class="paragraph">
+<p>Once built as a uber-jar (e.g., <code>kstream-consumer-app.jar</code>), you can run the above example like the following.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code>java -jar `kstream-consumer-app.jar --spring.cloud.stream.bindings.process_in.destinaion=my-topic --spring.cloud.stream.bindings.output.destination=count</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Here is another example, where it is a full processor with both input and output bindings.
+This is the classic word-count example in which the application receives data from a topic, the number of occurrences for each word is then computed in a tumbling time-window.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code>@SpringBootApplication
+public class WordCountProcessorApplication {
+
+  @Bean
+  public Function&lt;KStream&lt;Object, String&gt;, KStream&lt;?, WordCount&gt;&gt; process() {
+
+    return input -&gt; input
+        .flatMapValues(value -&gt; Arrays.asList(value.toLowerCase().split("\\W+")))
+        .map((key, value) -&gt; new KeyValue&lt;&gt;(value, value))
+        .groupByKey(Serialized.with(Serdes.String(), Serdes.String()))
+        .windowedBy(TimeWindows.of(5000))
+        .count(Materialized.as("word-counts-state-store"))
+        .toStream()
+        .map((key, value) -&gt; new KeyValue&lt;&gt;(null, new WordCount(key.key(), value,
+            new Date(key.window().start()), new Date(key.window().end()))));
+  }
+
+	public static void main(String[] args) {
+		SpringApplication.run(WordCountProcessorApplication.class, args);
+	}
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Here again, this is a complete Spring Boot application. The difference here from the first application, though, the bean method is of type <code>java.util.function.Function</code>.
+The first parameterized type for the <code>Function</code> is for the input <code>KStream</code> and the second one is for the output.
+In the method body, a lambda expression is provided that is of type <code>Function</code> and as implementation, the actual business logic is given.
+Similar to the previously discussed Consumer based application, the input binding here is named as <code>process_in</code> by default. For the output, the binding name is automatically also set to <code>process_out</code>.</p>
+</div>
+<div class="paragraph">
+<p>Once built as a uber-jar (e.g., <code>wordcount-processor.jar</code>), you can run the above example like the following.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code>java -jar wordcount-processor.jar  --spring.cloud.stream.bindings.process_in.destination=words --spring.cloud.stream.bindings.process_out.destination=counts</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>This application will consume messages from the Kafka topic <code>words</code> and the computed results are published to an output
+topic <code>counts</code>.</p>
+</div>
+<div class="paragraph">
+<p>Spring Cloud Stream will ensure that the messages from both the incoming and outgoing topics are automatically bound as
+KStream objects. As a developer, you can exclusively focus on the business aspects of the code, i.e. writing the logic
+required in the processor. Setting up the Streams DSL specific configuration required by the Kafka Streams infrastructure
+is automatically handled by the framework.</p>
+</div>
+<div class="paragraph">
+<p>The two examples we saw above have a single <code>KStream</code> input binding. In both cases, the bindings received the records from a single topic.
+If you want to multiplex multiple topics into a single <code>KStream</code> binding, you can provide comma separated Kafka topics as destinations below.</p>
+</div>
+<div class="paragraph">
+<p><code>spring.cloud.stream.bindings.process_in.destination=topic-1,topic-2,topic-3</code></p>
+</div>
+<div class="sect4">
+<h5 id="_multiple_input_bindings"><a class="link" href="#_multiple_input_bindings">Multiple Input Bindings</a></h5>
+<div class="paragraph">
+<p>Any non-trivial Kafka Streams applications often consume data from more than one topic through multiple bindings.
+For instance, one topic is consumed as <code>Kstream</code> and another as <code>KTable</code> or <code>GlobalKTable</code>.
+There are many reasons why an application might want to receive data as a table type.
+Think of a use-case where the underlying topic is populated through a change data capture (CDC) mechanism from a database or perhaps the application only cares about the latest updates for downstream processing.
+If the application specifies that the data needs to be bound as <code>KTable</code> or <code>GlobalKTable</code>, then Kafka Streams binder will properly bind the destination to a <code>KTable</code> or <code>GlobalKTable</code> and make them available for the application to operate upon.
+We will look at a few different scenarios how multiple input bindings are handled in the Kafka Streams binder.</p>
+</div>
+<div class="sect5">
+<h6 id="_bifunction_in_kafka_streams_binder"><a class="link" href="#_bifunction_in_kafka_streams_binder">BiFunction in Kafka Streams Binder</a></h6>
+<div class="paragraph">
+<p>Here is an example where we have two inputs and an output. In this case, the application can leverage on <code>java.util.function.BiFunction</code>.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code>@Bean
+public BiFunction&lt;KStream&lt;String, Long&gt;, KTable&lt;String, String&gt;, KStream&lt;String, Long&gt;&gt; process() {
+    return (userClicksStream, userRegionsTable) -&gt; (userClicksStream
+            .leftJoin(userRegionsTable, (clicks, region) -&gt; new RegionWithClicks(region == null ?
+                            "UNKNOWN" : region, clicks),
+                    Joined.with(Serdes.String(), Serdes.Long(), null))
+            .map((user, regionWithClicks) -&gt; new KeyValue&lt;&gt;(regionWithClicks.getRegion(),
+                    regionWithClicks.getClicks()))
+            .groupByKey(Serialized.with(Serdes.String(), Serdes.Long()))
+            .reduce(Long::sum)
+            .toStream());
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Here again, the basic theme is the same as previous examples, the difference, though, you have two inputs and the Java&#8217;s BiFunction support is used to bind the inputs to the desired destinations.
+The default binding names generated by the binder for the inputs are <code>process_in_0</code> and <code>process_in_1</code> respectively. The default output binding remains to be <code>process_out</code>.
+In this example, the first parameter of <code>BiFunction</code> is bound as a <code>KStream</code> for the first input and the second parameter is bound as a <code>KTable</code>.</p>
+</div>
+</div>
+<div class="sect5">
+<h6 id="_biconsumer_in_kafka_streams_binder"><a class="link" href="#_biconsumer_in_kafka_streams_binder">BiConsumer in Kafka Streams Binder</a></h6>
+<div class="paragraph">
+<p>If there are two inputs, but no outputs, in that case we can use <code>java.util.funcion.BiConsumer</code>.
+Here is a blueprint for such an application.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code>@Bean
+public BiConsumer&lt;KStream&lt;String, Long&gt;, KTable&lt;String, String&gt;&gt; process() {
+    return (userClicksStream, userRegionsTable) -&gt; {}
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>What if you have more than two inputs?
+There are situations in which you need more than two inputs. In that case, the binder allows you to chain partial functions. In functional programming jargon, this technique is generally known as currying.
+With the functional programming support added as part of Java 8, Java now enables you to write curried functions.
+The Kafka Streams binder can make use of this feature to enable multiple input bindings.</p>
+</div>
+<div class="paragraph">
+<p>Let&#8217;s see an example.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code>@Bean
+public Function&lt;KStream&lt;Long, Order&gt;,
+        Function&lt;GlobalKTable&lt;Long, Customer&gt;,
+                Function&lt;GlobalKTable&lt;Long, Product&gt;, KStream&lt;Long, EnrichedOrder&gt;&gt;&gt;&gt; process() {
+
+    return orders -&gt; (
+              customers -&gt; (
+                    products -&gt; (
+                        orders.join(customers,
+                            (orderId, order) -&gt; order.getCustomerId(),
+                                (order, customer) -&gt; new CustomerOrder(customer, order))
+                                .join(products,
+                                        (orderId, customerOrder) -&gt; customerOrder
+                                                .productId(),
+                                        (customerOrder, product) -&gt; {
+                                            EnrichedOrder enrichedOrder = new EnrichedOrder();
+                                            enrichedOrder.setProduct(product);
+                                            enrichedOrder.setCustomer(customerOrder.customer);
+                                            enrichedOrder.setOrder(customerOrder.order);
+                                            return enrichedOrder;
+                                        })
+                        )
+                )
+    );
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>In this model, we have 3 partial functions as inputs. The first function has the first input binding of the application (<code>Order</code>) and its output is another function.
+This output function&#8217;s input is the second input binding for the application (<code>Customer</code>) and its output is another function.
+This output function&#8217;s input is the third input for the application (Product) and its output is a KStream which is final output binding for the application.
+The input from the three partial functions which are <code>KStream</code>, <code>GlobalKTable</code>, <code>GlobalKTable</code> respectively are available for you in the method body for implementing the business logic as part of the lambda expression.</p>
+</div>
+<div class="paragraph">
+<p>Input bindings are named as <code>process_in_0</code>, <code>process_in_1</code> and <code>process_in_2</code> respectively. Output binding is named as <code>process_out</code>.</p>
+</div>
+<div class="paragraph">
+<p>With curried functions, you can virtually have any number of inputs. However, keep in mind that, anything more than a smaller number of inputs and partially applied functions for them as above in Java might lead to unreadable code.
+Therefore if your Kafka Streams application requires more than a reasonably smaller number of input bindings and you want to use this functional model, then you may want to rethink your design and decompose the application appropriately.</p>
+</div>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_multiple_output_bindings"><a class="link" href="#_multiple_output_bindings">Multiple Output Bindings</a></h5>
+<div class="paragraph">
+<p>Kafka Streams allows to write outbound data into multiple topics. This feature is known as branching in Kafka Streams.
+When using multiple output bindings, you need to provide an array of KStream (<code>KStream[]</code>) as the outbound return type.</p>
+</div>
+<div class="paragraph">
+<p>Here is an example:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code>@Bean
+public Function&lt;KStream&lt;Object, String&gt;, KStream&lt;?, WordCount&gt;[]&gt; process() {
+
+    Predicate&lt;Object, WordCount&gt; isEnglish = (k, v) -&gt; v.word.equals("english");
+    Predicate&lt;Object, WordCount&gt; isFrench = (k, v) -&gt; v.word.equals("french");
+    Predicate&lt;Object, WordCount&gt; isSpanish = (k, v) -&gt; v.word.equals("spanish");
+
+    return input -&gt; input
+            .flatMapValues(value -&gt; Arrays.asList(value.toLowerCase().split("\\W+")))
+            .groupBy((key, value) -&gt; value)
+            .windowedBy(TimeWindows.of(5000))
+            .count(Materialized.as("WordCounts-branch"))
+            .toStream()
+            .map((key, value) -&gt; new KeyValue&lt;&gt;(null, new WordCount(key.key(), value,
+                    new Date(key.window().start()), new Date(key.window().end()))))
+            .branch(isEnglish, isFrench, isSpanish);
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The programming model remains the same, however the outbound parameterized type is <code>KStream[]</code>.
+The default output binding names are <code>process_out_0</code>, <code>process_out_1</code>, <code>process_out_2</code> respectively.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_function_based_programming_styles_for_kafka_streams"><a class="link" href="#_function_based_programming_styles_for_kafka_streams">Function based Programming Styles for Kafka Streams</a></h5>
+<div class="paragraph">
+<p>In summary, the following table shows the various options that can be used in the functional paradigm.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 33.3333%;">
+<col style="width: 33.3333%;">
+<col style="width: 33.3334%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Number of Inputs</th>
+<th class="tableblock halign-left valign-top">Number of Outputs</th>
+<th class="tableblock halign-left valign-top">Component to use</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">java.util.function.Consumer</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">java.util.function.BiConsumer</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1..n</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">java.util.function.Function</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1..n</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">java.util.function.BiFunction</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">&gt;= 3</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0..n</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Use curried functions</p></td>
+</tr>
+</tbody>
+</table>
+<div class="ulist">
+<ul>
+<li>
+<p>In the case of more than one output in this table, the type simply becomes <code>KStream[]</code>.</p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_imperative_programming_model"><a class="link" href="#_imperative_programming_model">Imperative programming model.</a></h4>
+<div class="paragraph">
+<p>Although the functional programming model outlined above is the preferred approach, you can still use the classic <code>StreamListener</code> based approach if you prefer.</p>
+</div>
+<div class="paragraph">
+<p>Here are some examples.</p>
+</div>
+<div class="paragraph">
+<p>Following is the equivalent of the Word count example using <code>StreamListener</code>.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code>@SpringBootApplication
+@EnableBinding(KafkaStreamsProcessor.class)
+public class WordCountProcessorApplication {
+
+    @StreamListener("input")
+    @SendTo("output")
+    public KStream&lt;?, WordCount&gt; process(KStream&lt;?, String&gt; input) {
+        return input
+                .flatMapValues(value -&gt; Arrays.asList(value.toLowerCase().split("\\W+")))
+                .groupBy((key, value) -&gt; value)
+                .windowedBy(TimeWindows.of(5000))
+                .count(Materialized.as("WordCounts-multi"))
+                .toStream()
+                .map((key, value) -&gt; new KeyValue&lt;&gt;(null, new WordCount(key.key(), value, new Date(key.window().start()), new Date(key.window().end()))));
+    }
+
+    public static void main(String[] args) {
+        SpringApplication.run(WordCountProcessorApplication.class, args);
+    }</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>As you can see, this is a bit more verbose since you need to provide <code>EnableBinding</code> and the other extra annotations like <code>StreamListener</code> and <code>SendTo</code> to make it a complete application.
+<code>EnableBinding</code> is where you specify your binding interface that contains your bindings.
+In this case, we are using the stock <code>KafkaStreamsProcessor</code> binding interface that has the following contracts.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code>public interface KafkaStreamsProcessor {
+
+	@Input("input")
+	KStream&lt;?, ?&gt; input();
+
+	@Output("output")
+	KStream&lt;?, ?&gt; output();
+
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Binder will create bindings for the input <code>KStream</code> and output <code>KStream</code> since you are using a binding interface that contains those declarations.</p>
+</div>
+<div class="paragraph">
+<p>In addition to the obvious differences in the programming model offered in the functional style, one particular thing that needs to be mentioned here is that the binding names are what you specify in the binding interface.
+For example, in the above application, since we are using <code>KafkaStreamsProcessor</code>, the binding names are <code>input</code> and <code>output</code>.
+Binding properties need to use those names. For instance <code>spring.cloud.stream.bindings.input.destination</code>,  <code>spring.cloud.stream.bindings.output.destination</code> etc.
+Keep in mind that this is fundamentally different from the functional style since there the binder generates binding names for the application.
+This is because the application does not provide any binding interfaces in the functional model using <code>EnableBinding</code>.</p>
+</div>
+<div class="paragraph">
+<p>Here is another example of a sink where we have two inputs.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code>@EnableBinding(KStreamKTableBinding.class)
+.....
+.....
+@StreamListener
+public void process(@Input("inputStream") KStream&lt;String, PlayEvent&gt; playEvents,
+                    @Input("inputTable") KTable&lt;Long, Song&gt; songTable) {
+                    ....
+                    ....
+}
+
+interface KStreamKTableBinding {
+
+    @Input("inputStream")
+    KStream&lt;?, ?&gt; inputStream();
+
+    @Input("inputTable")
+    KTable&lt;?, ?&gt; inputTable();
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Following is the <code>StreamListener</code> equivalent of the same <code>BiFunction</code> based processor that we saw above.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code>@EnableBinding(KStreamKTableBinding.class)
+....
+....
+
+@StreamListener
+@SendTo("output")
+public KStream&lt;String, Long&gt; process(@Input("input") KStream&lt;String, Long&gt; userClicksStream,
+                                     @Input("inputTable") KTable&lt;String, String&gt; userRegionsTable) {
+....
+....
+}
+
+interface KStreamKTableBinding extends KafkaStreamsProcessor {
+
+    @Input("inputX")
+    KTable&lt;?, ?&gt; inputTable();
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Finally, here is the <code>StreamListener</code> equivalent of the application with three inputs and curried functions.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code>@EnableBinding(CustomGlobalKTableProcessor.class)
+...
+...
+    @StreamListener
+		@SendTo("output")
+		public KStream&lt;Long, EnrichedOrder&gt; process(
+				@Input("input-1") KStream&lt;Long, Order&gt; ordersStream,
+				@Input("input-"2) GlobalKTable&lt;Long, Customer&gt; customers,
+				@Input("input-3") GlobalKTable&lt;Long, Product&gt; products) {
+
+			KStream&lt;Long, CustomerOrder&gt; customerOrdersStream = ordersStream.join(
+					customers, (orderId, order) -&gt; order.getCustomerId(),
+					(order, customer) -&gt; new CustomerOrder(customer, order));
+
+			return customerOrdersStream.join(products,
+					(orderId, customerOrder) -&gt; customerOrder.productId(),
+					(customerOrder, product) -&gt; {
+						EnrichedOrder enrichedOrder = new EnrichedOrder();
+						enrichedOrder.setProduct(product);
+						enrichedOrder.setCustomer(customerOrder.customer);
+						enrichedOrder.setOrder(customerOrder.order);
+						return enrichedOrder;
+					});
+		}
+
+    interface CustomGlobalKTableProcessor {
+
+            @Input("input-1")
+            KStream&lt;?, ?&gt; input1();
+
+            @Input("input-2")
+            GlobalKTable&lt;?, ?&gt; input2();
+
+            @Input("input-3")
+            GlobalKTable&lt;?, ?&gt; input3();
+
+            @Output("output")
+            KStream&lt;?, ?&gt; output();
+    }</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>You might notice that the above two examples are even more verbose since in addition to provide <code>EnableBinding</code>, you also need to write your own custom binding interface as well.
+Using the functional model, you can avoid all those ceremonial details.</p>
+</div>
+<div class="paragraph">
+<p>Before we move on looking at the general programming model offered by Kafka Streams binder, here is the <code>StreamListener</code> version of multiple output bindings.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code>EnableBinding(KStreamProcessorWithBranches.class)
+public static class WordCountProcessorApplication {
+
+    @Autowired
+    private TimeWindows timeWindows;
+
+    @StreamListener("input")
+    @SendTo({"output1","output2","output3})
+    public KStream&lt;?, WordCount&gt;[] process(KStream&lt;Object, String&gt; input) {
+
+			Predicate&lt;Object, WordCount&gt; isEnglish = (k, v) -&gt; v.word.equals("english");
+			Predicate&lt;Object, WordCount&gt; isFrench =  (k, v) -&gt; v.word.equals("french");
+			Predicate&lt;Object, WordCount&gt; isSpanish = (k, v) -&gt; v.word.equals("spanish");
+
+			return input
+					.flatMapValues(value -&gt; Arrays.asList(value.toLowerCase().split("\\W+")))
+					.groupBy((key, value) -&gt; value)
+					.windowedBy(timeWindows)
+					.count(Materialized.as("WordCounts-1"))
+					.toStream()
+					.map((key, value) -&gt; new KeyValue&lt;&gt;(null, new WordCount(key.key(), value, new Date(key.window().start()), new Date(key.window().end()))))
+					.branch(isEnglish, isFrench, isSpanish);
+    }
+
+    interface KStreamProcessorWithBranches {
+
+    		@Input("input")
+    		KStream&lt;?, ?&gt; input();
+
+    		@Output("output1")
+    		KStream&lt;?, ?&gt; output1();
+
+    		@Output("output2")
+    		KStream&lt;?, ?&gt; output2();
+
+    		@Output("output3")
+    		KStream&lt;?, ?&gt; output3();
+    	}
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>To recap, we have reviewed the various programming model choices when using the Kafka Streams binder.</p>
+</div>
+<div class="paragraph">
+<p>The binder provides binding capabilities for <code>KStream</code>, <code>KTable</code> and <code>GlobalKTable</code> on the input.
+<code>KTable</code> and <code>GlobalKTable</code> bindings are only available on the input.
+Binder supports both input and output bindings for <code>KStream</code>.</p>
+</div>
+<div class="paragraph">
+<p>The upshot of the programming model of Kafka Streams binder is that the binder provides you the flexibility of going with a fully functional programming model or using the <code>StreamListener</code> based imperative approach.</p>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_ancillary_to_the_programming_model"><a class="link" href="#_ancillary_to_the_programming_model">Ancillary to the programming model</a></h3>
+<div class="sect3">
+<h4 id="_kafka_streams_application_id"><a class="link" href="#_kafka_streams_application_id">Kafka Streams Application ID</a></h4>
+<div class="paragraph">
+<p>Application id is a mandatory property that you need to provide for a Kafka Streams application.
+Spring Cloud Stream Kafka Streams binder allows you to configure this application id in multiple ways.</p>
+</div>
+<div class="paragraph">
+<p>If you only have one single processor in the application, then you can set this at the binder level using the following property:</p>
+</div>
+<div class="paragraph">
+<p><code>spring.cloud.stream.kafka.streams.binder.applicationId</code>.</p>
+</div>
+<div class="paragraph">
+<p>As a convenience, if you only have a single processor, you can also use <code>spring.application.name</code> as the property to delegate the application id.</p>
+</div>
+<div class="paragraph">
+<p>If you have multiple Kafka Streams processors in the application, then you need to set the application id per processor.
+In the case of the functional model, you can attach it to each function as a property.</p>
+</div>
+<div class="paragraph">
+<p>For e.g. imagine that you have the following functions.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code>@Bean
+public java.util.function.Consumer&lt;KStream&lt;Object, String&gt;&gt; process() {
+   ...
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>and</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code>@Bean
+public java.util.function.Consumer&lt;KStream&lt;Object, String&gt;&gt; anotherProcess() {
+  ...
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Then you can set the application id for each, using the following binder level properties.</p>
+</div>
+<div class="paragraph">
+<p><code>spring.cloud.stream.kafka.streams.binder.process.applicationId</code></p>
+</div>
+<div class="paragraph">
+<p>and</p>
+</div>
+<div class="paragraph">
+<p><code>spring.cloud.stream.kafka.streams.binder.anotherProcess.applicationId</code></p>
+</div>
+<div class="paragraph">
+<p>In the case of <code>StreamListener</code>, you need to set this on the first input binding on the processor.</p>
+</div>
+<div class="paragraph">
+<p>For e.g. imagine that you have to two following <code>StreamListener</code> based processors.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code>@StreamListener
+public KStream&lt;String, String&gt; process(@Input("input") &lt;KStream&lt;Object, String&gt;&gt; input) {
+   ...
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Then you must set the application id for this using the following binding property.</p>
+</div>
+<div class="paragraph">
+<p><code>spring.cloud.stream.kafka.streams.bindings.input.applicationId</code></p>
+</div>
+<div class="paragraph">
+<p>Fof function based model also, this approach of setting application id at the binding level will work.
+However, setting per function at the binder level as we have seen above is much easier if you are using the functional model.</p>
+</div>
+<div class="paragraph">
+<p>For production deployments, it is highly recommended to explicitly specify the application ID through configuration.
+This is especially going to be very critical if you are auto scaling your application in which case you need to make sure that you are deploying each instance with the same application ID.</p>
+</div>
+<div class="paragraph">
+<p>If the application does not provide an application ID, then in that case the binder will auto generate a random application ID for you.
+This is convenient in development scenarios as it avoids the need for explicitly providing the application ID.
+Please keep in mind that when you rely on this, each time you start the application, it starts with a brand new application id.
+In the case of functional model, the generated application ID will be the function bean name followed by a <code>UUID</code> which is then postfixed with the literal <code>applicationID</code>.
+In the case of <code>StreamListener</code>, instead of using the function bean name, the generated application ID will be use the containing class name followed by the method name.</p>
+</div>
+<div class="sect5">
+<h6 id="_summary_of_setting_application_id"><a class="link" href="#_summary_of_setting_application_id">Summary of setting Application ID</a></h6>
+<div class="ulist">
+<ul>
+<li>
+<p>Auto generated by the binder per processor in the application. This can be overridden by setting at the binding level such as <code>spring.cloud.stream.kafka.streams.bindings.process_in.applicationId</code> (or binder level per function in the case of functional model).
+When you have more than one processor, then you have to choose one of these options - either fall back to the defaults or override.</p>
+</li>
+<li>
+<p>If you have a single processor, then you can use <code>spring.kafka.streams.applicationId</code>, <code>spring.application.name</code> or <code>spring.cloud.stream.kafka.streams.binder.applicationId</code>.</p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_custom_bindings_in_the_functional_style"><a class="link" href="#_custom_bindings_in_the_functional_style">Custom bindings in the functional style</a></h4>
+<div class="paragraph">
+<p>By default, the binder uses the strategy discussed out above to generate the binding name when using the functional style, i.e. &lt;function-bean-name&gt;_&lt;in&gt;|&lt;out&gt;_[0..n], for e.g. process_in, process_in_0 etc.
+If you want to override those binding names, you can do that by specifying the following properties.</p>
+</div>
+<div class="paragraph">
+<p><code>spring.cloud.stream.function.inputBindings.&lt;function-bean-name&gt;</code>.</p>
+</div>
+<div class="paragraph">
+<p>For e.g. lets say, you have this function.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code>@Bean
+public BiFunction&lt;KStream&lt;String, Long&gt;, KTable&lt;String, String&gt;, KStream&lt;String, Long&gt;&gt; process() {
+...
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Binder will generate bindings with names, <code>process_in_0</code>, <code>process_in_1</code> and <code>process_out</code>.
+Now, if you want to change them to something else completely, maybe more domain specific binding names. You can do so, as below.</p>
+</div>
+<div class="paragraph">
+<p><code>springc.cloud.stream.function.inputBindings.process=users,regions</code></p>
+</div>
+<div class="paragraph">
+<p>and</p>
+</div>
+<div class="paragraph">
+<p><code>spring.cloud.stream.function.outputBindings.process=clicks</code></p>
+</div>
+<div class="paragraph">
+<p>After that, you must set all the binding level properties on these new binding names.</p>
+</div>
+<div class="paragraph">
+<p>Please keep in mind that with the functional programming model described above, sticking with the default binding names make sense in most situations.
+The only reason you may still want to do this overriding is when you have larger number of configuration properties and you want to map the bindings to something more domain friendly.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_setting_up_bootstrap_server_configuration"><a class="link" href="#_setting_up_bootstrap_server_configuration">Setting up bootstrap server configuration</a></h4>
+<div class="paragraph">
+<p>When running Kafka Streams applications, you must provide the Kafka broker server information.
+If you don&#8217;t provide this information, the binder expects that you are running the broker at the default <code>localhost:9092</code>.
+If that is not the case, then you need to override that. There are a couple of ways to do that.</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Using the boot property - <code>spring.kafka.bootstrapServers</code></p>
+</li>
+<li>
+<p>Binder level property - <code>spring.cloud.stream.kafka.streams.binder.brokers</code></p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>When it comes to the binder level property, it doesn&#8217;t matter if you use the broker property provided through the regular Kafka binder - <code>spring.cloud.stream.kafka.binder.brokers</code>.
+Kafka Streams binder will first check if Kafka Streams binder specific broker property is set (<code>spring.cloud.stream.kafka.streams.binder.brokers</code>)  and if nothing found, it looks for <code>spring.cloud.stream.kafka.binder.brokers</code>.</p>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_record_serialization_and_deserialization"><a class="link" href="#_record_serialization_and_deserialization">Record serialization and deserialization</a></h3>
+<div class="paragraph">
+<p>Kafka Streams binder allows you to serialize and deserialize records in two ways.
+One is the native serialization and deserialization facilities provided by Kafka and the other one is the message conversion capabilities of Spring Cloud Stream framework.
+Lets look at some details.</p>
+</div>
+<div class="sect3">
+<h4 id="_inbound_deserialization"><a class="link" href="#_inbound_deserialization">Inbound deserialization</a></h4>
+<div class="paragraph">
+<p>Keys are always deserialized by native Serdes.</p>
+</div>
+<div class="paragraph">
+<p>By default, for values, deserialization on the inbound is natively performed by Kafka.
+Please note that this is a major change on default behavior from previous versions of Kafka Streams binder in which case the deserialization was done by the framework.</p>
+</div>
+<div class="paragraph">
+<p>Kafka Streams binder will try to infer matching Serde types by looking at the type signature of <code>java.util.function.Function|Consumer</code> or <code>StreamListener</code>.
+Here is the order that it matches Serdes.</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>If the application provides a bean of type <code>Serde</code> and if the return type is parameterized with the actual type of incoming key or value type, then it will use that <code>Serde</code> for inbound deserialization.
+For e.g. if you have the following in the application, the binder detects that the incoming value type for the <code>KStream</code> matches with a type that is parameterized on a <code>Serde</code> bean.
+It will use that for inbound deserialization.</p>
+</li>
+</ul>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code>@Bean
+public Serde&lt;Foo() customSerde{
+ ...
+}
+
+@Bean
+public Function&lt;KStream&lt;String, Foo&gt;, KStream&lt;String, Foo&gt;&gt; process() {
+}</code></pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Next, it looks at the types and see if they are one of the types exposed by Kafka Streams. If so, use them.
+Here are the Serde types that the binder will try to match from Kafka Streams.</p>
+<div class="literalblock">
+<div class="content">
+<pre>Integer, Long, Short, Double, Float, byte[], UUID and String.</pre>
+</div>
+</div>
+</li>
+<li>
+<p>If none of the Serdes provided by Kafka Streams don&#8217;t match the types, then it will use JsonSerde provided by Spring Kafka. In this case, the binder assumes that the types are JSON friendly.
+This is useful if you have multiple value objects as inputs since the binder will internally infer them to correct json Serde objects. Otherwise, you have to configure Serde and target types on them individually.
+Before falling back to the <code>JsonSerde</code> though, the binder checks at the default Serdes&#8217;s set at the Kafka Streams level to see if it is a Serde that it can match with the incoming KStream&#8217;s types.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>If none of the above strategies worked, then the applications must provide the Serdes through configuration.
+This can be configured in two ways - binding or default.</p>
+</div>
+<div class="paragraph">
+<p>First the binder will look if a Serde is provided at the binding level.
+For e.g. if you have the following processor,</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code>@Bean
+public BiFunction&lt;KStream&lt;CustomKey, AvroIn1&gt;, KTable&lt;CustomKey, AvroIn2&gt;, KStream&lt;CustomKey, AvroOutput&gt;&gt; process() {...}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>then, you can provide a binding level Serde using the following:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code>spring.cloud.stream.kafka.streams.bindings.process_in_0.consumer.keySerde=CustomKeySerde
+spring.cloud.stream.kafka.streams.bindings.process_in_0.consumer.valueSerde=io.confluent.kafka.streams.serdes.avro.SpecificAvroSerde
+
+spring.cloud.stream.kafka.streams.bindings.process_in_1.consumer.keySerde=CustomKeySerde
+spring.cloud.stream.kafka.streams.bindings.process_in_1.consumer.valueSerde=io.confluent.kafka.streams.serdes.avro.SpecificAvroSerde</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>If you want the default key/value Serdes to be used for inbound deserialization, you can do so at the binder level.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code>spring.cloud.stream.kafka.streams.binder.configuration.default.key.serde
+spring.cloud.stream.kafka.streams.binder.configuration.default.value.serde</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>If you don&#8217;t want the native decoding provided by Kafka, you can rely on the message conversion features that Spring Cloud Stream provides.
+Since native decoding is the default, in order to let Spring Cloud Stream deserialze the inbound value object, you need to explicitly disable native decoding.</p>
+</div>
+<div class="paragraph">
+<p>For e.g. if you have the same BiFunction processor as above, then <code>spring.cloud.stream.bindings.process_in_0.consumer.nativeDecoding: false</code>
+You need to disable native decoding for all the inputs individually. Otherwise, native decoding will still be applied for those you don&#8217;t disable.</p>
+</div>
+<div class="paragraph">
+<p>By default, Spring Cloud Stream will use <code>application/json</code> as the content type and use an appropriate json message converter.
+You can use custom message converters by using the following property.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code>spring.cloud.stream.bindings.process_in_0.contentType</code></pre>
+</div>
+</div>
+</div>
+<div class="sect3">
+<h4 id="_outbound_serialization"><a class="link" href="#_outbound_serialization">Outbound serialization</a></h4>
+<div class="paragraph">
+<p>Outbound serialization pretty much follows the same rules as above for inbound deserialization.
+As with the inbound deserialization, one major change from the previous versions of Spring Cloud Stream is that the serialization on the outbound is handled by Kafka natively.
+Before 3.0 versions of the binder, this was done by the framework itself.</p>
+</div>
+<div class="paragraph">
+<p>Keys on the outbound are always serialized by Kafka using a matching <code>Serde</code> that is inferred by the binder.
+If it can&#8217;t infer the type of the key, then that needs to be specified using configuration.</p>
+</div>
+<div class="paragraph">
+<p>Value serdes are inferred using the same rules used for inbound deserialization.
+First it matches to see if the outbound type is from a provided bean in the application.
+If not, it checks to see if it matches with a <code>Serde</code> exposed by Kafka such as - Long, Short, Double, Float, byte[] and String.
+If that doesnt&#8217;t work, then fall back to JsonSerde provided by the Spring Kafka project, but first look at the default <code>Serde</code> configuration to see if there is a match.
+Keep in mind that all these happen transparently to the application.
+If none of these work, then the user has to provide the <code>Serde</code> to use by configuration.</p>
+</div>
+<div class="paragraph">
+<p>Lets say you are using the same <code>BiFunction</code> processor as above. Then you can configure outbound key/value Serdes as following.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code>spring.cloud.stream.kafka.streams.bindings.process_out.producer.keySerde=CustomKeySerde
+spring.cloud.stream.kafka.streams.bindings.process_out.producer.valueSerde=io.confluent.kafka.streams.serdes.avro.SpecificAvroSerde</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>If Serde inference fails, and no binding level Serdes are provided, then the binder falls back to the default Serdes.</p>
+</div>
+<div class="paragraph">
+<p><code>spring.cloud.stream.kafka.streams.binder.configuration.default.key.serde</code>
+<code>spring.cloud.stream.kafka.streams.binder.configuration.default.value.serde</code></p>
+</div>
+<div class="paragraph">
+<p>However, falling back to default Serdes for both input deserialization and output serialization is the last resort.
+This may or may not work. Therefore, you need to ensure that you have a path forward for the application to correctly retrieve the Serde.</p>
+</div>
+<div class="paragraph">
+<p>If your application uses the branching feature and has multiple output bindings, then these have to be configured per binding.
+Once again, if the binder is capable of inferring the Serde types, you don&#8217;t need to do this configuration.</p>
+</div>
+<div class="paragraph">
+<p>If you don&#8217;t want the native encoding provided by Kafka, but want to use the framework provided message conversion, then you need to explicitly disable native decoding since since native decoding is the default.
+For e.g. if you have the same BiFunction processor as above, then <code>spring.cloud.stream.bindings.process_out.producer.nativeEncoding: false</code>
+You need to disable native encoding for all the output individually in the case of branching. Otherwise, native encoding will still be applied for those you don&#8217;t disable.</p>
+</div>
+<div class="paragraph">
+<p>By default, Spring Cloud Stream will use <code>application/json</code> as the content type and use an appropriate json message converter.
+You can use custom message converters by using the following property.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code>spring.cloud.stream.bindings.process_output.contentType</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>When native encoding/decoding is disabled, binder will not do any inference as in the case of native Serdes.
+Applications need to explicitly provide all the configuration options.
+For that reason, it is generally advised to stay with the default options for de/serialization and stick with native de/serialization provided by Kafka Streams when you write Spring Cloud Stream Kafka Streams applications.
+The one scenario in which you must use message conversion capabilities provided by the framework is when your upstream producer is using a specific serialization strategy.
+In that case, you want to use a matching deserialization strategy as native mechanisms may fail.</p>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_configuration_options"><a class="link" href="#_configuration_options">Configuration Options</a></h3>
+<div class="paragraph">
+<p>This section contains the configuration options used by the Kafka Streams binder.</p>
+</div>
+<div class="paragraph">
+<p>For common configuration options and properties pertaining to binder, refer to the <a href="#binding-properties">core documentation</a>.</p>
+</div>
+<div class="sect3">
+<h4 id="_kafka_streams_properties"><a class="link" href="#_kafka_streams_properties">Kafka Streams Properties</a></h4>
+<div class="paragraph">
+<p>The following properties are available at the binder level and must be prefixed with <code>spring.cloud.stream.kafka.streams.binder.</code></p>
+</div>
+<div class="dlist">
+<dl>
+<dt class="hdlist1">configuration</dt>
+<dd>
+<p> Map with a key/value pair containing properties pertaining to Apache Kafka Streams API.
+ This property must be prefixed with <code>spring.cloud.stream.kafka.streams.binder.</code>.
+Following are some examples of using this property.</p>
+</dd>
+</dl>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code>spring.cloud.stream.kafka.streams.binder.configuration.default.key.serde=org.apache.kafka.common.serialization.Serdes$StringSerde
+spring.cloud.stream.kafka.streams.binder.configuration.default.value.serde=org.apache.kafka.common.serialization.Serdes$StringSerde
+spring.cloud.stream.kafka.streams.binder.configuration.commit.interval.ms=1000</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>For more information about all the properties that may go into streams configuration, see StreamsConfig JavaDocs in
+Apache Kafka Streams docs.</p>
+</div>
+<div class="dlist">
+<dl>
+<dt class="hdlist1">brokers</dt>
+<dd>
+<p>Broker URL</p>
+<div class="paragraph">
+<p>Default: <code>localhost</code></p>
+</div>
+</dd>
+<dt class="hdlist1">zkNodes</dt>
+<dd>
+<p>Zookeeper URL</p>
+<div class="paragraph">
+<p>Default: <code>localhost</code></p>
+</div>
+</dd>
+<dt class="hdlist1">serdeError</dt>
+<dd>
+<p>Deserialization error handler type.
+Possible values are - <code>logAndContinue</code>, <code>logAndFail</code> or <code>sendToDlq</code></p>
+<div class="paragraph">
+<p>Default: <code>logAndFail</code></p>
+</div>
+</dd>
+<dt class="hdlist1">applicationId</dt>
+<dd>
+<p>Convenient way to set the application.id for the Kafka Streams application globally at the binder level.
+If the application contains multiple functions or <code>StreamListener</code> methods, then the application id should be set at the binding level per input binding.
+See above where setting the application id is discussed in detail.</p>
+<div class="paragraph">
+<p>Default: <code>none</code></p>
+</div>
+</dd>
+</dl>
+</div>
+<div class="paragraph">
+<p>The following properties are <em>only</em> available for Kafka Streams producers and must be prefixed with <code>spring.cloud.stream.kafka.streams.bindings.&lt;binding name&gt;.producer.</code>
+For convenience, if there multiple output bindings and they all require a common value, that can be configured by using the prefix <code>spring.cloud.stream.kafka.streams.default.producer.</code>.</p>
+</div>
+<div class="dlist">
+<dl>
+<dt class="hdlist1">keySerde</dt>
+<dd>
+<p>key serde to use</p>
+<div class="paragraph">
+<p>Default: See the above discussion on message de/serialization</p>
+</div>
+</dd>
+<dt class="hdlist1">valueSerde</dt>
+<dd>
+<p>value serde to use</p>
+<div class="paragraph">
+<p>Default: See the above discussion on message de/serialization</p>
+</div>
+</dd>
+<dt class="hdlist1">useNativeEncoding</dt>
+<dd>
+<p>flag to enable/disable native encoding</p>
+<div class="paragraph">
+<p>Default: <code>true</code>.</p>
+</div>
+</dd>
+</dl>
+</div>
+<div class="paragraph">
+<p>The following properties are available for Kafka Streams consumers and must be prefixed with <code>spring.cloud.stream.kafka.streams.bindings.&lt;binding-name&gt;.consumer.</code>
+For convenience, if there are multiple input bindings and they all require a common value, that can be configured by using the prefix <code>spring.cloud.stream.kafka.streams.default.consumer.</code>.</p>
+</div>
+<div class="dlist">
+<dl>
+<dt class="hdlist1">applicationId</dt>
+<dd>
+<p>Setting application.id per input binding.</p>
+<div class="paragraph">
+<p>Default: <code>none</code></p>
+</div>
+</dd>
+<dt class="hdlist1">keySerde</dt>
+<dd>
+<p>key serde to use</p>
+<div class="paragraph">
+<p>Default: See the above discussion on message de/serialization</p>
+</div>
+</dd>
+<dt class="hdlist1">valueSerde</dt>
+<dd>
+<p>value serde to use</p>
+<div class="paragraph">
+<p>Default: See the above discussion on message de/serialization</p>
+</div>
+</dd>
+<dt class="hdlist1">materializedAs</dt>
+<dd>
+<p>state store to materialize when using incoming KTable types</p>
+<div class="paragraph">
+<p>Default: <code>none</code>.</p>
+</div>
+</dd>
+<dt class="hdlist1">useNativeDecoding</dt>
+<dd>
+<p>flag to enable/disable native decoding</p>
+<div class="paragraph">
+<p>Default: <code>true</code>.</p>
+</div>
+</dd>
+<dt class="hdlist1">dlqName</dt>
+<dd>
+<p>DLQ topic name.</p>
+<div class="paragraph">
+<p>Default: <code>none</code>.</p>
+</div>
+</dd>
+<dt class="hdlist1">startOffset</dt>
+<dd>
+<p>Offset to start from if there is no committed offset to consume from.
+This is mostly used when the consumer is consuming from a topic for the first time. Kafka Streams uses <code>earliest</code> as the default strategy and
+the binder uses the same default. This can be overridden to <code>latest</code> using this property.</p>
+<div class="paragraph">
+<p>Default: <code>earliest</code>.</p>
+</div>
+</dd>
+</dl>
+</div>
+<div class="paragraph">
+<p>Note: Using <code>resetOffsets</code> on the consumer does not have any effect on Kafka Streams binder.
+Unlike the message channel based binder, Kafka Streams binder does not seek to beginning or end on demand.</p>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_materializing_ktable_as_a_state_store"><a class="link" href="#_materializing_ktable_as_a_state_store">Materializing KTable as a State Store.</a></h3>
+<div class="paragraph">
+<p>Lets say you have the following function.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code>@Bean
+public BiFunction&lt;KStream&lt;String, Long&gt;, KTable&lt;String, String&gt;, KStream&lt;String, Long&gt;&gt; process() {
+   ...
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>In the case of incoming KTable, if you want to materialize the computations to a state store, you have to express it
+through the following property.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code>spring.cloud.stream.kafka.streams.bindings.process_in_1.consumer.materializedAs: incoming-store</code></pre>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_error_handling"><a class="link" href="#_error_handling">Error Handling</a></h3>
+<div class="paragraph">
+<p>Apache Kafka Streams provide the capability for natively handling exceptions from deserialization errors.
+For details on this support, please see <a href="https://cwiki.apache.org/confluence/display/KAFKA/KIP-161%3A+streams+deserialization+exception+handlers">this</a>
+Out of the box, Apache Kafka Streams provide two kinds of deserialization exception handlers - <code>logAndContinue</code> and <code>logAndFail</code>.
+As the name indicates, the former will log the error and continue processing the next records and the latter will log the
+error and fail. <code>LogAndFail</code> is the default deserialization exception handler.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_handling_deserialization_exceptions"><a class="link" href="#_handling_deserialization_exceptions">Handling Deserialization Exceptions</a></h3>
+<div class="paragraph">
+<p>Kafka Streams binder supports a selection of exception handlers through the following properties.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code>spring.cloud.stream.kafka.streams.binder.serdeError: logAndContinue</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>In addition to the above two deserialization exception handlers, the binder also provides a third one for sending the erroneous
+records (poison pills) to a DLQ topic. Here is how you enable this DLQ exception handler.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code>spring.cloud.stream.kafka.streams.binder.serdeError: sendToDlq</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>When the above property is set, all the deserialization error records are automatically sent to the DLQ topic.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code>spring.cloud.stream.kafka.streams.bindings.input.consumer.dlqName: foo-dlq</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>If this is set, then the error records are sent to the topic <code>foo-dlq</code>. If this is not set, then it will create a DLQ
+topic with the name <code>error.&lt;input-topic-name&gt;.&lt;group-name&gt;</code>.</p>
+</div>
+<div class="paragraph">
+<p>A couple of things to keep in mind when using the exception handling feature in Kafka Streams binder.</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>The property <code>spring.cloud.stream.kafka.streams.binder.serdeError</code> is applicable for the entire application. This implies
+that if there are multiple <code>StreamListener</code> methods in the same application, this property is applied to all of them.</p>
+</li>
+<li>
+<p>The exception handling for deserialization works consistently with native deserialization and framework provided message
+conversion.</p>
+</li>
+</ul>
+</div>
+<div class="sect3">
+<h4 id="_handling_non_deserialization_exceptions"><a class="link" href="#_handling_non_deserialization_exceptions">Handling Non-Deserialization Exceptions</a></h4>
+<div class="paragraph">
+<p>For general error handling in Kafka Streams binder, it is up to the end user applications to handle application level errors.
+As a side effect of providing a DLQ for deserialization exception handlers, Kafka Streams binder provides a way to get
+access to the DLQ sending bean directly from your application.
+Once you get access to that bean, you can programmatically send any exception records from your application to the DLQ.</p>
+</div>
+<div class="paragraph">
+<p>It continues to remain hard to robust error handling using the high-level DSL; Kafka Streams doesn&#8217;t natively support error
+handling yet.</p>
+</div>
+<div class="paragraph">
+<p>However, when you use the low-level Processor API in your application, there are options to control this behavior. See
+below.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code>@Autowired
+private SendToDlqAndContinue dlqHandler;
+
+@StreamListener("input")
+@SendTo("output")
+public KStream&lt;?, WordCount&gt; process(KStream&lt;Object, String&gt; input) {
+
+    input.process(() -&gt; new Processor() {
+    			ProcessorContext context;
+
+    			@Override
+    			public void init(ProcessorContext context) {
+    				this.context = context;
+    			}
+
+    			@Override
+    			public void process(Object o, Object o2) {
+
+    			    try {
+    			        .....
+    			        .....
+    			    }
+    			    catch(Exception e) {
+    			        //explicitly provide the kafka topic corresponding to the input binding as the first argument.
+                        //DLQ handler will correctly map to the dlq topic from the actual incoming destination.
+                        dlqHandler.sendToDlq("topic-name", (byte[]) o1, (byte[]) o2, context.partition());
+    			    }
+    			}
+
+    			.....
+    			.....
+    });
+}</code></pre>
+</div>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_state_store"><a class="link" href="#_state_store">State Store</a></h3>
+<div class="paragraph">
+<p>State store is created automatically by Kafka Streams when the DSL is used.
+When processor API is used, you need to register a state store manually. In order to do so, you can create the StateStore as a bean in the application.
+Here is an example of defining such a bean.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code>@Bean
+public StoreBuilder mystore() {
+    return Stores.windowStoreBuilder(
+            Stores.persistentWindowStore("mystate",
+                    3L, 3, 3L, false), Serdes.String(),
+            Serdes.String());
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>During the bootstrap, the above bean will be processed by the binder and passed on to the Streams builder object.
+Defining custom state stores by providing them as beans is the preferred approach.
+However, you can also use <code>KafkaStreamsStateStore</code> annotation for this.
+You can specify the name and type of the store, flags to control log and disabling cache, etc.
+Once the store is created by the binder during the bootstrapping phase, you can access this state store through the processor API.
+Below are some primitives for doing this.</p>
+</div>
+<div class="paragraph">
+<p>Creating a state store:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code>@KafkaStreamsStateStore(name="mystate", type= KafkaStreamsStateStoreProperties.StoreType.WINDOW, lengthMs=300000)
+public void process(KStream&lt;Object, Product&gt; input) {
+    ...
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Accessing the state store:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code>Processor&lt;Object, Product&gt;() {
+
+    WindowStore&lt;Object, String&gt; state;
+
+    @Override
+    public void init(ProcessorContext processorContext) {
+        state = (WindowStore)processorContext.getStateStore("mystate");
+    }
+    ...
+}</code></pre>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_interactive_queries"><a class="link" href="#_interactive_queries">Interactive Queries</a></h3>
+<div class="paragraph">
+<p>As part of the public Kafka Streams binder API, we expose a class called <code>InteractiveQueryService</code>.
+You can access this as a Spring bean in your application. An easy way to get access to this bean from your application is to "autowire" the bean.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code>@Autowired
+private InteractiveQueryService interactiveQueryService;</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Once you gain access to this bean, then you can query for the particular state-store that you are interested. See below.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code>ReadOnlyKeyValueStore&lt;Object, Object&gt; keyValueStore =
+						interactiveQueryService.getQueryableStoreType("my-store", QueryableStoreTypes.keyValueStore());</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>During the startup, the above method call to retrieve the startup might fail.
+For e.g it might still be in the middle of initializing the state store.
+In such cases, it will be useful to retry this operation.
+Kafka Streams binder provides a simple retry mechanism to accommodate this.</p>
+</div>
+<div class="paragraph">
+<p>Following are the two properties that you can use to control this retrying.</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>spring.cloud.stream.binder.kafka.streams.stateStoreRetry.maxAttempts - Default is <code>1</code> .</p>
+</li>
+<li>
+<p>spring.cloud.stream.binder.kafka.streams.stateStoreRetry.backOffInterval - Default is <code>1000</code> milliseconds.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>If there are multiple instances of the kafka streams application running, then before you can query them interactively, you need to identify which application instance hosts the key.
+<code>InteractiveQueryService</code> API provides methods for identifying the host information.</p>
+</div>
+<div class="paragraph">
+<p>In order for this to work, you must configure the property <code>application.server</code> as below:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code>spring.cloud.stream.kafka.streams.binder.configuration.application.server: &lt;server&gt;:&lt;port&gt;</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Here are some code snippets:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code>org.apache.kafka.streams.state.HostInfo hostInfo = interactiveQueryService.getHostInfo("store-name",
+						key, keySerializer);
+
+if (interactiveQueryService.getCurrentHostInfo().equals(hostInfo)) {
+
+    //query from the store that is locally available
+}
+else {
+    //query from the remote host
+}</code></pre>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_accessing_the_underlying_kafkastreams_object"><a class="link" href="#_accessing_the_underlying_kafkastreams_object">Accessing the underlying KafkaStreams object</a></h3>
+<div class="paragraph">
+<p><code>StreamBuilderFactoryBean</code> from spring-kafka that is responsible for constructing the <code>KafkaStreams</code> object can be accessed programmatically.
+Each <code>StreamBuilderFactoryBean</code> is registered as <code>stream-builder</code> and appended with the <code>StreamListener</code> method name.
+If your <code>StreamListener</code> method is named as <code>process</code> for example, the stream builder bean is named as <code>stream-builder-process</code>.
+Since this is a factory bean, it should be accessed by prepending an ampersand (<code>&amp;</code>) when accessing it programmatically.
+Following is an example and it assumes the <code>StreamListener</code> method is named as <code>process</code></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code>StreamsBuilderFactoryBean streamsBuilderFactoryBean = context.getBean("&amp;stream-builder-process", StreamsBuilderFactoryBean.class);
+			KafkaStreams kafkaStreams = streamsBuilderFactoryBean.getKafkaStreams();</code></pre>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_state_cleanup"><a class="link" href="#_state_cleanup">State Cleanup</a></h3>
+<div class="paragraph">
+<p>By default, the <code>Kafkastreams.cleanup()</code> method is called when the binding is stopped.
+See <a href="https://docs.spring.io/spring-kafka/reference/html/_reference.html#_configuration">the Spring Kafka documentation</a>.
+To modify this behavior simply add a single <code>CleanupConfig</code> <code>@Bean</code> (configured to clean up on start, stop, or neither) to the application context; the bean will be detected and wired into the factory bean.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_health_indicator"><a class="link" href="#_health_indicator">Health Indicator</a></h3>
+<div class="paragraph">
+<p>The health indicator requires the dependency <code>spring-boot-starter-actuator</code>. For maven use:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-xml hljs" data-lang="xml">&lt;dependency&gt;
+  &lt;groupId&gt;org.springframework.boot&lt;/groupId&gt;
+  &lt;artifactId&gt;spring-boot-starter-actuator&lt;/artifactId&gt;
+&lt;/dependency&gt;</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Spring Cloud Stream Binder Kafka Streams provides a health indicator to check the state of the underlying Kafka threads.
+Spring Cloud Stream defines a property <code>management.health.binders.enabled</code> to enable the health indicator. See the
+<a href="https://docs.spring.io/spring-cloud-stream/docs/current/reference/htmlsingle/#_health_indicator">Spring Cloud Stream documentation</a>.</p>
+</div>
+<div class="paragraph">
+<p>The health indicator provides the following details for each Kafka threads:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Thread name</p>
+</li>
+<li>
+<p>Thread state:  <code>CREATED</code>, <code>RUNNING</code>, <code>PARTITIONS_REVOKED</code>, <code>PARTITIONS_ASSIGNED</code>, <code>PENDING_SHUTDOWN</code> or <code>DEAD</code></p>
+</li>
+<li>
+<p>Active tasks: task ID and partitions</p>
+</li>
+<li>
+<p>Standby tasks: task ID and partitions</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>By default, only the global status is visible (<code>UP</code> or <code>DOWN</code>). To show the details, the property <code>management.endpoint.health.show-details</code> must be set to <code>ALWAYS</code> or <code>WHEN_AUTHORIZED</code>.
+For more details about the health information, see the
+<a href="https://docs.spring.io/spring-boot/docs/current/reference/html/production-ready-endpoints.html#production-ready-health">Spring Boot Actuator documentation</a>.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+The status of the health indicator is <code>UP</code> if all the Kafka threads registered are in the <code>RUNNING</code> state.
+</td>
+</tr>
+</table>
+</div>
+<div class="sect3">
+<h4 id="_using_custom_state_stores_in_functional_applications"><a class="link" href="#_using_custom_state_stores_in_functional_applications">Using custom state stores in functional applications</a></h4>
+<div class="paragraph">
+<p>You can define custom state stores as beans in your application and those will be detected and added to the Kafka Streams builder by the binder.
+Note that, for regular StreamListener based processors, you still need to use the <code>KafkaStreamsStateStore</code> annotation for custom state stores.
+Here is an example of using custom state stores with functional style described in this section.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code>@Bean
+		public StoreBuilder myStore() {
+			return Stores.keyValueStoreBuilder(
+					Stores.persistentKeyValueStore("my-store"), Serdes.Long(),
+					Serdes.Long());
+		}
+
+		@Bean
+		public StoreBuilder otherStore() {
+			return Stores.windowStoreBuilder(
+					Stores.persistentWindowStore("other-store",
+							1L, 3, 3L, false), Serdes.Long(),
+					Serdes.Long());
+		}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>These state stores can be then accessed by the applications directly.</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<script type="text/javascript" src="js/tocbot/tocbot.min.js"></script>
+<script type="text/javascript" src="js/toc.js"></script>
+<link rel="stylesheet" href="js/highlight/styles/atom-one-dark-reasonable.min.css">
+<script src="js/highlight/highlight.min.js"></script>
+<script>hljs.initHighlighting()</script>
+</body>
+</html>

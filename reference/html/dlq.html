@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<!--[if IE]><meta http-equiv="X-UA-Compatible" content="IE=edge"><![endif]-->
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="generator" content="Asciidoctor 1.5.7.1">
+<title>Dead-Letter Topic Processing</title>
+<link rel="stylesheet" href="css/spring.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+
+<style>
+.hidden {
+	display: none;
+}
+
+.switch {
+	border-width: 1px 1px 0 1px;
+	border-style: solid;
+	border-color: #7a2518;
+	display: inline-block;
+}
+
+.switch--item {
+	padding: 10px;
+	background-color: #ffffff;
+	color: #7a2518;
+	display: inline-block;
+	cursor: pointer;
+}
+
+.switch--item:not(:first-child) {
+	border-width: 0 0 0 1px;
+	border-style: solid;
+	border-color: #7a2518;
+}
+
+.switch--item.selected {
+	background-color: #7a2519;
+	color: #ffffff;
+}
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/zepto/1.2.0/zepto.min.js"></script>
+<script type="text/javascript">
+function addBlockSwitches() {
+	$('.primary').each(function() {
+		primary = $(this);
+		createSwitchItem(primary, createBlockSwitch(primary)).item.addClass("selected");
+		primary.children('.title').remove();
+	});
+	$('.secondary').each(function(idx, node) {
+		secondary = $(node);
+		primary = findPrimary(secondary);
+		switchItem = createSwitchItem(secondary, primary.children('.switch'));
+		switchItem.content.addClass('hidden');
+		findPrimary(secondary).append(switchItem.content);
+		secondary.remove();
+	});
+}
+
+function createBlockSwitch(primary) {
+	blockSwitch = $('<div class="switch"></div>');
+	primary.prepend(blockSwitch);
+	return blockSwitch;
+}
+
+function findPrimary(secondary) {
+	candidate = secondary.prev();
+	while (!candidate.is('.primary')) {
+		candidate = candidate.prev();
+	}
+	return candidate;
+}
+
+function createSwitchItem(block, blockSwitch) {
+	blockName = block.children('.title').text();
+	content = block.children('.content').first().append(block.next('.colist'));
+	item = $('<div class="switch--item">' + blockName + '</div>');
+	item.on('click', '', content, function(e) {
+		$(this).addClass('selected');
+		$(this).siblings().removeClass('selected');
+		e.data.siblings('.content').addClass('hidden');
+		e.data.removeClass('hidden');
+	});
+	blockSwitch.append(item);
+	return {'item': item, 'content': content};
+}
+
+$(addBlockSwitches);
+</script>
+
+</head>
+<body class="book toc2 toc-left">
+<div id="header">
+<div id="toc" class="toc2">
+<div id="toctitle">Table of Contents</div>
+<ul class="sectlevel2">
+<li><a href="#kafka-dlq-processing">Dead-Letter Topic Processing</a></li>
+</ul>
+</div>
+</div>
+<div id="content">
+<div class="sect2">
+<h3 id="kafka-dlq-processing"><a class="link" href="#kafka-dlq-processing">Dead-Letter Topic Processing</a></h3>
+<div class="paragraph">
+<p>Because you cannot anticipate how users would want to dispose of dead-lettered messages, the framework does not provide any standard mechanism to handle them.
+If the reason for the dead-lettering is transient, you may wish to route the messages back to the original topic.
+However, if the problem is a permanent issue, that could cause an infinite loop.
+The sample Spring Boot application within this topic is an example of how to route those messages back to the original topic, but it moves them to a &#8220;parking lot&#8221; topic after three attempts.
+The application is another spring-cloud-stream application that reads from the dead-letter topic.
+It terminates when no messages are received for 5 seconds.</p>
+</div>
+<div class="paragraph">
+<p>The examples assume the original destination is <code>so8400out</code> and the consumer group is <code>so8400</code>.</p>
+</div>
+<div class="paragraph">
+<p>There are a couple of strategies to consider:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Consider running the rerouting only when the main application is not running.
+Otherwise, the retries for transient errors are used up very quickly.</p>
+</li>
+<li>
+<p>Alternatively, use a two-stage approach: Use this application to route to a third topic and another to route from there back to the main topic.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The following code listings show the sample application:</p>
+</div>
+<div class="listingblock">
+<div class="title">application.properties</div>
+<div class="content">
+<pre class="highlightjs highlight"><code>spring.cloud.stream.bindings.input.group=so8400replay
+spring.cloud.stream.bindings.input.destination=error.so8400out.so8400
+
+spring.cloud.stream.bindings.output.destination=so8400out
+
+spring.cloud.stream.bindings.parkingLot.destination=so8400in.parkingLot
+
+spring.cloud.stream.kafka.binder.configuration.auto.offset.reset=earliest
+
+spring.cloud.stream.kafka.binder.headers=x-retries</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="title">Application</div>
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-java hljs" data-lang="java">@SpringBootApplication
+@EnableBinding(TwoOutputProcessor.class)
+public class ReRouteDlqKApplication implements CommandLineRunner {
+
+    private static final String X_RETRIES_HEADER = "x-retries";
+
+    public static void main(String[] args) {
+        SpringApplication.run(ReRouteDlqKApplication.class, args).close();
+    }
+
+    private final AtomicInteger processed = new AtomicInteger();
+
+    @Autowired
+    private MessageChannel parkingLot;
+
+    @StreamListener(Processor.INPUT)
+    @SendTo(Processor.OUTPUT)
+    public Message&lt;?&gt; reRoute(Message&lt;?&gt; failed) {
+        processed.incrementAndGet();
+        Integer retries = failed.getHeaders().get(X_RETRIES_HEADER, Integer.class);
+        if (retries == null) {
+            System.out.println("First retry for " + failed);
+            return MessageBuilder.fromMessage(failed)
+                    .setHeader(X_RETRIES_HEADER, new Integer(1))
+                    .setHeader(BinderHeaders.PARTITION_OVERRIDE,
+                            failed.getHeaders().get(KafkaHeaders.RECEIVED_PARTITION_ID))
+                    .build();
+        }
+        else if (retries.intValue() &lt; 3) {
+            System.out.println("Another retry for " + failed);
+            return MessageBuilder.fromMessage(failed)
+                    .setHeader(X_RETRIES_HEADER, new Integer(retries.intValue() + 1))
+                    .setHeader(BinderHeaders.PARTITION_OVERRIDE,
+                            failed.getHeaders().get(KafkaHeaders.RECEIVED_PARTITION_ID))
+                    .build();
+        }
+        else {
+            System.out.println("Retries exhausted for " + failed);
+            parkingLot.send(MessageBuilder.fromMessage(failed)
+                    .setHeader(BinderHeaders.PARTITION_OVERRIDE,
+                            failed.getHeaders().get(KafkaHeaders.RECEIVED_PARTITION_ID))
+                    .build());
+        }
+        return null;
+    }
+
+    @Override
+    public void run(String... args) throws Exception {
+        while (true) {
+            int count = this.processed.get();
+            Thread.sleep(5000);
+            if (count == this.processed.get()) {
+                System.out.println("Idle, terminating");
+                return;
+            }
+        }
+    }
+
+    public interface TwoOutputProcessor extends Processor {
+
+        @Output("parkingLot")
+        MessageChannel parkingLot();
+
+    }
+
+}</code></pre>
+</div>
+</div>
+</div>
+</div>
+<script type="text/javascript" src="js/tocbot/tocbot.min.js"></script>
+<script type="text/javascript" src="js/toc.js"></script>
+<link rel="stylesheet" href="js/highlight/styles/atom-one-dark-reasonable.min.css">
+<script src="js/highlight/highlight.min.js"></script>
+<script>hljs.initHighlighting()</script>
+</body>
+</html>
