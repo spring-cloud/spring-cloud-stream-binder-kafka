@@ -388,7 +388,7 @@ public class KafkaMessageChannelBinder extends
 		if (mapper == null) {
 			//First, try to see if there is a bean named headerMapper registered by other frameworks using the binder (for e.g. spring cloud sleuth)
 			try {
-				mapper = getApplicationContext().getBean("kafkaHeaderMapper", KafkaHeaderMapper.class);
+				mapper = getApplicationContext().getBean("kafkaBinderHeaderMapper", KafkaHeaderMapper.class);
 			}
 			catch (BeansException be) {
 				// Pass through
@@ -913,7 +913,7 @@ public class KafkaMessageChannelBinder extends
 		if (mapper == null) {
 			//First, try to see if there is a bean named headerMapper registered by other frameworks using the binder (for e.g. spring cloud sleuth)
 			try {
-				mapper = getApplicationContext().getBean("kafkaHeaderMapper", KafkaHeaderMapper.class);
+				mapper = getApplicationContext().getBean("kafkaBinderHeaderMapper", KafkaHeaderMapper.class);
 			}
 			catch (BeansException be) {
 				DefaultKafkaHeaderMapper headerMapper = new DefaultKafkaHeaderMapper() {

@@ -136,7 +136,6 @@ import org.springframework.messaging.support.ErrorMessage;
 import org.springframework.messaging.support.GenericMessage;
 import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.util.Assert;
-import org.springframework.util.MimeType;
 import org.springframework.util.MimeTypeUtils;
 import org.springframework.util.concurrent.ListenableFuture;
 import org.springframework.util.concurrent.SettableListenableFuture;
@@ -328,6 +327,8 @@ public class KafkaBinderTests extends
 				producerBindingProperties);
 
 		ExtendedConsumerProperties<KafkaConsumerProperties> consumerProperties = createConsumerProperties();
+		consumerProperties.getExtension()
+				.setTrustedPackages(new String[] { "org.springframework.cloud.stream.binder.kafka" });
 
 		DirectChannel moduleInputChannel = createBindableChannel("input",
 				createConsumerBindingProperties(consumerProperties));
@@ -340,10 +341,11 @@ public class KafkaBinderTests extends
 				consumerProperties);
 		binderBindUnbindLatency();
 
+		final Pojo pojoHeader = new Pojo("testing");
 		Message<?> message = org.springframework.integration.support.MessageBuilder
 				.withPayload("foo")
 				.setHeader(MessageHeaders.CONTENT_TYPE, MimeTypeUtils.TEXT_PLAIN)
-				.setHeader("foo", MimeTypeUtils.TEXT_PLAIN).build();
+				.setHeader("foo", pojoHeader).build();
 
 		moduleOutputChannel.send(message);
 		CountDownLatch latch = new CountDownLatch(1);
@@ -366,9 +368,9 @@ public class KafkaBinderTests extends
 						.get(MessageHeaders.CONTENT_TYPE))
 				.isEqualTo(MimeTypeUtils.TEXT_PLAIN);
 		Assertions.assertThat(inboundMessageRef.get().getHeaders().get("foo"))
-				.isInstanceOf(MimeType.class);
-		MimeType actual = (MimeType) inboundMessageRef.get().getHeaders().get("foo");
-		Assertions.assertThat(actual).isEqualTo(MimeTypeUtils.TEXT_PLAIN);
+				.isInstanceOf(Pojo.class);
+		Pojo actual = (Pojo) inboundMessageRef.get().getHeaders().get("foo");
+		Assertions.assertThat(actual.field).isEqualTo(pojoHeader.field);
 		producerBinding.unbind();
 		consumerBinding.unbind();
 	}
@@ -466,7 +468,7 @@ public class KafkaBinderTests extends
 			throw new RuntimeException(e);
 		}
 		KafkaTestBinder binder = new KafkaTestBinder(binderConfiguration, kafkaTopicProvisioner);
-		((GenericApplicationContext) binder.getApplicationContext()).registerBean("kafkaHeaderMapper",
+		((GenericApplicationContext) binder.getApplicationContext()).registerBean("kafkaBinderHeaderMapper",
 				KafkaHeaderMapper.class, () -> new KafkaHeaderMapper() {
 					@Override
 					public void fromHeaders(MessageHeaders headers, Headers target) {
