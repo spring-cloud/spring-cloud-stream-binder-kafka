@@ -49,7 +49,7 @@ import static org.mockito.Mockito.mock;
  * @author Thomas Cheyney
  * @author Soby Chacko
  */
-public class KafkaBinderMetricsTest {
+public class 	KafkaBinderMetricsTest {
 
 	private static final String TEST_TOPIC = "test";
 
