@@ -246,7 +246,6 @@ public class BinderHeaderMapper extends AbstractKafkaHeaderMapper {
 				}
 				else {
 					try {
-						Object value = valueToAdd;
 						String className = valueToAdd.getClass().getName();
 						if (this.toStringClasses.contains(className)) {
 							valueToAdd = valueToAdd.toString();
