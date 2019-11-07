@@ -427,9 +427,6 @@ public class KafkaMessageChannelBinder extends
 			else {
 				mapper = new BinderHeaderMapper();
 			}
-			if (mapper instanceof BinderHeaderMapper) {
-				((BinderHeaderMapper) mapper).setEncodeStrings(true);
-			}
 		}
 		handler.setHeaderMapper(mapper);
 		return handler;
@@ -936,7 +933,6 @@ public class KafkaMessageChannelBinder extends
 					}
 
 				};
-				headerMapper.setEncodeStrings(true);
 				String[] trustedPackages = extendedConsumerProperties.getExtension()
 						.getTrustedPackages();
 				if (!StringUtils.isEmpty(trustedPackages)) {

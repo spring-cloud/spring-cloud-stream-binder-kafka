@@ -259,7 +259,7 @@ public class BinderHeaderMapper extends AbstractKafkaHeaderMapper {
 							className = JAVA_LANG_STRING;
 						}
 						else {
-							target.add(new RecordHeader(key, headerObjectMapper.writeValueAsBytes(value)));
+							target.add(new RecordHeader(key, headerObjectMapper.writeValueAsBytes(valueToAdd)));
 						}
 						jsonHeaders.put(key, className);
 					}
