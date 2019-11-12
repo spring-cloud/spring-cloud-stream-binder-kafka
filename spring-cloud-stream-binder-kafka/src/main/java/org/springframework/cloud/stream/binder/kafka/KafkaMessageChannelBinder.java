@@ -633,8 +633,6 @@ public class KafkaMessageChannelBinder extends
 			this.logger.debug("Listened partitions: "
 					+ StringUtils.collectionToCommaDelimitedString(listenedPartitions));
 		}
-		this.getContainerCustomizer().configure(messageListenerContainer,
-				destination.getName(), group);
 		final KafkaMessageDrivenChannelAdapter<?, ?> kafkaMessageDrivenChannelAdapter =
 				new KafkaMessageDrivenChannelAdapter<>(messageListenerContainer,
 						extendedConsumerProperties.isBatchMode() ? ListenerMode.batch : ListenerMode.record);
@@ -680,6 +678,7 @@ public class KafkaMessageChannelBinder extends
 		else {
 			kafkaMessageDrivenChannelAdapter.setErrorChannel(errorInfrastructure.getErrorChannel());
 		}
+		this.getContainerCustomizer().configure(messageListenerContainer, destination.getName(), group);
 		return kafkaMessageDrivenChannelAdapter;
 	}
 
