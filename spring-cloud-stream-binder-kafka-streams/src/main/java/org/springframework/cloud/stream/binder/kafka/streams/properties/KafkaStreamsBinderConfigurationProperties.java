@@ -21,6 +21,7 @@ import java.util.Map;
 
 import org.springframework.boot.autoconfigure.kafka.KafkaProperties;
 import org.springframework.cloud.stream.binder.kafka.properties.KafkaBinderConfigurationProperties;
+import org.springframework.cloud.stream.binder.kafka.streams.DeserializationExceptionHandler;
 
 /**
  * Kafka Streams binder configuration properties.
@@ -37,6 +38,8 @@ public class KafkaStreamsBinderConfigurationProperties
 
 	/**
 	 * Enumeration for various Serde errors.
+	 *
+	 * @deprecated in favor of {@link DeserializationExceptionHandler}.
 	 */
 	@Deprecated
 	public enum SerdeError {
@@ -56,34 +59,21 @@ public class KafkaStreamsBinderConfigurationProperties
 
 	}
 
-	/**
-	 * Enumeration for various Serde errors.
-	 */
-	public enum DeserializationExceptionHandler {
-
-		/**
-		 * Deserialization error handler with log and continue.
-		 * See {@link org.apache.kafka.streams.errors.LogAndContinueExceptionHandler}
-		 */
-		logAndContinue,
-		/**
-		 * Deserialization error handler with log and fail.
-		 * See {@link org.apache.kafka.streams.errors.LogAndFailExceptionHandler}
-		 */
-		logAndFail,
-		/**
-		 * Deserialization error handler with DLQ send.
-		 * See {@link org.springframework.kafka.streams.RecoveringDeserializationExceptionHandler}
-		 */
-		sendToDlq
-
-	}
-
 	private String applicationId;
 
 	private StateStoreRetry stateStoreRetry = new StateStoreRetry();
 
 	private Map<String, Functions> functions = new HashMap<>();
+
+	private KafkaStreamsBinderConfigurationProperties.SerdeError serdeError;
+
+	/**
+	 * {@link org.apache.kafka.streams.errors.DeserializationExceptionHandler} to use when
+	 * there is a deserialization exception. This handler will be applied against all input bindings
+	 * unless overridden at the consumer binding.
+	 */
+	private DeserializationExceptionHandler deserializationExceptionHandler;
+
 
 	public Map<String, Functions> getFunctions() {
 		return functions;
@@ -108,16 +98,6 @@ public class KafkaStreamsBinderConfigurationProperties
 	public void setApplicationId(String applicationId) {
 		this.applicationId = applicationId;
 	}
-
-	/**
-	 * {@link org.apache.kafka.streams.errors.DeserializationExceptionHandler} to use when
-	 * there is a Serde error.
-	 * {@link KafkaStreamsBinderConfigurationProperties.SerdeError} values are used to
-	 * provide the exception handler on consumer binding.
-	 */
-	private KafkaStreamsBinderConfigurationProperties.SerdeError serdeError;
-
-	private DeserializationExceptionHandler deserializationExceptionHandler;
 
 	@Deprecated
 	public KafkaStreamsBinderConfigurationProperties.SerdeError getSerdeError() {

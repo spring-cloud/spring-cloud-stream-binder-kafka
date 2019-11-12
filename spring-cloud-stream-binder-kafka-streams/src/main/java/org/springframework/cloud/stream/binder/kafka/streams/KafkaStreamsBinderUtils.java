@@ -69,13 +69,13 @@ final class KafkaStreamsBinderUtils {
 				(ExtendedConsumerProperties) properties;
 
 		if (binderConfigurationProperties
-				.getDeserializationExceptionHandler() == KafkaStreamsBinderConfigurationProperties.DeserializationExceptionHandler.sendToDlq) {
+				.getDeserializationExceptionHandler() == DeserializationExceptionHandler.sendToDlq) {
 			extendedConsumerProperties.getExtension().setEnableDlq(true);
 		}
 		// check for deserialization handler at the consumer binding, as that takes precedence.
-		final KafkaStreamsConsumerProperties.DeserializationExceptionHandler deserializationExceptionHandler =
+		final DeserializationExceptionHandler deserializationExceptionHandler =
 				properties.getExtension().getDeserializationExceptionHandler();
-		if (deserializationExceptionHandler == KafkaStreamsConsumerProperties.DeserializationExceptionHandler.sendToDlq) {
+		if (deserializationExceptionHandler == DeserializationExceptionHandler.sendToDlq) {
 			extendedConsumerProperties.getExtension().setEnableDlq(true);
 		}
 

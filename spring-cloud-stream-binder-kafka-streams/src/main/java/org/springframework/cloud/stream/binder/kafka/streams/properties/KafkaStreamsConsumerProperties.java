@@ -17,6 +17,7 @@
 package org.springframework.cloud.stream.binder.kafka.streams.properties;
 
 import org.springframework.cloud.stream.binder.kafka.properties.KafkaConsumerProperties;
+import org.springframework.cloud.stream.binder.kafka.streams.DeserializationExceptionHandler;
 
 /**
  * Extended properties for Kafka Streams consumer.
@@ -44,28 +45,8 @@ public class KafkaStreamsConsumerProperties extends KafkaConsumerProperties {
 	private String materializedAs;
 
 	/**
-	 * Enumeration for various Serde errors.
+	 * Per input binding deserialization handler.
 	 */
-	public enum DeserializationExceptionHandler {
-
-		/**
-		 * Deserialization error handler with log and continue.
-		 * See {@link org.apache.kafka.streams.errors.LogAndContinueExceptionHandler}
-		 */
-		logAndContinue,
-		/**
-		 * Deserialization error handler with log and fail.
-		 * See {@link org.apache.kafka.streams.errors.LogAndFailExceptionHandler}
-		 */
-		logAndFail,
-		/**
-		 * Deserialization error handler with DLQ send.
-		 * See {@link org.springframework.kafka.streams.RecoveringDeserializationExceptionHandler}
-		 */
-		sendToDlq
-
-	}
-
 	private DeserializationExceptionHandler deserializationExceptionHandler;
 
 	/**

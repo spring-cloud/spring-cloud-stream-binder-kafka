@@ -216,19 +216,19 @@ public abstract class AbstractKafkaStreamsBinderProcessor implements Application
 		}
 
 		// Override deserialization exception handlers per binding
-		final KafkaStreamsConsumerProperties.DeserializationExceptionHandler deserializationExceptionHandler =
+		final DeserializationExceptionHandler deserializationExceptionHandler =
 				extendedConsumerProperties.getDeserializationExceptionHandler();
-		if (deserializationExceptionHandler == KafkaStreamsConsumerProperties.DeserializationExceptionHandler.logAndFail) {
+		if (deserializationExceptionHandler == DeserializationExceptionHandler.logAndFail) {
 			streamConfigGlobalProperties.put(
 					StreamsConfig.DEFAULT_DESERIALIZATION_EXCEPTION_HANDLER_CLASS_CONFIG,
 					LogAndFailExceptionHandler.class);
 		}
-		else if (deserializationExceptionHandler == KafkaStreamsConsumerProperties.DeserializationExceptionHandler.logAndContinue) {
+		else if (deserializationExceptionHandler == DeserializationExceptionHandler.logAndContinue) {
 			streamConfigGlobalProperties.put(
 					StreamsConfig.DEFAULT_DESERIALIZATION_EXCEPTION_HANDLER_CLASS_CONFIG,
 					LogAndContinueExceptionHandler.class);
 		}
-		else if (deserializationExceptionHandler == KafkaStreamsConsumerProperties.DeserializationExceptionHandler.sendToDlq) {
+		else if (deserializationExceptionHandler == DeserializationExceptionHandler.sendToDlq) {
 			streamConfigGlobalProperties.put(
 					StreamsConfig.DEFAULT_DESERIALIZATION_EXCEPTION_HANDLER_CLASS_CONFIG,
 					RecoveringDeserializationExceptionHandler.class);
