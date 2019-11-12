@@ -38,6 +38,7 @@ public class KafkaStreamsBinderConfigurationProperties
 	/**
 	 * Enumeration for various Serde errors.
 	 */
+	@Deprecated
 	public enum SerdeError {
 
 		/**
@@ -50,6 +51,29 @@ public class KafkaStreamsBinderConfigurationProperties
 		logAndFail,
 		/**
 		 * Deserialization error handler with DLQ send.
+		 */
+		sendToDlq
+
+	}
+
+	/**
+	 * Enumeration for various Serde errors.
+	 */
+	public enum DeserializationExceptionHandler {
+
+		/**
+		 * Deserialization error handler with log and continue.
+		 * See {@link org.apache.kafka.streams.errors.LogAndContinueExceptionHandler}
+		 */
+		logAndContinue,
+		/**
+		 * Deserialization error handler with log and fail.
+		 * See {@link org.apache.kafka.streams.errors.LogAndFailExceptionHandler}
+		 */
+		logAndFail,
+		/**
+		 * Deserialization error handler with DLQ send.
+		 * See {@link org.springframework.kafka.streams.RecoveringDeserializationExceptionHandler}
 		 */
 		sendToDlq
 
@@ -93,13 +117,34 @@ public class KafkaStreamsBinderConfigurationProperties
 	 */
 	private KafkaStreamsBinderConfigurationProperties.SerdeError serdeError;
 
+	private DeserializationExceptionHandler deserializationExceptionHandler;
+
+	@Deprecated
 	public KafkaStreamsBinderConfigurationProperties.SerdeError getSerdeError() {
 		return this.serdeError;
 	}
 
+	@Deprecated
 	public void setSerdeError(
 			KafkaStreamsBinderConfigurationProperties.SerdeError serdeError) {
-		this.serdeError = serdeError;
+			this.serdeError = serdeError;
+			if (serdeError == SerdeError.logAndContinue) {
+				this.deserializationExceptionHandler = DeserializationExceptionHandler.logAndContinue;
+			}
+			else if (serdeError == SerdeError.logAndFail) {
+				this.deserializationExceptionHandler = DeserializationExceptionHandler.logAndFail;
+			}
+			else if (serdeError == SerdeError.sendToDlq) {
+				this.deserializationExceptionHandler = DeserializationExceptionHandler.sendToDlq;
+			}
+	}
+
+	public DeserializationExceptionHandler getDeserializationExceptionHandler() {
+		return deserializationExceptionHandler;
+	}
+
+	public void setDeserializationExceptionHandler(DeserializationExceptionHandler deserializationExceptionHandler) {
+		this.deserializationExceptionHandler = deserializationExceptionHandler;
 	}
 
 	public static class StateStoreRetry {
