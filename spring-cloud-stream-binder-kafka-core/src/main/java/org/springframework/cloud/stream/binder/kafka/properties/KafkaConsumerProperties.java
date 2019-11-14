@@ -85,7 +85,8 @@ public class KafkaConsumerProperties {
 	}
 
 	/**
-	 * When autoCommitOffset is true, this setting dictates whether to commit the offset after each record is processed.
+	 * When autoCommitOffset is true, this setting dictates whether to commit the offset
+	 * after the complete batch of records returned by a poll() is processed.
 	 */
 	private boolean ackEachRecord;
 
@@ -196,7 +197,8 @@ public class KafkaConsumerProperties {
 	/**
 	 * @return if each record needs to be acknowledged.
 	 *
-	 * When autoCommitOffset is true, this setting dictates whether to commit the offset after each record is processed.
+	 * When autoCommitOffset is true, this setting dictates whether to commit the offset after
+	 * the complete batch of records returned by a poll() is processed.
 	 */
 	public boolean isAckEachRecord() {
 		return this.ackEachRecord;
