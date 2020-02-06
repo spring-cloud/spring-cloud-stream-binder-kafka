@@ -200,7 +200,7 @@ public class KeyValueSerdeResolver {
 									Serde.class)
 							: Serdes.ByteArray();
 		}
+		valueSerde.configure(this.streamConfigGlobalProperties, false);
 		return valueSerde;
 	}
-
 }
