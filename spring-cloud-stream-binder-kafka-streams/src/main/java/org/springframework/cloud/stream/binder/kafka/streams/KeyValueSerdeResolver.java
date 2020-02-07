@@ -184,7 +184,6 @@ public class KeyValueSerdeResolver implements ApplicationContextAware {
 			else {
 				valueSerde = Serdes.ByteArray();
 			}
-			valueSerde.configure(this.streamConfigGlobalProperties, false);
 		}
 		catch (ClassNotFoundException ex) {
 			throw new IllegalStateException("Serde class not found: ", ex);
@@ -203,7 +202,6 @@ public class KeyValueSerdeResolver implements ApplicationContextAware {
 			else {
 				valueSerde = Serdes.ByteArray();
 			}
-			valueSerde.configure(this.streamConfigGlobalProperties, false);
 		}
 		catch (ClassNotFoundException ex) {
 			throw new IllegalStateException("Serde class not found: ", ex);
