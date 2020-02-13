@@ -466,8 +466,8 @@ public class KafkaStreamsFunctionProcessor implements ApplicationContextAware {
 		}
 
 		int concurrency = this.bindingServiceProperties.getConsumerProperties(inboundName).getConcurrency();
-		// override concurrency if set at the individual binding level.
-		if (concurrency > 1) {
+		// override concurrency (set potentially on the binding).
+		if (concurrency >= 1) {
 			streamConfigGlobalProperties.put(StreamsConfig.NUM_STREAM_THREADS_CONFIG, concurrency);
 		}
 
