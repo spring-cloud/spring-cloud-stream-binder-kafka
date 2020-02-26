@@ -45,6 +45,7 @@ import org.springframework.util.StringUtils;
  *
  * @author Soby Chacko
  * @author Renwei Han
+ * @author Serhii Siryi
  * @since 2.1.0
  */
 public class InteractiveQueryService {
@@ -151,6 +152,27 @@ public class InteractiveQueryService {
 				.map((k) -> Optional.ofNullable(k.metadataForKey(store, key, serializer)))
 				.filter(Optional::isPresent).map(Optional::get).findFirst().orElse(null);
 		return streamsMetadata != null ? streamsMetadata.hostInfo() : null;
+	}
+
+	/**
+	 * Gets the list of {@link HostInfo} where the provided store is hosted on.
+	 * It also can include current host info.
+	 * Kafka Streams will look through all the consumer instances under the same application id
+	 * and retrieves all hosts info
+	 *
+	 * Note that the end-user applications must provide `applicaiton.server` as a configuration property
+	 * for all the application instances when calling this method. If this is not available, then the empty list will be returned.
+	 *
+	 * @param store store name
+	 * @return the list of {@link HostInfo} where provided store is hosted on
+	 */
+	public List<HostInfo> getAllHostsInfo(String store) {
+		return kafkaStreamsRegistry.getKafkaStreams()
+				.stream()
+				.flatMap(k -> k.allMetadataForStore(store).stream())
+				.filter(Objects::nonNull)
+				.map(StreamsMetadata::hostInfo)
+				.collect(Collectors.toUnmodifiableList())
 	}
 
 }
