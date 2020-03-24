@@ -216,6 +216,8 @@ public class KafkaMessageChannelBinder extends
 
 	private KafkaExtendedBindingProperties extendedBindingProperties = new KafkaExtendedBindingProperties();
 
+	private Map<ConsumerDestination, ContainerProperties.AckMode> ackModeInfo = new HashMap<>();
+
 	public KafkaMessageChannelBinder(
 			KafkaBinderConfigurationProperties configurationProperties,
 			KafkaTopicProvisioner provisioningProvider) {
@@ -697,6 +699,7 @@ public class KafkaMessageChannelBinder extends
 			kafkaMessageDrivenChannelAdapter.setErrorChannel(errorInfrastructure.getErrorChannel());
 		}
 		this.getContainerCustomizer().configure(messageListenerContainer, destination.getName(), group);
+		this.ackModeInfo.put(destination, messageListenerContainer.getContainerProperties().getAckMode());
 		return kafkaMessageDrivenChannelAdapter;
 	}
 
@@ -1193,12 +1196,12 @@ public class KafkaMessageChannelBinder extends
 					this.transactionTemplate.executeWithoutResult(status -> {
 						dlqSender.sendToDlq(recordToSend.get(), kafkaHeaders, dlqName, group, throwable2,
 								determinDlqPartitionFunction(properties.getExtension().getDlqPartitions()),
-								headers);
+								headers, this.ackModeInfo.get(destination));
 					});
 				}
 				else {
 					dlqSender.sendToDlq(recordToSend.get(), kafkaHeaders, dlqName, group, throwable,
-							determinDlqPartitionFunction(properties.getExtension().getDlqPartitions()), headers);
+							determinDlqPartitionFunction(properties.getExtension().getDlqPartitions()), headers, this.ackModeInfo.get(destination));
 				}
 			};
 		}
@@ -1472,7 +1475,8 @@ public class KafkaMessageChannelBinder extends
 
 		@SuppressWarnings("unchecked")
 		void sendToDlq(ConsumerRecord<?, ?> consumerRecord, Headers headers,
-					String dlqName, String group, Throwable throwable, DlqPartitionFunction partitionFunction, MessageHeaders messageHeaders) {
+					String dlqName, String group, Throwable throwable, DlqPartitionFunction partitionFunction,
+					MessageHeaders messageHeaders, ContainerProperties.AckMode ackMode) {
 			K key = (K) consumerRecord.key();
 			V value = (V) consumerRecord.value();
 			ProducerRecord<K, V> producerRecord = new ProducerRecord<>(dlqName,
@@ -1502,7 +1506,7 @@ public class KafkaMessageChannelBinder extends
 							KafkaMessageChannelBinder.this.logger
 									.debug("Sent to DLQ " + sb.toString());
 						}
-						if (!DlqSender.this.properties.getExtension().isAutoCommitOffset()) {
+						if (ackMode == ContainerProperties.AckMode.MANUAL || ackMode == ContainerProperties.AckMode.MANUAL_IMMEDIATE) {
 							final Acknowledgment acknowledgment = messageHeaders.get(KafkaHeaders.ACKNOWLEDGMENT, Acknowledgment.class);
 							acknowledgment.acknowledge();
 						}
