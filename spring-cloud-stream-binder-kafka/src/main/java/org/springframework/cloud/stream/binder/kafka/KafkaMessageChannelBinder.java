@@ -216,7 +216,7 @@ public class KafkaMessageChannelBinder extends
 
 	private KafkaExtendedBindingProperties extendedBindingProperties = new KafkaExtendedBindingProperties();
 
-	private Map<ConsumerDestination, ContainerProperties.AckMode> ackModeInfo = new HashMap<>();
+	private Map<ConsumerDestination, ContainerProperties.AckMode> ackModeInfo = new ConcurrentHashMap<>();
 
 	public KafkaMessageChannelBinder(
 			KafkaBinderConfigurationProperties configurationProperties,
@@ -1071,7 +1071,7 @@ public class KafkaMessageChannelBinder extends
 					producerFactory);
 
 			@SuppressWarnings("rawtypes")
-			DlqSender<?, ?> dlqSender = new DlqSender(kafkaTemplate, properties);
+			DlqSender<?, ?> dlqSender = new DlqSender(kafkaTemplate);
 
 			return (message) -> {
 
@@ -1466,11 +1466,9 @@ public class KafkaMessageChannelBinder extends
 	private final class DlqSender<K, V> {
 
 		private final KafkaTemplate<K, V> kafkaTemplate;
-		private final ExtendedConsumerProperties<KafkaConsumerProperties> properties;
 
-		DlqSender(KafkaTemplate<K, V> kafkaTemplate, ExtendedConsumerProperties<KafkaConsumerProperties> properties) {
+		DlqSender(KafkaTemplate<K, V> kafkaTemplate) {
 			this.kafkaTemplate = kafkaTemplate;
-			this.properties = properties;
 		}
 
 		@SuppressWarnings("unchecked")
@@ -1507,8 +1505,7 @@ public class KafkaMessageChannelBinder extends
 									.debug("Sent to DLQ " + sb.toString());
 						}
 						if (ackMode == ContainerProperties.AckMode.MANUAL || ackMode == ContainerProperties.AckMode.MANUAL_IMMEDIATE) {
-							final Acknowledgment acknowledgment = messageHeaders.get(KafkaHeaders.ACKNOWLEDGMENT, Acknowledgment.class);
-							acknowledgment.acknowledge();
+							messageHeaders.get(KafkaHeaders.ACKNOWLEDGMENT, Acknowledgment.class).acknowledge();
 						}
 					}
 				});
