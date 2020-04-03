@@ -351,11 +351,11 @@ public class KafkaMessageChannelBinder extends
 		 */
 		KafkaAwareTransactionManager<byte[], byte[]> transMan = transactionManager(
 				producerProperties.getExtension().getTransactionManager());
-		final ProducerFactory<byte[], byte[]> producerFB = transMan != null
-				? transMan.getProducerFactory()
-				: getProducerFactory(null, producerProperties);
 		Collection<PartitionInfo> partitions = provisioningProvider.getPartitionsForTopic(
 				producerProperties.getPartitionCount(), false, () -> {
+					ProducerFactory<byte[], byte[]> producerFB = transMan != null
+						? transMan.getProducerFactory()
+						: getProvisioningProducerFactory(producerProperties);
 					Producer<byte[], byte[]> producer = producerFB.createProducer();
 					List<PartitionInfo> partitionsFor = producer
 							.partitionsFor(destination.getName());
@@ -387,6 +387,9 @@ public class KafkaMessageChannelBinder extends
 			});
 		}
 
+		final ProducerFactory<byte[], byte[]> producerFB = transMan != null
+			? transMan.getProducerFactory()
+			: getProducerFactory(null, producerProperties);
 		KafkaTemplate<byte[], byte[]> kafkaTemplate = new KafkaTemplate<>(producerFB);
 		if (this.producerListener != null) {
 			kafkaTemplate.setProducerListener(this.producerListener);
@@ -480,6 +483,13 @@ public class KafkaMessageChannelBinder extends
 			return messageKeyExpression != null
 					&& interceptorNeededPattern.matcher(messageKeyExpression.getExpressionString()).find();
 		}
+	}
+
+	protected DefaultKafkaProducerFactory<byte[], byte[]> getProvisioningProducerFactory(
+			ExtendedProducerProperties<KafkaProducerProperties> producerProperties) {
+		DefaultKafkaProducerFactory<byte[], byte[]> producerFactory = this.getProducerFactory(null, producerProperties);
+		producerFactory.setPhysicalCloseTimeout(1); // force close right away after provisioning
+		return producerFactory;
 	}
 
 	protected DefaultKafkaProducerFactory<byte[], byte[]> getProducerFactory(
