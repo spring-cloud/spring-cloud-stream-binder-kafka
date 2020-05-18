@@ -1807,7 +1807,7 @@ public class KafkaBinderTests extends
 		}
 		catch (UnsupportedOperationException ignored) {
 		}
-		List<ChannelInterceptor> interceptors = output.getChannelInterceptors();
+		List<ChannelInterceptor> interceptors = output.getInterceptors();
 		AtomicInteger count = new AtomicInteger();
 		interceptors.forEach(interceptor -> {
 			if (interceptor instanceof PartitioningInterceptor) {
