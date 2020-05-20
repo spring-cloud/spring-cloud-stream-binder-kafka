@@ -16,6 +16,7 @@
 
 package org.springframework.cloud.stream.binder.kafka.streams;
 
+import java.lang.reflect.Method;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
@@ -26,8 +27,6 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.ListTopicsResult;
 import org.apache.kafka.streams.KafkaStreams;
@@ -52,7 +51,29 @@ import org.springframework.kafka.config.StreamsBuilderFactoryBean;
  */
 public class KafkaStreamsBinderHealthIndicator extends AbstractHealthIndicator implements DisposableBean {
 
-	private final Log logger = LogFactory.getLog(getClass());
+	/**
+	 * Static initialization for detecting whether the application is using Kafka client 2.5 vs lower versions.
+	 */
+	private static ClassLoader CLASS_LOADER =  KafkaStreamsBinderHealthIndicator.class.getClassLoader();
+	private static boolean isKafkaStreams25 = true;
+	private static Method methodForIsRunning;
+
+	static {
+		try {
+			Class<?> KAFKA_STREAMS_STATE_CLASS = CLASS_LOADER.loadClass("org.apache.kafka.streams.KafkaStreams$State");
+
+			Method[] declaredMethods = KAFKA_STREAMS_STATE_CLASS.getDeclaredMethods();
+			for (Method m : declaredMethods) {
+				if (m.getName().equals("isRunning")) {
+					isKafkaStreams25 = false;
+					methodForIsRunning = m;
+				}
+			}
+		}
+		catch (ClassNotFoundException e) {
+			throw new IllegalStateException("KafkaStreams$State class not found", e);
+		}
+	}
 
 	private final KafkaStreamsRegistry kafkaStreamsRegistry;
 	private final KafkaStreamsBinderConfigurationProperties configurationProperties;
@@ -108,7 +129,14 @@ public class KafkaStreamsBinderHealthIndicator extends AbstractHealthIndicator i
 				else {
 					boolean up = true;
 					for (KafkaStreams kStream : kafkaStreamsRegistry.getKafkaStreams()) {
-						up &= kStream.state().isRunningOrRebalancing();
+						if (isKafkaStreams25) {
+							up &= kStream.state().isRunningOrRebalancing();
+						}
+						else {
+							// if Kafka client version is lower than 2.5, then call the method reflectively.
+							final boolean isRuningInvokedResult = (boolean) methodForIsRunning.invoke(kStream.state());
+							up &= isRuningInvokedResult;
+						}
 						builder.withDetails(buildDetails(kStream));
 					}
 					builder.status(up ? Status.UP : Status.DOWN);
@@ -127,11 +155,20 @@ public class KafkaStreamsBinderHealthIndicator extends AbstractHealthIndicator i
 		}
 	}
 
-	private Map<String, Object> buildDetails(KafkaStreams kafkaStreams) {
+	private Map<String, Object> buildDetails(KafkaStreams kafkaStreams) throws Exception {
 		final Map<String, Object> details = new HashMap<>();
 		final Map<String, Object> perAppdIdDetails = new HashMap<>();
 
-		if (kafkaStreams.state().isRunningOrRebalancing()) {
+		boolean isRunningResult;
+		if (isKafkaStreams25) {
+			isRunningResult = kafkaStreams.state().isRunningOrRebalancing();
+		}
+		else {
+			// if Kafka client version is lower than 2.5, then call the method reflectively.
+			isRunningResult = (boolean) methodForIsRunning.invoke(kafkaStreams.state());
+		}
+
+		if (isRunningResult) {
 			for (ThreadMetadata metadata : kafkaStreams.localThreadsMetadata()) {
 				perAppdIdDetails.put("threadName", metadata.threadName());
 				perAppdIdDetails.put("threadState", metadata.threadState());
