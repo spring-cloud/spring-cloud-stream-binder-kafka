@@ -100,7 +100,7 @@ final class KafkaStreamsBinderUtils {
 					new ExtendedProducerProperties<>(
 							extendedConsumerProperties.getExtension().getDlqProducerProperties()),
 					binderConfigurationProperties);
-			KafkaOperations<byte[], byte[]> kafkaTemplate = new KafkaTemplate<>(producerFactory);
+			KafkaTemplate<byte[], byte[]> kafkaTemplate = new KafkaTemplate<>(producerFactory);
 
 			BiFunction<ConsumerRecord<?, ?>, Exception, TopicPartition> destinationResolver =
 					(cr, e) -> new TopicPartition(extendedConsumerProperties.getExtension().getDlqName(),
