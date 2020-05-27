@@ -95,6 +95,12 @@ public class KafkaProducerProperties {
 	private String recordMetadataChannel;
 
 	/**
+	 * Timeout value in seconds for the duration to wait when closing the producer.
+	 * If not set this defaults to 30 seconds.
+	 */
+	private int closeTimeout;
+
+	/**
 	 * @return buffer size
 	 *
 	 * Upper limit, in bytes, of how much data the Kafka producer attempts to batch before sending.
@@ -242,6 +248,17 @@ public class KafkaProducerProperties {
 
 	public void setRecordMetadataChannel(String recordMetadataChannel) {
 		this.recordMetadataChannel = recordMetadataChannel;
+	}
+
+	/**
+	 * @return timeout in seconds for closing the producer
+	 */
+	public int getCloseTimeout() {
+		return this.closeTimeout;
+	}
+
+	public void setCloseTimeout(int closeTimeout) {
+		this.closeTimeout = closeTimeout;
 	}
 
 	/**
