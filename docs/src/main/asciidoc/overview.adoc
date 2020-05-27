@@ -395,6 +395,11 @@ If you override the `kafka-clients` jar to 2.1.0 (or later), as discussed in the
 +
 Default: `none`.
 
+closeTimeout::
+Timeout in number of seconds to wait for when closing the producer.
++
+Default: `30`
+
 ==== Usage examples
 
 In this section, we show the use of the preceding properties for specific scenarios.
