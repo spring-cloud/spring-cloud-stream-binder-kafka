@@ -122,7 +122,8 @@ public class MultipleFunctionsInSameAppTests {
 			assertThat(concurrency).isEqualTo(2);
 			concurrency = (Integer) analyzeStreamsConfiguration.get(StreamsConfig.NUM_STREAM_THREADS_CONFIG);
 			assertThat(concurrency).isEqualTo(1);
-			assertThat(anotherProcessStreamsConfiguration.get(StreamsConfig.NUM_STREAM_THREADS_CONFIG)).isEqualTo("3");
+			concurrency = (Integer) anotherProcessStreamsConfiguration.get(StreamsConfig.NUM_STREAM_THREADS_CONFIG);
+			assertThat(concurrency).isEqualTo(3);
 		}
 	}
 
