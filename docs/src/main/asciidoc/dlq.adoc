@@ -115,7 +115,7 @@ public class ReRouteDlqKApplication implements CommandLineRunner {
             int count = this.processed.get();
             Thread.sleep(5000);
             if (count == this.processed.get()) {
-                System.out.println("Idle, terminating");
+                System.out.println("Idle, exiting");
                 return;
             }
         }
