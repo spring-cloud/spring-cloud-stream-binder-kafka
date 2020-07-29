@@ -54,7 +54,7 @@ public class KafkaStreamsBinderHealthIndicator extends AbstractHealthIndicator i
 	/**
 	 * Static initialization for detecting whether the application is using Kafka client 2.5 vs lower versions.
 	 */
-	private static ClassLoader CLASS_LOADER =  KafkaStreamsBinderHealthIndicator.class.getClassLoader();
+	private static ClassLoader CLASS_LOADER = KafkaStreamsBinderHealthIndicator.class.getClassLoader();
 	private static boolean isKafkaStreams25 = true;
 	private static Method methodForIsRunning;
 
@@ -76,13 +76,12 @@ public class KafkaStreamsBinderHealthIndicator extends AbstractHealthIndicator i
 	}
 
 	private final KafkaStreamsRegistry kafkaStreamsRegistry;
+
 	private final KafkaStreamsBinderConfigurationProperties configurationProperties;
 
 	private final Map<String, Object> adminClientProperties;
 
 	private final KafkaStreamsBindingInformationCatalogue kafkaStreamsBindingInformationCatalogue;
-
-	private static final ThreadLocal<Status> healthStatusThreadLocal = new ThreadLocal<>();
 
 	private AdminClient adminClient;
 
@@ -109,46 +108,34 @@ public class KafkaStreamsBinderHealthIndicator extends AbstractHealthIndicator i
 			if (this.adminClient == null) {
 				this.adminClient = AdminClient.create(this.adminClientProperties);
 			}
-			final Status status = healthStatusThreadLocal.get();
-			//If one of the kafka streams binders (kstream, ktable, globalktable) was down before on the same request,
-			//retrieve that from the thead local storage where it was saved before. This is done in order to avoid
-			//the duration of the total health check since in the case of Kafka Streams each binder tries to do
-			//its own health check and since we already know that this is DOWN, simply pass that information along.
-			if (status == Status.DOWN) {
-				builder.withDetail("No topic information available", "Kafka broker is not reachable");
-				builder.status(Status.DOWN);
+
+			final ListTopicsResult listTopicsResult = this.adminClient.listTopics();
+			listTopicsResult.listings().get(this.configurationProperties.getHealthTimeout(), TimeUnit.SECONDS);
+
+			if (this.kafkaStreamsBindingInformationCatalogue.getStreamsBuilderFactoryBeans().isEmpty()) {
+				builder.withDetail("No Kafka Streams bindings have been established", "Kafka Streams binder did not detect any processors");
+				builder.status(Status.UNKNOWN);
 			}
 			else {
-				final ListTopicsResult listTopicsResult = this.adminClient.listTopics();
-				listTopicsResult.listings().get(this.configurationProperties.getHealthTimeout(), TimeUnit.SECONDS);
-
-				if (this.kafkaStreamsBindingInformationCatalogue.getStreamsBuilderFactoryBeans().isEmpty()) {
-					builder.withDetail("No Kafka Streams bindings have been established", "Kafka Streams binder did not detect any processors");
-					builder.status(Status.UNKNOWN);
-				}
-				else {
-					boolean up = true;
-					for (KafkaStreams kStream : kafkaStreamsRegistry.getKafkaStreams()) {
-						if (isKafkaStreams25) {
-							up &= kStream.state().isRunningOrRebalancing();
-						}
-						else {
-							// if Kafka client version is lower than 2.5, then call the method reflectively.
-							final boolean isRuningInvokedResult = (boolean) methodForIsRunning.invoke(kStream.state());
-							up &= isRuningInvokedResult;
-						}
-						builder.withDetails(buildDetails(kStream));
+				boolean up = true;
+				for (KafkaStreams kStream : kafkaStreamsRegistry.getKafkaStreams()) {
+					if (isKafkaStreams25) {
+						up &= kStream.state().isRunningOrRebalancing();
 					}
-					builder.status(up ? Status.UP : Status.DOWN);
+					else {
+						// if Kafka client version is lower than 2.5, then call the method reflectively.
+						final boolean isRunningInvokedResult = (boolean) methodForIsRunning.invoke(kStream.state());
+						up &= isRunningInvokedResult;
+					}
+					builder.withDetails(buildDetails(kStream));
 				}
+				builder.status(up ? Status.UP : Status.DOWN);
 			}
 		}
 		catch (Exception e) {
 			builder.withDetail("No topic information available", "Kafka broker is not reachable");
 			builder.status(Status.DOWN);
 			builder.withException(e);
-			//Store binder down status into a thread local storage.
-			healthStatusThreadLocal.set(Status.DOWN);
 		}
 		finally {
 			this.lock.unlock();
