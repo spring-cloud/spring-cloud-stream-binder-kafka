@@ -132,9 +132,7 @@ public class KafkaBinderHealthIndicator implements HealthIndicator, DisposableBe
 							List<PartitionInfo> partitionInfos = this.metadataConsumer
 									.partitionsFor(topic);
 							for (PartitionInfo partitionInfo : partitionInfos) {
-								if (topicInformation.getPartitionInfos()
-										.contains(partitionInfo)
-										&& partitionInfo.leader().id() == -1) {
+								if (partitionInfo.leader() == null || partitionInfo.leader().id() == -1) {
 									downMessages.add(partitionInfo.toString());
 								}
 							}
