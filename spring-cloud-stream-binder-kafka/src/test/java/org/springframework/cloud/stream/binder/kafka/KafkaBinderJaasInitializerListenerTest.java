@@ -116,7 +116,6 @@ public class KafkaBinderJaasInitializerListenerTest {
 		context.close();
 	}
 
-	@Test
 	public void testConfigurationWithUnknownControlFlag() throws Exception {
 		ConfigFile configFile = new ConfigFile(
 				new ClassPathResource("jaas-sample-kafka-only.conf").getURI());
