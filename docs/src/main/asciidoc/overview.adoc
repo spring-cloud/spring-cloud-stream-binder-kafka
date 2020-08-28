@@ -106,9 +106,9 @@ spring.cloud.stream.kafka.binder.replicationFactor::
 The replication factor of auto-created topics if `autoCreateTopics` is active.
 Can be overridden on each binding.
 +
-NOTE: If you are using Kafka broker versions prior to 2.4, then this value should be set to `1`.
-Starting with broker version 2.4, the binder will use `-1` as the default value, which indicates the broker to use the same default set on the broker.
-Check with your Kafka broker admins to see if there is a policy in place that requires the replication factor to be greater than 1, in which case, that value should be used instead of any defaults used by the binder.
+NOTE: If you are using Kafka broker versions prior to 2.4, then this value should be set to at least `1`.
+Starting with version 3.0.8, the binder uses `-1` as the default value, which indicates that the broker 'default.replication.factor' property will be used to determine the number of replicas.
+Check with your Kafka broker admins to see if there is a policy in place that requires a minimum replication factor, if that's the case then, typically, the `default.replication.factor` will match that value and `-1` should be used, unless you need a replication factor greater than the minimum.
 +
 Default: `-1`.
 spring.cloud.stream.kafka.binder.autoCreateTopics::
