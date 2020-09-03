@@ -16,6 +16,14 @@
 
 package org.springframework.cloud.stream.binder.kafka;
 
+import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.common.PartitionInfo;
+import org.springframework.beans.factory.DisposableBean;
+import org.springframework.boot.actuate.health.Health;
+import org.springframework.boot.actuate.health.HealthIndicator;
+import org.springframework.kafka.core.ConsumerFactory;
+import org.springframework.scheduling.concurrent.CustomizableThreadFactory;
+
 import java.time.Duration;
 import java.util.HashSet;
 import java.util.List;
@@ -28,15 +36,6 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
-import org.apache.kafka.clients.consumer.Consumer;
-import org.apache.kafka.common.PartitionInfo;
-
-import org.springframework.beans.factory.DisposableBean;
-import org.springframework.boot.actuate.health.Health;
-import org.springframework.boot.actuate.health.HealthIndicator;
-import org.springframework.kafka.core.ConsumerFactory;
-import org.springframework.scheduling.concurrent.CustomizableThreadFactory;
-
 /**
  * Health indicator for Kafka.
  *
@@ -47,6 +46,7 @@ import org.springframework.scheduling.concurrent.CustomizableThreadFactory;
  * @author Laur Aliste
  * @author Soby Chacko
  * @author Vladislav Fefelov
+ * @author Chukwubuikem Ume-Ugwa
  */
 public class KafkaBinderHealthIndicator implements HealthIndicator, DisposableBean {
 
@@ -63,6 +63,8 @@ public class KafkaBinderHealthIndicator implements HealthIndicator, DisposableBe
 
 	private Consumer<?, ?> metadataConsumer;
 
+	private boolean considerDownWhenAnyPartitionHasNoLeader;
+
 	public KafkaBinderHealthIndicator(KafkaMessageChannelBinder binder,
 			ConsumerFactory<?, ?> consumerFactory) {
 		this.binder = binder;
@@ -75,6 +77,10 @@ public class KafkaBinderHealthIndicator implements HealthIndicator, DisposableBe
 	 */
 	public void setTimeout(int timeout) {
 		this.timeout = timeout;
+	}
+
+	public void setConsiderDownWhenAnyPartitionHasNoLeader(boolean considerDownWhenAnyPartitionHasNoLeader) {
+		this.considerDownWhenAnyPartitionHasNoLeader = considerDownWhenAnyPartitionHasNoLeader;
 	}
 
 	@Override
@@ -99,55 +105,56 @@ public class KafkaBinderHealthIndicator implements HealthIndicator, DisposableBe
 		}
 	}
 
-	private synchronized  Consumer<?, ?> initMetadataConsumer() {
+	private void initMetadataConsumer() {
 		if (this.metadataConsumer == null) {
 			this.metadataConsumer = this.consumerFactory.createConsumer();
 		}
-		return this.metadataConsumer;
 	}
 
 	private Health buildHealthStatus() {
 		try {
 			initMetadataConsumer();
-			synchronized (this.metadataConsumer) {
-				Set<String> downMessages = new HashSet<>();
-				final Map<String, KafkaMessageChannelBinder.TopicInformation> topicsInUse = KafkaBinderHealthIndicator.this.binder
-						.getTopicsInUse();
-				if (topicsInUse.isEmpty()) {
-					try {
-						this.metadataConsumer.listTopics(Duration.ofSeconds(this.timeout));
-					}
-					catch (Exception e) {
-						return Health.down().withDetail("No topic information available",
-								"Kafka broker is not reachable").build();
-					}
-					return Health.unknown().withDetail("No bindings found",
-							"Kafka binder may not be bound to destinations on the broker").build();
+			Set<String> downMessages = new HashSet<>();
+			final Map<String, KafkaMessageChannelBinder.TopicInformation> topicsInUse = KafkaBinderHealthIndicator.this.binder
+					.getTopicsInUse();
+			if (topicsInUse.isEmpty()) {
+				try {
+					this.metadataConsumer.listTopics(Duration.ofSeconds(this.timeout));
 				}
-				else {
-					for (String topic : topicsInUse.keySet()) {
-						KafkaMessageChannelBinder.TopicInformation topicInformation = topicsInUse
-								.get(topic);
-						if (!topicInformation.isTopicPattern()) {
-							List<PartitionInfo> partitionInfos = this.metadataConsumer
-									.partitionsFor(topic);
-							for (PartitionInfo partitionInfo : partitionInfos) {
-								if (partitionInfo.leader() == null || partitionInfo.leader().id() == -1) {
-									downMessages.add(partitionInfo.toString());
-								}
+				catch (Exception e) {
+					return Health.down().withDetail("No topic information available",
+							"Kafka broker is not reachable").build();
+				}
+				return Health.unknown().withDetail("No bindings found",
+						"Kafka binder may not be bound to destinations on the broker").build();
+			}
+			else {
+				for (String topic : topicsInUse.keySet()) {
+					KafkaMessageChannelBinder.TopicInformation topicInformation = topicsInUse
+							.get(topic);
+					if (!topicInformation.isTopicPattern()) {
+						List<PartitionInfo> partitionInfos = this.metadataConsumer
+								.partitionsFor(topic);
+						for (PartitionInfo partitionInfo : partitionInfos) {
+							if (topicInformation.getPartitionInfos()
+									.contains(partitionInfo)
+									&& partitionInfo.leader() == null) {
+								downMessages.add(partitionInfo.toString());
+							}else if(considerDownWhenAnyPartitionHasNoLeader && partitionInfo.leader() == null){
+								downMessages.add(partitionInfo.toString());
 							}
 						}
 					}
 				}
-				if (downMessages.isEmpty()) {
-					return Health.up().build();
-				}
-				else {
-					return Health.down()
-							.withDetail("Following partitions in use have no leaders: ",
-									downMessages.toString())
-							.build();
-				}
+			}
+			if (downMessages.isEmpty()) {
+				return Health.up().build();
+			}
+			else {
+				return Health.down()
+						.withDetail("Following partitions in use have no leaders: ",
+								downMessages.toString())
+						.build();
 			}
 		}
 		catch (Exception ex) {

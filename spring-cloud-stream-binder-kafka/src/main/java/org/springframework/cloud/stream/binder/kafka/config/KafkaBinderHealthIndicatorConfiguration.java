@@ -16,12 +16,8 @@
 
 package org.springframework.cloud.stream.binder.kafka.config;
 
-import java.util.HashMap;
-import java.util.Map;
-
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.ByteArrayDeserializer;
-
 import org.springframework.boot.actuate.autoconfigure.health.ConditionalOnEnabledHealthIndicator;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.cloud.stream.binder.kafka.KafkaBinderHealthIndicator;
@@ -33,10 +29,14 @@ import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.util.ObjectUtils;
 
+import java.util.HashMap;
+import java.util.Map;
+
 /**
  * Configuration class for Kafka binder health indicator beans.
  *
  * @author Oleg Zhurakousky
+ * @author Chukwubuikem Ume-Ugwa
  */
 
 @Configuration
@@ -66,6 +66,7 @@ class KafkaBinderHealthIndicatorConfiguration {
 		KafkaBinderHealthIndicator indicator = new KafkaBinderHealthIndicator(
 				kafkaMessageChannelBinder, consumerFactory);
 		indicator.setTimeout(configurationProperties.getHealthTimeout());
+		indicator.setConsiderDownWhenAnyPartitionHasNoLeader(configurationProperties.isConsiderDownWhenAnyPartitionHasNoLeader());
 		return indicator;
 	}
 

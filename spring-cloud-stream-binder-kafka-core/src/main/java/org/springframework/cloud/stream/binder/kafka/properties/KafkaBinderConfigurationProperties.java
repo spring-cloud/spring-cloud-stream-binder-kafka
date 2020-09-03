@@ -16,21 +16,10 @@
 
 package org.springframework.cloud.stream.binder.kafka.properties;
 
-import java.time.Duration;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
-import javax.validation.constraints.AssertTrue;
-import javax.validation.constraints.Min;
-import javax.validation.constraints.NotNull;
-
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
-
 import org.springframework.boot.autoconfigure.kafka.KafkaProperties;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.cloud.stream.binder.HeaderMode;
@@ -40,6 +29,15 @@ import org.springframework.expression.Expression;
 import org.springframework.util.Assert;
 import org.springframework.util.ObjectUtils;
 import org.springframework.util.StringUtils;
+
+import javax.validation.constraints.AssertTrue;
+import javax.validation.constraints.Min;
+import javax.validation.constraints.NotNull;
+import java.time.Duration;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Configuration properties for the Kafka binder. The properties in this class are
@@ -53,6 +51,7 @@ import org.springframework.util.StringUtils;
  * @author Rafal Zukowski
  * @author Aldo Sinanaj
  * @author Lukasz Kaminski
+ * @author Chukwubuikem Ume-Ugwa
  */
 @ConfigurationProperties(prefix = "spring.cloud.stream.kafka.binder")
 public class KafkaBinderConfigurationProperties {
@@ -89,6 +88,8 @@ public class KafkaBinderConfigurationProperties {
 	private boolean autoCreateTopics = true;
 
 	private boolean autoAddPartitions;
+
+	private boolean considerDownWhenAnyPartitionHasNoLeader;
 
 	private String requiredAcks = "1";
 
@@ -361,6 +362,14 @@ public class KafkaBinderConfigurationProperties {
 
 	public void setAuthorizationExceptionRetryInterval(Duration authorizationExceptionRetryInterval) {
 		this.authorizationExceptionRetryInterval = authorizationExceptionRetryInterval;
+	}
+
+	public boolean isConsiderDownWhenAnyPartitionHasNoLeader() {
+		return considerDownWhenAnyPartitionHasNoLeader;
+	}
+
+	public void setConsiderDownWhenAnyPartitionHasNoLeader(boolean considerDownWhenAnyPartitionHasNoLeader) {
+		this.considerDownWhenAnyPartitionHasNoLeader = considerDownWhenAnyPartitionHasNoLeader;
 	}
 
 	/**
