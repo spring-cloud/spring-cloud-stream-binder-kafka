@@ -1639,7 +1639,7 @@ public class KafkaBinderTests extends
 				moduleOutputChannel, createProducerProperties());
 
 		ExtendedConsumerProperties<KafkaConsumerProperties> consumerProperties = createConsumerProperties();
-		consumerProperties.getExtension().setAutoCommitOffset(false);
+		consumerProperties.getExtension().setAckMode(ContainerProperties.AckMode.MANUAL);
 
 		Binding<MessageChannel> consumerBinding = binder.bindConsumer(
 				"testManualAckSucceedsWhenAutoCommitOffsetIsTurnedOff", "test",

@@ -183,9 +183,14 @@ If set to `false`, a header with the key `kafka_acknowledgment` of the type `org
 Applications may use this header for acknowledging messages.
 See the examples section for details.
 When this property is set to `false`, Kafka binder sets the ack mode to `org.springframework.kafka.listener.AbstractMessageListenerContainer.AckMode.MANUAL` and the application is responsible for acknowledging records.
-Also see `ackEachRecord`.
+Also see `ackEachRecord`. This property is deprecated as of 3.1. See `ackMode` for more details.
 +
 Default: `true`.
+ackMode::
+Specify the container ack mode.
+This is based on the AckMode enumeration defined in Spring Kafka.
+If `ackEachRecord` property is set to `true` and consumer is not in batch mode, then this will use the ack mode of `RECORD`, otherwise, use the provided ack mode using this property.
+
 autoCommitOnError::
 Effective only if `autoCommitOffset` is set to `true`.
 If set to `false`, it suppresses auto-commits for messages that result in errors and commits only for successful messages. It allows a stream to automatically replay from the last successfully processed message, in case of persistent failures.
