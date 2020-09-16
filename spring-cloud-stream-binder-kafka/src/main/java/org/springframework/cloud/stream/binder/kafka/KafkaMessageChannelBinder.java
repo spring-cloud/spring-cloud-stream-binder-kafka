@@ -657,11 +657,7 @@ public class KafkaMessageChannelBinder extends
 		// end of these won't be needed...
 		final ContainerProperties.AckMode ackMode = extendedConsumerProperties.getExtension().getAckMode();
 		if (!extendedConsumerProperties.isBatchMode()) { //if batch mode, we will ignore any ack mode.
-			if (extendedConsumerProperties.getExtension().isAckEachRecord()) {
-				messageListenerContainer.getContainerProperties()
-						.setAckMode(ContainerProperties.AckMode.RECORD);
-			}
-			else if (ackMode != null) {
+			if (ackMode != null) {
 				messageListenerContainer.getContainerProperties()
 						.setAckMode(ackMode);
 			}

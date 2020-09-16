@@ -175,6 +175,8 @@ By default, offsets are committed after all records in the batch of records retu
 The number of records returned by a poll can be controlled with the `max.poll.records` Kafka property, which is set through the consumer `configuration` property.
 Setting this to `true` may cause a degradation in performance, but doing so reduces the likelihood of redelivered records when a failure occurs.
 Also, see the binder `requiredAcks` property, which also affects the performance of committing offsets.
+This property is deprecated as of 3.1 in favor of using `ackMode`.
+If the `ackMode` is not set and batch mode is not enabled, `RECORD` ackMode will be used.
 +
 Default: `false`.
 autoCommitOffset::

@@ -1737,7 +1737,7 @@ public class KafkaBinderTests extends
 		QueueChannel inbound1 = new QueueChannel();
 		ExtendedConsumerProperties<KafkaConsumerProperties> consumerProperties = createConsumerProperties();
 		consumerProperties.getExtension().setAutoRebalanceEnabled(false);
-		consumerProperties.getExtension().setAckEachRecord(true);
+		consumerProperties.getExtension().setAckMode(ContainerProperties.AckMode.RECORD);
 		Binding<MessageChannel> consumerBinding1 = binder.bindConsumer(testDestination,
 				"test1", inbound1, consumerProperties);
 		QueueChannel inbound2 = new QueueChannel();

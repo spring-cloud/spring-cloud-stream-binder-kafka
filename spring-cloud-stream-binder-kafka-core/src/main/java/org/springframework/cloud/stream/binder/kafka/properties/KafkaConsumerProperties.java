@@ -90,6 +90,7 @@ public class KafkaConsumerProperties {
 	 * When true the offset is committed after each record, otherwise the offsets for the complete set of records
 	 * received from the poll() are committed after all records have been processed.
 	 */
+	@Deprecated
 	private boolean ackEachRecord;
 
 	/**
@@ -215,11 +216,20 @@ public class KafkaConsumerProperties {
 	 *
 	 * When true the offset is committed after each record, otherwise the offsets for the complete set of records
 	 * received from the poll() are committed after all records have been processed.
+	 *
+	 * @deprecated since 3.1 in favor of using {@link #ackMode}
 	 */
+	@Deprecated
 	public boolean isAckEachRecord() {
 		return this.ackEachRecord;
 	}
 
+	/**
+	 * @param ackEachRecord
+	 *
+	 * @deprecated in favor of using {@link #ackMode}
+	 */
+	@Deprecated
 	public void setAckEachRecord(boolean ackEachRecord) {
 		this.ackEachRecord = ackEachRecord;
 	}
