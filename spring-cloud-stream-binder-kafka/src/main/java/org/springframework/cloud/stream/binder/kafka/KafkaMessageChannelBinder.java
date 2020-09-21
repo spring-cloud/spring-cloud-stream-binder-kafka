@@ -655,13 +655,18 @@ public class KafkaMessageChannelBinder extends
 		}
 		messageListenerContainer.setBeanName(destination + ".container");
 		// end of these won't be needed...
-		final ContainerProperties.AckMode ackMode = extendedConsumerProperties.getExtension().getAckMode();
-		if (!extendedConsumerProperties.isBatchMode()) { //if batch mode, we will ignore any ack mode.
-			if (ackMode != null) {
+		ContainerProperties.AckMode ackMode = extendedConsumerProperties.getExtension().getAckMode();
+		if (ackMode == null && extendedConsumerProperties.getExtension().isAckEachRecord()) {
+			ackMode = ContainerProperties.AckMode.RECORD;
+		}
+		if (ackMode != null) {
+			if ((extendedConsumerProperties.isBatchMode() && ackMode != ContainerProperties.AckMode.RECORD) ||
+					!extendedConsumerProperties.isBatchMode()) {
 				messageListenerContainer.getContainerProperties()
 						.setAckMode(ackMode);
 			}
 		}
+
 		if (this.logger.isDebugEnabled()) {
 			this.logger.debug("Listened partitions: "
 					+ StringUtils.collectionToCommaDelimitedString(listenedPartitions));
@@ -1277,7 +1282,6 @@ public class KafkaMessageChannelBinder extends
 									((MessagingException) message.getPayload())
 											.getFailedMessage());
 					if (ack != null) {
-
 						if (isAutoCommitOnError(properties)) {
 							ack.acknowledge(AcknowledgmentCallback.Status.REJECT);
 						}
