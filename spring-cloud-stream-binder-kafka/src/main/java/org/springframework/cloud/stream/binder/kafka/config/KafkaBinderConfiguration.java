@@ -120,7 +120,10 @@ public class KafkaBinderConfiguration {
 			ObjectProvider<KafkaBindingRebalanceListener> rebalanceListener,
 			ObjectProvider<DlqPartitionFunction> dlqPartitionFunction,
 			ObjectProvider<DlqDestinationResolver> dlqDestinationResolver,
-			ObjectProvider<ClientFactoryCustomizer> clientFactoryCustomizer) {
+			ObjectProvider<ClientFactoryCustomizer> clientFactoryCustomizer,
+			ObjectProvider<ConsumerConfigCustomizer> consumerConfigCustomizer,
+			ObjectProvider<ProducerConfigCustomizer> producerConfigCustomizer
+			) {
 		KafkaMessageChannelBinder kafkaMessageChannelBinder = new KafkaMessageChannelBinder(
 				configurationProperties, provisioningProvider,
 				listenerContainerCustomizer, sourceCustomizer, rebalanceListener.getIfUnique(),
@@ -131,6 +134,8 @@ public class KafkaBinderConfiguration {
 		kafkaMessageChannelBinder.setProducerMessageHandlerCustomizer(messageHandlerCustomizer);
 		kafkaMessageChannelBinder.setConsumerEndpointCustomizer(consumerCustomizer);
 		kafkaMessageChannelBinder.setClientFactoryCustomizer(clientFactoryCustomizer.getIfUnique());
+		kafkaMessageChannelBinder.setConsumerConfigCustomizer(consumerConfigCustomizer.getIfUnique());
+		kafkaMessageChannelBinder.setProducerConfigCustomizer(producerConfigCustomizer.getIfUnique());
 		return kafkaMessageChannelBinder;
 	}
 
