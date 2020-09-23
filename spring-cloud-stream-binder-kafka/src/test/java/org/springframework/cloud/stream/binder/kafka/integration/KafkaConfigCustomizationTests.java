@@ -100,23 +100,17 @@ public class KafkaConfigCustomizationTests {
 
 		@Bean
 		public ConsumerConfigCustomizer consumerConfigCustomizer() {
-			return new ConsumerConfigCustomizer() {
-				@Override
-				public void configure(Map<String, Object> consumerProperties) {
-					consumerProperties.put(ConsumerConfig.INTERCEPTOR_CLASSES_CONFIG, MyConsumerInterceptor.class.getName());
-					consumerProperties.put("foo.bean", foo());
-				}
+			return consumerProperties -> {
+				consumerProperties.put(ConsumerConfig.INTERCEPTOR_CLASSES_CONFIG, MyConsumerInterceptor.class.getName());
+				consumerProperties.put("foo.bean", foo());
 			};
 		}
 
 		@Bean
 		public ProducerConfigCustomizer producerConfigCustomizer() {
-			return new ProducerConfigCustomizer() {
-				@Override
-				public void configure(Map<String, Object> producerProperties) {
-					producerProperties.put(ProducerConfig.INTERCEPTOR_CLASSES_CONFIG, MyProducerInterceptor.class.getName());
-					producerProperties.put("foo.bean", foo());
-				}
+			return producerProperties -> {
+				producerProperties.put(ProducerConfig.INTERCEPTOR_CLASSES_CONFIG, MyProducerInterceptor.class.getName());
+				producerProperties.put("foo.bean", foo());
 			};
 		}
 
