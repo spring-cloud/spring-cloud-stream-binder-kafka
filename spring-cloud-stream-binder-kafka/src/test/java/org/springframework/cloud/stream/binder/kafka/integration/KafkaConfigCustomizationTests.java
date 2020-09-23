@@ -56,9 +56,10 @@ import static org.assertj.core.api.Assertions.assertThat;
  * Based on: https://github.com/spring-projects/spring-kafka/issues/897#issuecomment-466060097
  */
 @RunWith(SpringRunner.class)
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE, properties = "spring.cloud.function.definition=process")
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE, properties = {"spring.cloud.function.definition=process",
+		"spring.cloud.stream.bindings.process-in-0.group=KafkaConfigCustomizationTests.group"})
 @DirtiesContext
-public class KafkaConfigCustomizationTest {
+public class KafkaConfigCustomizationTests {
 
 	private static final String KAFKA_BROKERS_PROPERTY = "spring.cloud.stream.kafka.binder.brokers";
 
@@ -128,7 +129,7 @@ public class KafkaConfigCustomizationTest {
 	public static class Foo {
 
 		public void foo(String what) {
-			KafkaConfigCustomizationTest.countDownLatch.countDown();
+			KafkaConfigCustomizationTests.countDownLatch.countDown();
 		}
 
 	}

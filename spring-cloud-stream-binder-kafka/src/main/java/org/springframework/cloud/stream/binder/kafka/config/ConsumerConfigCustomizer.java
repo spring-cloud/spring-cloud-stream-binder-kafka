@@ -25,8 +25,8 @@ import java.util.Map;
  * @author Soby Chacko
  * @since 3.0.9
  */
+@FunctionalInterface
 public interface ConsumerConfigCustomizer {
 
-	default void configure(Map<String, Object> consumerProperties) {
-	}
+	void configure(Map<String, Object> consumerProperties);
 }
