@@ -138,9 +138,8 @@ public class KafkaBinderMetrics
 
 	private Runnable computeUnconsumedMessagesRunnable(String topic, String group, Map<String, Consumer<?, ?>> metadataConsumers) {
 		return () -> {
-			long lag = 0;
 			try {
-				lag = findAnyLag(topic, group, lag, metadataConsumers);
+				long lag = findTotalTopicGroupLag(topic, group, this.metadataConsumers);
 				this.unconsumedMessages.put(topic + "-" + group, lag);
 			}
 			catch (Exception ex) {
@@ -150,12 +149,12 @@ public class KafkaBinderMetrics
 	}
 
 	private long computeAndGetUnconsumedMessages(String topic, String group) {
-		ExecutorService exec = Executors.newSingleThreadExecutor();
+		ExecutorService exec = Executors.newCachedThreadPool();
 		Future<Long> future = exec.submit(() -> {
 
 			long lag = 0;
 			try {
-				lag = findAnyLag(topic, group, lag, this.metadataConsumers);
+				lag = findTotalTopicGroupLag(topic, group, this.metadataConsumers);
 			}
 			catch (Exception ex) {
 				LOG.debug("Cannot generate metric for topic: " + topic, ex);
@@ -177,7 +176,8 @@ public class KafkaBinderMetrics
 		}
 	}
 
-	private long findAnyLag(String topic, String group, long lag, Map<String, Consumer<?, ?>> metadataConsumers) {
+	private long findTotalTopicGroupLag(String topic, String group, Map<String, Consumer<?, ?>> metadataConsumers) {
+		long lag = 0;
 		Consumer<?, ?> metadataConsumer = metadataConsumers.computeIfAbsent(
 				group,
 				(g) -> createConsumerFactory().createConsumer(g, "monitoring"));
@@ -230,7 +230,7 @@ public class KafkaBinderMetrics
 	@Override
 	public void onApplicationEvent(BindingCreatedEvent event) {
 		if (this.meterRegistry != null) {
-			// it multiple times
+			// It is safe to call bindTo multiple times, since meters are idempotent when called with the same arguments
 			this.bindTo(this.meterRegistry);
 		}
 	}
