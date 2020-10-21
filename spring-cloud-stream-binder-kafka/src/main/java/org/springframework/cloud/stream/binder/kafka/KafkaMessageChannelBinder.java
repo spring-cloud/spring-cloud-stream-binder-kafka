@@ -71,6 +71,7 @@ import org.springframework.cloud.stream.binder.kafka.properties.KafkaConsumerPro
 import org.springframework.cloud.stream.binder.kafka.properties.KafkaExtendedBindingProperties;
 import org.springframework.cloud.stream.binder.kafka.properties.KafkaProducerProperties;
 import org.springframework.cloud.stream.binder.kafka.provisioning.KafkaTopicProvisioner;
+import org.springframework.cloud.stream.binder.kafka.utils.DlqDestinationResolver;
 import org.springframework.cloud.stream.binder.kafka.utils.DlqPartitionFunction;
 import org.springframework.cloud.stream.binding.MessageConverterConfigurer.PartitioningInterceptor;
 import org.springframework.cloud.stream.config.ListenerContainerCustomizer;
@@ -214,6 +215,8 @@ public class KafkaMessageChannelBinder extends
 
 	private final DlqPartitionFunction dlqPartitionFunction;
 
+	private final DlqDestinationResolver dlqDestinationResolver;
+
 	private final Map<ConsumerDestination, ContainerProperties.AckMode> ackModeInfo = new ConcurrentHashMap<>();
 
 	private ProducerListener<byte[], byte[]> producerListener;
@@ -226,7 +229,8 @@ public class KafkaMessageChannelBinder extends
 			KafkaBinderConfigurationProperties configurationProperties,
 			KafkaTopicProvisioner provisioningProvider) {
 
-		this(configurationProperties, provisioningProvider, null, null, null, null);
+		this(configurationProperties, provisioningProvider, null, null, null,
+				null, null);
 	}
 
 	public KafkaMessageChannelBinder(
@@ -235,7 +239,8 @@ public class KafkaMessageChannelBinder extends
 			ListenerContainerCustomizer<AbstractMessageListenerContainer<?, ?>> containerCustomizer,
 			KafkaBindingRebalanceListener rebalanceListener) {
 
-		this(configurationProperties, provisioningProvider, containerCustomizer, null, rebalanceListener, null);
+		this(configurationProperties, provisioningProvider, containerCustomizer, null, rebalanceListener,
+				null, null);
 	}
 
 	public KafkaMessageChannelBinder(
@@ -244,7 +249,8 @@ public class KafkaMessageChannelBinder extends
 			ListenerContainerCustomizer<AbstractMessageListenerContainer<?, ?>> containerCustomizer,
 			MessageSourceCustomizer<KafkaMessageSource<?, ?>> sourceCustomizer,
 			KafkaBindingRebalanceListener rebalanceListener,
-			DlqPartitionFunction dlqPartitionFunction) {
+			DlqPartitionFunction dlqPartitionFunction,
+			DlqDestinationResolver dlqDestinationResolver) {
 
 		super(headersToMap(configurationProperties), provisioningProvider,
 				containerCustomizer, sourceCustomizer);
@@ -261,9 +267,8 @@ public class KafkaMessageChannelBinder extends
 			this.transactionTemplate = null;
 		}
 		this.rebalanceListener = rebalanceListener;
-		this.dlqPartitionFunction = dlqPartitionFunction != null
-				? dlqPartitionFunction
-				: null;
+		this.dlqPartitionFunction = dlqPartitionFunction;
+		this.dlqDestinationResolver = dlqDestinationResolver;
 	}
 
 	private static String[] headersToMap(
@@ -1177,9 +1182,7 @@ public class KafkaMessageChannelBinder extends
 						}
 					}
 				}
-				String dlqName = StringUtils.hasText(kafkaConsumerProperties.getDlqName())
-						? kafkaConsumerProperties.getDlqName()
-						: "error." + record.topic() + "." + group;
+
 				MessageHeaders headers;
 				if (message instanceof ErrorMessage) {
 					final ErrorMessage errorMessage = (ErrorMessage) message;
@@ -1194,6 +1197,10 @@ public class KafkaMessageChannelBinder extends
 				else {
 					headers = message.getHeaders();
 				}
+				String dlqName = this.dlqDestinationResolver != null ?
+						this.dlqDestinationResolver.apply(recordToSend.get(), new Exception(throwable)) : StringUtils.hasText(kafkaConsumerProperties.getDlqName())
+						? kafkaConsumerProperties.getDlqName()
+						: "error." + record.topic() + "." + group;
 				if (this.transactionTemplate != null) {
 					Throwable throwable2 = throwable;
 					this.transactionTemplate.executeWithoutResult(status -> {
