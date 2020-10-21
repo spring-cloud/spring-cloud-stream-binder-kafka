@@ -854,7 +854,7 @@ public DlqDestinationResolver dlqDestinationResolver() {
 ----
 
 One important thing to keep in mind when providing an implementation for `DlqDestinationResolver` is that the provisioner in the binder will not auto create topics for the application.
-This is because there is no way for the binder to infer all the DLQ topics the implementation is creating or their names.
+This is because there is no way for the binder to infer the names of all the DLQ topics the implementation might send to.
 Therefore, if you provide DLQ names using this strategy, it is the application's responsibility to ensure that those topics are created beforehand.
 
 If `DlqDestinationResolver` is present in the application as a bean, that takes higher prcedence.
