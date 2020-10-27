@@ -364,7 +364,7 @@ In the case of a regular processor (`Function<String, String>` or `Function<Mess
 `spring.cloud.stream.kafka.bindings.<output-binding-name>.producer.messageKeyExpression: headers['kafka_receivedMessageKey']`
 There is an important caveat to keep in mind for reactive functions.
 In that case, it is up to the application to manually copy the headers from the incoming messages to outbound messages.
-Otherwise, this property will not have any effect on reactive functions.
+You can set the header, e.g. `myKey` and use `headers['myKey']` as suggested above or, for convenience, simply set the `KafkaHeaders.MESSAGE_KEY` header, and you do not need to set this property at all.
 +
 Default: `none`.
 headerPatterns::
@@ -753,4 +753,3 @@ you can implement the following customizers.
 Both of these interfaces provide a way to configure the config map used for consumer and producer properties.
 For example, if you want to gain access to a bean that is defined at the application level, you can inject that in the implementation of the `configure` method.
 When the binder discovers that these customizers are available as beans, it will invoke the `configure` method right before creating the consumer and producer factories.
-
