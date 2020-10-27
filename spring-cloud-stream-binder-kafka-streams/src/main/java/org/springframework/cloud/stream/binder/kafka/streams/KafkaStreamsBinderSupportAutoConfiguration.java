@@ -361,6 +361,14 @@ public class KafkaStreamsBinderSupportAutoConfiguration {
 	}
 
 	@Bean
+	public CriticalPathRetryingKafkaStreamsDelegate<?, ?> retryingKafkaStreamsProcessorDelegate(
+			@Qualifier("binderConfigurationProperties")
+			@Nullable KafkaStreamsBinderConfigurationProperties kafkaStreamsBinderConfigurationProperties,
+			KafkaProperties kafkaProperties) {
+		return new CriticalPathRetryingKafkaStreamsDelegate<>(kafkaStreamsBinderConfigurationProperties, kafkaProperties);
+	}
+
+	@Bean
 	public KafkaStreamsBindingInformationCatalogue kafkaStreamsBindingInformationCatalogue() {
 		return new KafkaStreamsBindingInformationCatalogue();
 	}
