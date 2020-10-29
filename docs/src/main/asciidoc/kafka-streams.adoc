@@ -932,18 +932,24 @@ There are scenarios in which you might want to retry parts of your business logi
 There maybe an external call to a relational database or invoking a REST endpoint from the Kafka Streams processor.
 These calls can fail for various reasons such as network issues or remote service unavailability.
 More often, these failures may self resolve if you can try them again.
-Kafka Streams binder provides an API that allows you to wrap the critical sections of the business logic in retrying temlate.
-The API is `CriticalPathRetryingKafkaStreamsDelegate` and applications can inject this and use it within the processor.
-Following are some examples of using this.
+By default, Kafka Streams binder creates `RetryTemplate` beans for all the input bindings.
 
-First, we show the usage of the API method that can only be used as a terminal operation.
-This means that, once the method is called, your processing is complete and no further operations can be continued.
-An example of a situation where this is useful is when you need to receive a stream of data, do some transformations and then insert the result into a relational database.
-Here is a template to do that.
+If the function has the following signature,
+```
+@Bean
+public java.util.function.Consumer<KStream<Object, String>> process()
+```
+and with default binding name, the `RetryTemplate` will be registered as `process-in-0-RetryTemplate`.
+This is following the convention of binding name (`process-in-0`) followed by the literal `-RetryTemplate`.
+In the case of multiple input bindings, there will be a separate `RetrtyTempate` bean will be available.
+If there is a custom `RetryTemplate` bean is available in the application and provided through `spring.cloud.stream.bindings.<binding-name>.consumer.retryTemplateName`, then that takes precedence over any input binding level retry templates.
+
+Once the `RetryTemplate` from the binding is injected in the application, that can be used to retry any critical sections of the application.
+Here is an example:
 
 ```
 @Bean
-public java.util.function.Consumer<KStream<Object, String>> process(CriticalPathRetryingKafkaStreamsDelegate<?, ?> criticalPathRetryingKafkaStreamsDelegate) {
+public java.util.function.Consumer<KStream<Object, String>> process(@Lazy @Qualifier("process-in-0-RetryTemplate") RetryTemplate retryTemplate) {
 
     return input -> input
             .process(() -> new Processor<Object, String>() {
@@ -953,8 +959,8 @@ public java.util.function.Consumer<KStream<Object, String>> process(CriticalPath
 
                 @Override
                 public void process(Object o, String s) {
-                    criticalPathRetryingKafkaStreamsDelegate.retryCriticalPath(() -> {
-                        //critial business logic goes here.
+                    retryTemplate.execute(context -> {
+                       //Critical business logic goes here.
                     });
                 }
 
@@ -965,44 +971,51 @@ public java.util.function.Consumer<KStream<Object, String>> process(CriticalPath
 }
 ```
 
-As this is a termainl operation, it is recommended to use this API with low level Processor API in Kafka Streams.
-
-Here is another example of using a different API from this class, but this time it allows you to use it on non-termainal operation.
-It provides a result, using which further processing can continue.
+Or you can use a custom `RetryTemplate` as below.
 
 ```
-@Bean
-public java.util.function.Function<KStream<Object, String>, KStream<Object, String>> functionProcess() {
+@EnableAutoConfiguration
+public static class CustomRetryTemplateApp {
 
-return input ->
-        input.transform(() -> new Transformer<Object, String, KeyValue<Object, String>>() {
-            @Override
-            public void init(ProcessorContext processorContext) {
-            }
+    @Bean
+    @StreamRetryTemplate
+    RetryTemplate fooRetryTemplate() {
+        RetryTemplate retryTemplate = new RetryTemplate();
 
-            @Override
-            public KeyValue<Object, String> transform(Object o, String s) {
-                return criticalPathRetryingKafkaStreamsDelegate.retryCriticalPathAndTransform(() -> {
-                    //critial business logic goes here.
-                    return new KeyValue(..);
+        RetryPolicy retryPolicy = new SimpleRetryPolicy(4);
+        FixedBackOffPolicy backOffPolicy = new FixedBackOffPolicy();
+        backOffPolicy.setBackOffPeriod(1);
+
+        retryTemplate.setBackOffPolicy(backOffPolicy);
+        retryTemplate.setRetryPolicy(retryPolicy);
+
+        return retryTemplate;
+    }
+
+    @Bean
+    public java.util.function.Consumer<KStream<Object, String>> process() {
+
+        return input -> input
+                .process(() -> new Processor<Object, String>() {
+                    @Override
+                    public void init(ProcessorContext processorContext) {
+                    }
+
+                    @Override
+                    public void process(Object o, String s) {
+                        fooRetryTemplate().execute(context -> {
+                           //Critical business logic goes here.
+                        });
+
+                    }
+
+                    @Override
+                    public void close() {
+                    }
                 });
-            }
-
-            @Override
-            public void close() {
-            }
-        })
-        .map(KeyValue::new);
+    }
 }
 ```
-
-As we noted above, the result of the `transform` call is used for further processing (the `map` call in this case).
-
-In both of these instances, the code that is delegated to the API as critical section gets retried.
-Here are the binder properties that you can use to configure the retries.
-
-`spring.cloud.stream.kafka.streams.binder.critical-path-retry.max-attempts` (Default is `1`).
-`spring.cloud.stream.kafka.streams.binder.critical-path-retry.backoff-period` (Default is 1 second)
 
 === State Store
 
