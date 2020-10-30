@@ -941,10 +941,10 @@ public java.util.function.Consumer<KStream<Object, String>> process()
 ```
 and with default binding name, the `RetryTemplate` will be registered as `process-in-0-RetryTemplate`.
 This is following the convention of binding name (`process-in-0`) followed by the literal `-RetryTemplate`.
-In the case of multiple input bindings, there will be a separate `RetrtyTemplate` bean available per binding.
+In the case of multiple input bindings, there will be a separate `RetryTemplate` bean available per binding.
 If there is a custom `RetryTemplate` bean available in the application and provided through `spring.cloud.stream.bindings.<binding-name>.consumer.retryTemplateName`, then that takes precedence over any input binding level retry template configuration properties.
 
-OOnce the `RetryTemplate` from the binding is injected into the application, it can be used to retry any critical sections of the application.
+Once the `RetryTemplate` from the binding is injected into the application, it can be used to retry any critical sections of the application.
 Here is an example:
 
 ```
