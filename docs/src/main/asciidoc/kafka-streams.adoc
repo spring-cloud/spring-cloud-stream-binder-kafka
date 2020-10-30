@@ -941,10 +941,10 @@ public java.util.function.Consumer<KStream<Object, String>> process()
 ```
 and with default binding name, the `RetryTemplate` will be registered as `process-in-0-RetryTemplate`.
 This is following the convention of binding name (`process-in-0`) followed by the literal `-RetryTemplate`.
-In the case of multiple input bindings, there will be a separate `RetrtyTempate` bean available per binding.
-If there is a custom `RetryTemplate` bean is available in the application and provided through `spring.cloud.stream.bindings.<binding-name>.consumer.retryTemplateName`, then that takes precedence over any input binding level retry templates.
+In the case of multiple input bindings, there will be a separate `RetrtyTemplate` bean available per binding.
+If there is a custom `RetryTemplate` bean available in the application and provided through `spring.cloud.stream.bindings.<binding-name>.consumer.retryTemplateName`, then that takes precedence over any input binding level retry template configuration properties.
 
-Once the `RetryTemplate` from the binding is injected in the application, that can be used to retry any critical sections of the application.
+OOnce the `RetryTemplate` from the binding is injected into the application, it can be used to retry any critical sections of the application.
 Here is an example:
 
 ```
@@ -1016,6 +1016,19 @@ public static class CustomRetryTemplateApp {
     }
 }
 ```
+
+Note that when retries are exhausted, by default, the last exception will be thrown, causing the processor to terminate.
+If you wish to handle the exception and continue processing, you can add a RecoveryCallback to the `execute` method:
+Here is an example.
+```
+retryTemplate.execute(context -> {
+    //Critical business logic goes here.
+    }, context -> {
+       //Recovery logic goes here.
+       return null;
+    ));
+```
+Refer to the https://github.com/spring-projects/spring-retry[Spring Retry] project for more information about the RetryTemplate, retry policies, backoff policies and more.
 
 === State Store
 
