@@ -63,10 +63,6 @@ public class KafkaStreamsBinderConfigurationProperties
 
 	private StateStoreRetry stateStoreRetry = new StateStoreRetry();
 
-	private CriticalPathRetry criticalPathRetry = new CriticalPathRetry();
-
-	private boolean dlqOnRuntimeError;
-
 	private Map<String, Functions> functions = new HashMap<>();
 
 	private KafkaStreamsBinderConfigurationProperties.SerdeError serdeError;
@@ -93,22 +89,6 @@ public class KafkaStreamsBinderConfigurationProperties
 
 	public void setStateStoreRetry(StateStoreRetry stateStoreRetry) {
 		this.stateStoreRetry = stateStoreRetry;
-	}
-
-	public CriticalPathRetry getCriticalPathRetry() {
-		return criticalPathRetry;
-	}
-
-	public void setCriticalPathRetry(CriticalPathRetry criticalPathRetry) {
-		this.criticalPathRetry = criticalPathRetry;
-	}
-
-	public boolean isDlqOnRuntimeError() {
-		return dlqOnRuntimeError;
-	}
-
-	public void setDlqOnRuntimeError(boolean dlqOnRuntimeError) {
-		this.dlqOnRuntimeError = dlqOnRuntimeError;
 	}
 
 	public String getApplicationId() {
@@ -147,7 +127,7 @@ public class KafkaStreamsBinderConfigurationProperties
 		this.deserializationExceptionHandler = deserializationExceptionHandler;
 	}
 
-	public static class RetryProperties {
+	public static class StateStoreRetry {
 
 		private int maxAttempts = 1;
 
@@ -168,14 +148,6 @@ public class KafkaStreamsBinderConfigurationProperties
 		public void setBackoffPeriod(long backoffPeriod) {
 			this.backoffPeriod = backoffPeriod;
 		}
-	}
-
-	public static class StateStoreRetry extends RetryProperties {
-
-	}
-
-	public static class CriticalPathRetry extends RetryProperties {
-
 	}
 
 	public static class Functions {

@@ -941,7 +941,7 @@ public java.util.function.Consumer<KStream<Object, String>> process()
 ```
 and with default binding name, the `RetryTemplate` will be registered as `process-in-0-RetryTemplate`.
 This is following the convention of binding name (`process-in-0`) followed by the literal `-RetryTemplate`.
-In the case of multiple input bindings, there will be a separate `RetrtyTempate` bean will be available.
+In the case of multiple input bindings, there will be a separate `RetrtyTempate` bean available per binding.
 If there is a custom `RetryTemplate` bean is available in the application and provided through `spring.cloud.stream.bindings.<binding-name>.consumer.retryTemplateName`, then that takes precedence over any input binding level retry templates.
 
 Once the `RetryTemplate` from the binding is injected in the application, that can be used to retry any critical sections of the application.
@@ -1636,15 +1636,6 @@ Default: 1
 
 stateStoreRetry.backoffPeriod::
   Backoff period when trying to connect to a state store on a retry.
-+
-Default: 1000 ms
-critialPathRetry.maxAttempts::
-Max attempts for how many times a critical section in the application gets retried using `CriticalPathRetryingKafkaStreamsDelegate`.
-+
-Default: 1
-
-stateStoreRetry.backoffPeriod::
-Backoff period when retrying a critical section using `CriticalPathRetryingKafkaStreamsDelegate`.
 +
 Default: 1000 ms
 
