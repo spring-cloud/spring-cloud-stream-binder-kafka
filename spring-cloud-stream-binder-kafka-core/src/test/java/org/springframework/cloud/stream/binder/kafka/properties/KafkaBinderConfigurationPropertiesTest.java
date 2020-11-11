@@ -105,4 +105,36 @@ public class KafkaBinderConfigurationPropertiesTest {
 
 		assertThat(mergedConsumerConfiguration).doesNotContainKeys(ConsumerConfig.GROUP_ID_CONFIG);
 	}
+
+	@Test
+	public void testCertificateFilesAreConvertedToAbsolutePathsFromClassPathResources() {
+		KafkaProperties kafkaProperties = new KafkaProperties();
+		KafkaBinderConfigurationProperties kafkaBinderConfigurationProperties =
+				new KafkaBinderConfigurationProperties(kafkaProperties);
+		final Map<String, String> configuration = kafkaBinderConfigurationProperties.getConfiguration();
+		configuration.put("ssl.truststore.location", "classpath:testclient.truststore");
+		configuration.put("ssl.keystore.location", "classpath:testclient.keystore");
+
+		kafkaBinderConfigurationProperties.getKafkaConnectionString();
+
+		assertThat(configuration.get("ssl.truststore.location")).isEqualTo("/tmp/testclient.truststore");
+		assertThat(configuration.get("ssl.keystore.location")).isEqualTo("/tmp/testclient.keystore");
+	}
+
+	@Test
+	public void testCertificateFilesAreConvertedToGivenAbsolutePathsFromClassPathResources() {
+		KafkaProperties kafkaProperties = new KafkaProperties();
+		KafkaBinderConfigurationProperties kafkaBinderConfigurationProperties =
+				new KafkaBinderConfigurationProperties(kafkaProperties);
+		final Map<String, String> configuration = kafkaBinderConfigurationProperties.getConfiguration();
+		configuration.put("ssl.truststore.location", "classpath:testclient.truststore");
+		configuration.put("ssl.keystore.location", "classpath:testclient.keystore");
+		kafkaBinderConfigurationProperties.setTruststoreLocationOnFileSystem("/var/tmp/foo.truststore");
+		kafkaBinderConfigurationProperties.setKeystoreLocationOnFileSystem("/var/tmp/bar.keystore");
+
+		kafkaBinderConfigurationProperties.getKafkaConnectionString();
+
+		assertThat(configuration.get("ssl.truststore.location")).isEqualTo("/var/tmp/foo.truststore");
+		assertThat(configuration.get("ssl.keystore.location")).isEqualTo("/var/tmp/bar.keystore");
+	}
 }

@@ -149,6 +149,22 @@ Flag to set the binder health as `down`, when any partitions on the topic, regar
 +
 Default: `false`.
 
+spring.cloud.stream.kafka.binder.truststoreLocationOnFileSystem::
+When truststore location is given as classpath URL (classpath:), then the binder moves the resource from the classpath location inside the JAR file to a location on the filesystem.
+The file will be moved to the location specified as the value for this property.
+It can be specified as the full absolute path of the file to move to.
+If this value is not set and the truststore is provided as a classpath resource, then it will be moved to system's /tmp directory with the same name as it is in the classpath.
++
+Default: none.
+
+spring.cloud.stream.kafka.binder.keystoreLocationOnFileSystem::
+When keystore location is given as classpath URL (classpath:), then the binder moves the resource from the classpath location inside the JAR file to a location on the filesystem.
+The file will be moved to the location specified as the value for this property.
+It can be specified as the full absolute path of the file to move to.
+If this value is not set and the keystore is provided as a classpath resource, then it will be moved to system's /tmp directory with the same name as it is in the classpath.
++
+Default: none.
+
 [[kafka-consumer-properties]]
 ==== Kafka Consumer Properties
 

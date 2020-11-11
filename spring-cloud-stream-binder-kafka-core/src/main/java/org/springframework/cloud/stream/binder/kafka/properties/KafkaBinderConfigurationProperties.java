@@ -16,6 +16,11 @@
 
 package org.springframework.cloud.stream.binder.kafka.properties;
 
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.HashMap;
@@ -35,6 +40,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.cloud.stream.binder.HeaderMode;
 import org.springframework.cloud.stream.binder.ProducerProperties;
 import org.springframework.cloud.stream.binder.kafka.properties.KafkaProducerProperties.CompressionType;
+import org.springframework.core.io.DefaultResourceLoader;
+import org.springframework.core.io.Resource;
 import org.springframework.expression.Expression;
 import org.springframework.util.Assert;
 import org.springframework.util.ObjectUtils;
@@ -118,6 +125,24 @@ public class KafkaBinderConfigurationProperties {
 	 */
 	private Duration authorizationExceptionRetryInterval;
 
+	/**
+	 * When truststore location is given as classpath URL (classpath:), then the binder
+	 * moves the resource from the classpath location inside the JAR to a location on
+	 * the filesystem. If this value is set, then this location is used, otherwise, the
+	 * truststore file is moved to system's /tmp directory with the same name as it is in
+	 * the classpath.
+	 */
+	private String truststoreLocationOnFileSystem;
+
+	/**
+	 * When keystore location is given as classpath URL (classpath:), then the binder
+	 * moves the resource from the classpath location inside the JAR to a location on
+	 * the filesystem. If this value is set, then this location is used, otherwise, the
+	 * keystore file is moved to system's /tmp directory with the same name as it is in
+	 * the classpath.
+	 */
+	private String keystoreLocationOnFileSystem;
+
 	public KafkaBinderConfigurationProperties(KafkaProperties kafkaProperties) {
 		Assert.notNull(kafkaProperties, "'kafkaProperties' cannot be null");
 		this.kafkaProperties = kafkaProperties;
@@ -132,7 +157,42 @@ public class KafkaBinderConfigurationProperties {
 	}
 
 	public String getKafkaConnectionString() {
+		// We need to do a check on certificate file locations to see if they are given as classpath resources.
+		// If that is the case, then we will move them to a file system location and use those as the certificate locations.
+		// This is due to a limitation in Kafka itself in which it doesn't allow reading certificate resources from the classpath.
+		// See this: https://issues.apache.org/jira/browse/KAFKA-7685
+		// and this: https://cwiki.apache.org/confluence/display/KAFKA/KIP-398%3A+Support+reading+trust+store+from+classpath
+		moveCertsToFileSystemIfNecessary();
+
 		return toConnectionString(this.brokers, this.defaultBrokerPort);
+	}
+
+	private void moveCertsToFileSystemIfNecessary() {
+		try {
+			final String trustStoreLocation = this.configuration.get("ssl.truststore.location");
+			if (trustStoreLocation != null && trustStoreLocation.startsWith("classpath:")) {
+				final String fileSystemLocation = moveCertToFileSystem(trustStoreLocation, this.truststoreLocationOnFileSystem);
+				// Overriding the value with absolute filesystem path.
+				this.configuration.put("ssl.truststore.location", fileSystemLocation);
+			}
+			final String keyStoreLocation = this.configuration.get("ssl.keystore.location");
+			if (keyStoreLocation != null && keyStoreLocation.startsWith("classpath:")) {
+				final String fileSystemLocation = moveCertToFileSystem(keyStoreLocation, this.keystoreLocationOnFileSystem);
+				// Overriding the value with absolute filesystem path.
+				this.configuration.put("ssl.keystore.location", fileSystemLocation);
+			}
+		}
+		catch (Exception e) {
+			throw new IllegalStateException(e);
+		}
+	}
+
+	private String moveCertToFileSystem(String classpathLocation, String fileSystemLocation) throws IOException {
+		Resource resource = new DefaultResourceLoader().getResource(classpathLocation);
+		File targetFile = new File(fileSystemLocation != null ? fileSystemLocation : "/tmp/" + resource.getFilename());
+		final InputStream inputStream = resource.getInputStream();
+		Files.copy(inputStream, targetFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+		return targetFile.getAbsolutePath();
 	}
 
 	public String getDefaultKafkaConnectionString() {
@@ -361,6 +421,22 @@ public class KafkaBinderConfigurationProperties {
 
 	public void setConsiderDownWhenAnyPartitionHasNoLeader(boolean considerDownWhenAnyPartitionHasNoLeader) {
 		this.considerDownWhenAnyPartitionHasNoLeader = considerDownWhenAnyPartitionHasNoLeader;
+	}
+
+	public String getTruststoreLocationOnFileSystem() {
+		return this.truststoreLocationOnFileSystem;
+	}
+
+	public void setTruststoreLocationOnFileSystem(String truststoreLocationOnFileSystem) {
+		this.truststoreLocationOnFileSystem = truststoreLocationOnFileSystem;
+	}
+
+	public String getKeystoreLocationOnFileSystem() {
+		return this.keystoreLocationOnFileSystem;
+	}
+
+	public void setKeystoreLocationOnFileSystem(String keystoreLocationOnFileSystem) {
+		this.keystoreLocationOnFileSystem = keystoreLocationOnFileSystem;
 	}
 
 	/**
