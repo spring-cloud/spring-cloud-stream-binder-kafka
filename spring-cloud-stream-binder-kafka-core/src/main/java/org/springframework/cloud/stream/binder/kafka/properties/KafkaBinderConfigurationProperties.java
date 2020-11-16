@@ -128,22 +128,12 @@ public class KafkaBinderConfigurationProperties {
 	private Duration authorizationExceptionRetryInterval;
 
 	/**
-	 * When truststore location is given as classpath URL (classpath:), then the binder
+	 * When certificate location is given as classpath URL (classpath:), then the binder
 	 * moves the resource from the classpath location inside the JAR to a location on
 	 * the filesystem. If this value is set, then this location is used, otherwise, the
-	 * truststore file is moved to the directory returned by java.io.tmpdir with the same
-	 * name as it is in the classpath.
+	 * certificate file is moved to the directory returned by java.io.tmpdir.
 	 */
-	private String truststoreLocationOnFileSystem;
-
-	/**
-	 * When keystore location is given as classpath URL (classpath:), then the binder
-	 * moves the resource from the classpath location inside the JAR to a location on
-	 * the filesystem. If this value is set, then this location is used, otherwise, the
-	 * keystore file is moved to the directory returned by java.io.tmpdir with the same
-	 * name as it is in the classpath.
-	 */
-	private String keystoreLocationOnFileSystem;
+	private String certificateLocationOnFilesystem;
 
 	public KafkaBinderConfigurationProperties(KafkaProperties kafkaProperties) {
 		Assert.notNull(kafkaProperties, "'kafkaProperties' cannot be null");
@@ -173,13 +163,13 @@ public class KafkaBinderConfigurationProperties {
 		try {
 			final String trustStoreLocation = this.configuration.get("ssl.truststore.location");
 			if (trustStoreLocation != null && trustStoreLocation.startsWith("classpath:")) {
-				final String fileSystemLocation = moveCertToFileSystem(trustStoreLocation, this.truststoreLocationOnFileSystem);
+				final String fileSystemLocation = moveCertToFileSystem(trustStoreLocation, this.certificateLocationOnFilesystem);
 				// Overriding the value with absolute filesystem path.
 				this.configuration.put("ssl.truststore.location", fileSystemLocation);
 			}
 			final String keyStoreLocation = this.configuration.get("ssl.keystore.location");
 			if (keyStoreLocation != null && keyStoreLocation.startsWith("classpath:")) {
-				final String fileSystemLocation = moveCertToFileSystem(keyStoreLocation, this.keystoreLocationOnFileSystem);
+				final String fileSystemLocation = moveCertToFileSystem(keyStoreLocation, this.certificateLocationOnFilesystem);
 				// Overriding the value with absolute filesystem path.
 				this.configuration.put("ssl.keystore.location", fileSystemLocation);
 			}
@@ -193,13 +183,11 @@ public class KafkaBinderConfigurationProperties {
 		File targetFile;
 		final String tempDir = System.getProperty("java.io.tmpdir");
 		Resource resource = new DefaultResourceLoader().getResource(classpathLocation);
-
 		if (StringUtils.hasText(fileSystemLocation)) {
 			final Path path = Paths.get(fileSystemLocation);
 			if (!Files.exists(path) || !Files.isDirectory(path) || !Files.isWritable(path)) {
 				logger.warn("The filesystem location to move the cert files (" + fileSystemLocation + ") " +
-						"is not found or a directory that is writable." +
-						"The system temp folder (java.io.tmpdir) will be used instead.");
+						"is not found or a directory that is writable. The system temp folder (java.io.tmpdir) will be used instead.");
 				targetFile = new File(Paths.get(tempDir, resource.getFilename()).toString());
 			}
 			else {
@@ -445,20 +433,12 @@ public class KafkaBinderConfigurationProperties {
 		this.considerDownWhenAnyPartitionHasNoLeader = considerDownWhenAnyPartitionHasNoLeader;
 	}
 
-	public String getTruststoreLocationOnFileSystem() {
-		return this.truststoreLocationOnFileSystem;
+	public String getCertificateLocationOnFilesystem() {
+		return this.certificateLocationOnFilesystem;
 	}
 
-	public void setTruststoreLocationOnFileSystem(String truststoreLocationOnFileSystem) {
-		this.truststoreLocationOnFileSystem = truststoreLocationOnFileSystem;
-	}
-
-	public String getKeystoreLocationOnFileSystem() {
-		return this.keystoreLocationOnFileSystem;
-	}
-
-	public void setKeystoreLocationOnFileSystem(String keystoreLocationOnFileSystem) {
-		this.keystoreLocationOnFileSystem = keystoreLocationOnFileSystem;
+	public void setCertificateLocationOnFilesystem(String certificateLocationOnFilesystem) {
+		this.certificateLocationOnFilesystem = certificateLocationOnFilesystem;
 	}
 
 	/**
