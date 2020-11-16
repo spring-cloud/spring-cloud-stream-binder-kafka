@@ -16,6 +16,7 @@
 
 package org.springframework.cloud.stream.binder.kafka.properties;
 
+import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.Map;
 
@@ -117,8 +118,10 @@ public class KafkaBinderConfigurationPropertiesTest {
 
 		kafkaBinderConfigurationProperties.getKafkaConnectionString();
 
-		assertThat(configuration.get("ssl.truststore.location")).isEqualTo("/tmp/testclient.truststore");
-		assertThat(configuration.get("ssl.keystore.location")).isEqualTo("/tmp/testclient.keystore");
+		assertThat(configuration.get("ssl.truststore.location"))
+				.isEqualTo(Paths.get(System.getProperty("java.io.tmpdir"), "testclient.truststore").toString());
+		assertThat(configuration.get("ssl.keystore.location"))
+				.isEqualTo(Paths.get(System.getProperty("java.io.tmpdir"), "testclient.keystore").toString());
 	}
 
 	@Test

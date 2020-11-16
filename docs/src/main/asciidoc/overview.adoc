@@ -153,7 +153,9 @@ spring.cloud.stream.kafka.binder.truststoreLocationOnFileSystem::
 When truststore location is given as classpath URL (classpath:), then the binder moves the resource from the classpath location inside the JAR file to a location on the filesystem.
 The file will be moved to the location specified as the value for this property.
 It can be specified as the full absolute path of the file to move to.
-If this value is not set and the truststore is provided as a classpath resource, then it will be moved to system's /tmp directory with the same name as it is in the classpath.
+The file name can be different from the one inside the classpath if need be in order to avoid naming collisions in case of multiple applications running on the same machine.
+If this value is not set and the truststore is provided as a classpath resource, then it will be moved to System's temp directory as returned by `System.getProperty("java.io.tmpdir")` with the file name preserved as it is in the classpath.
+This is also true, if this value is present but the diretory cannot be found on the filesystem.
 +
 Default: none.
 
@@ -161,7 +163,9 @@ spring.cloud.stream.kafka.binder.keystoreLocationOnFileSystem::
 When keystore location is given as classpath URL (classpath:), then the binder moves the resource from the classpath location inside the JAR file to a location on the filesystem.
 The file will be moved to the location specified as the value for this property.
 It can be specified as the full absolute path of the file to move to.
-If this value is not set and the keystore is provided as a classpath resource, then it will be moved to system's /tmp directory with the same name as it is in the classpath.
+The file name can be different from the one inside the classpath if need be in order to avoid naming collisions in case of multiple applications running on the same machine.
+If this value is not set and the keystore is provided as a classpath resource, then it will be moved to System's temp directory as returned by `System.getProperty("java.io.tmpdir")` with the file name preserved as it is in the classpath.
+This is also true, if this value is present but cannot be found on the filesystem.
 +
 Default: none.
 

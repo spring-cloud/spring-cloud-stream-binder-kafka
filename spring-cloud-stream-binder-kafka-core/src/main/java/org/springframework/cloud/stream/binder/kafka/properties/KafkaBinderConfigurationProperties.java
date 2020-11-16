@@ -20,6 +20,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.time.Duration;
 import java.util.Collections;
@@ -189,9 +190,12 @@ public class KafkaBinderConfigurationProperties {
 
 	private String moveCertToFileSystem(String classpathLocation, String fileSystemLocation) throws IOException {
 		Resource resource = new DefaultResourceLoader().getResource(classpathLocation);
-		File targetFile = new File(fileSystemLocation != null ? fileSystemLocation : "/tmp/" + resource.getFilename());
-		final InputStream inputStream = resource.getInputStream();
-		Files.copy(inputStream, targetFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+		final String tempDir = System.getProperty("java.io.tmpdir");
+		File targetFile = new File(StringUtils.hasText(fileSystemLocation)  ? fileSystemLocation
+				: Paths.get(tempDir, resource.getFilename()).toString());
+		try (final InputStream inputStream = resource.getInputStream()) {
+			Files.copy(inputStream, targetFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+		}
 		return targetFile.getAbsolutePath();
 	}
 
