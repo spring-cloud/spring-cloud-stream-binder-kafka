@@ -21,6 +21,7 @@ import java.util.Collections;
 import java.util.Map;
 
 import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.assertj.core.util.Files;
 import org.junit.Test;
 
 import org.springframework.boot.autoconfigure.kafka.KafkaProperties;
@@ -132,12 +133,14 @@ public class KafkaBinderConfigurationPropertiesTest {
 		final Map<String, String> configuration = kafkaBinderConfigurationProperties.getConfiguration();
 		configuration.put("ssl.truststore.location", "classpath:testclient.truststore");
 		configuration.put("ssl.keystore.location", "classpath:testclient.keystore");
-		kafkaBinderConfigurationProperties.setTruststoreLocationOnFileSystem("/var/tmp/foo.truststore");
-		kafkaBinderConfigurationProperties.setKeystoreLocationOnFileSystem("/var/tmp/bar.keystore");
+		kafkaBinderConfigurationProperties.setTruststoreLocationOnFileSystem("target");
+		kafkaBinderConfigurationProperties.setKeystoreLocationOnFileSystem("target");
 
 		kafkaBinderConfigurationProperties.getKafkaConnectionString();
 
-		assertThat(configuration.get("ssl.truststore.location")).isEqualTo("/var/tmp/foo.truststore");
-		assertThat(configuration.get("ssl.keystore.location")).isEqualTo("/var/tmp/bar.keystore");
+		assertThat(configuration.get("ssl.truststore.location")).isEqualTo(
+				Paths.get(Files.currentFolder().toString(), "target", "testclient.truststore").toString());
+		assertThat(configuration.get("ssl.keystore.location")).isEqualTo(
+				Paths.get(Files.currentFolder().toString(), "target", "testclient.keystore").toString());
 	}
 }

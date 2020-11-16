@@ -20,6 +20,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.time.Duration;
@@ -130,8 +131,8 @@ public class KafkaBinderConfigurationProperties {
 	 * When truststore location is given as classpath URL (classpath:), then the binder
 	 * moves the resource from the classpath location inside the JAR to a location on
 	 * the filesystem. If this value is set, then this location is used, otherwise, the
-	 * truststore file is moved to system's /tmp directory with the same name as it is in
-	 * the classpath.
+	 * truststore file is moved to the directory returned by java.io.tmpdir with the same
+	 * name as it is in the classpath.
 	 */
 	private String truststoreLocationOnFileSystem;
 
@@ -139,8 +140,8 @@ public class KafkaBinderConfigurationProperties {
 	 * When keystore location is given as classpath URL (classpath:), then the binder
 	 * moves the resource from the classpath location inside the JAR to a location on
 	 * the filesystem. If this value is set, then this location is used, otherwise, the
-	 * keystore file is moved to system's /tmp directory with the same name as it is in
-	 * the classpath.
+	 * keystore file is moved to the directory returned by java.io.tmpdir with the same
+	 * name as it is in the classpath.
 	 */
 	private String keystoreLocationOnFileSystem;
 
@@ -189,11 +190,28 @@ public class KafkaBinderConfigurationProperties {
 	}
 
 	private String moveCertToFileSystem(String classpathLocation, String fileSystemLocation) throws IOException {
-		Resource resource = new DefaultResourceLoader().getResource(classpathLocation);
+		File targetFile;
 		final String tempDir = System.getProperty("java.io.tmpdir");
-		File targetFile = new File(StringUtils.hasText(fileSystemLocation)  ? fileSystemLocation
-				: Paths.get(tempDir, resource.getFilename()).toString());
-		try (final InputStream inputStream = resource.getInputStream()) {
+		Resource resource = new DefaultResourceLoader().getResource(classpathLocation);
+
+		if (StringUtils.hasText(fileSystemLocation)) {
+			final Path path = Paths.get(fileSystemLocation);
+			if (!Files.exists(path) || !Files.isDirectory(path) || !Files.isWritable(path)) {
+				logger.warn("The filesystem location to move the cert files (" + fileSystemLocation + ") " +
+						"is not found or a directory that is writable." +
+						"The system temp folder (java.io.tmpdir) will be used instead.");
+				targetFile = new File(Paths.get(tempDir, resource.getFilename()).toString());
+			}
+			else {
+				// the given location is verified to be a writable directory.
+				targetFile = new File(Paths.get(fileSystemLocation, resource.getFilename()).toString());
+			}
+		}
+		else {
+			targetFile = new File(Paths.get(tempDir, resource.getFilename()).toString());
+		}
+
+		try (InputStream inputStream = resource.getInputStream()) {
 			Files.copy(inputStream, targetFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
 		}
 		return targetFile.getAbsolutePath();
