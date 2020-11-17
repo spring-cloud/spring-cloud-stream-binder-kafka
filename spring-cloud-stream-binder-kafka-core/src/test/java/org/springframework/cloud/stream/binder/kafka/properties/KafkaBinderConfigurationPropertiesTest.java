@@ -133,7 +133,7 @@ public class KafkaBinderConfigurationPropertiesTest {
 		final Map<String, String> configuration = kafkaBinderConfigurationProperties.getConfiguration();
 		configuration.put("ssl.truststore.location", "classpath:testclient.truststore");
 		configuration.put("ssl.keystore.location", "classpath:testclient.keystore");
-		kafkaBinderConfigurationProperties.setCertificateLocationOnFilesystem("target");
+		kafkaBinderConfigurationProperties.setCertificateStoreDirectory("target");
 
 		kafkaBinderConfigurationProperties.getKafkaConnectionString();
 

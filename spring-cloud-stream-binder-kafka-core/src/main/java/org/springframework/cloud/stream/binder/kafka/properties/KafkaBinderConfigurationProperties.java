@@ -128,12 +128,12 @@ public class KafkaBinderConfigurationProperties {
 	private Duration authorizationExceptionRetryInterval;
 
 	/**
-	 * When certificate location is given as classpath URL (classpath:), then the binder
+	 * When a certificate store location is given as classpath URL (classpath:), then the binder
 	 * moves the resource from the classpath location inside the JAR to a location on
 	 * the filesystem. If this value is set, then this location is used, otherwise, the
-	 * certificate file is moved to the directory returned by java.io.tmpdir.
+	 * certificate file is copied to the directory returned by java.io.tmpdir.
 	 */
-	private String certificateLocationOnFilesystem;
+	private String certificateStoreDirectory;
 
 	public KafkaBinderConfigurationProperties(KafkaProperties kafkaProperties) {
 		Assert.notNull(kafkaProperties, "'kafkaProperties' cannot be null");
@@ -163,13 +163,13 @@ public class KafkaBinderConfigurationProperties {
 		try {
 			final String trustStoreLocation = this.configuration.get("ssl.truststore.location");
 			if (trustStoreLocation != null && trustStoreLocation.startsWith("classpath:")) {
-				final String fileSystemLocation = moveCertToFileSystem(trustStoreLocation, this.certificateLocationOnFilesystem);
+				final String fileSystemLocation = moveCertToFileSystem(trustStoreLocation, this.certificateStoreDirectory);
 				// Overriding the value with absolute filesystem path.
 				this.configuration.put("ssl.truststore.location", fileSystemLocation);
 			}
 			final String keyStoreLocation = this.configuration.get("ssl.keystore.location");
 			if (keyStoreLocation != null && keyStoreLocation.startsWith("classpath:")) {
-				final String fileSystemLocation = moveCertToFileSystem(keyStoreLocation, this.certificateLocationOnFilesystem);
+				final String fileSystemLocation = moveCertToFileSystem(keyStoreLocation, this.certificateStoreDirectory);
 				// Overriding the value with absolute filesystem path.
 				this.configuration.put("ssl.keystore.location", fileSystemLocation);
 			}
@@ -433,12 +433,12 @@ public class KafkaBinderConfigurationProperties {
 		this.considerDownWhenAnyPartitionHasNoLeader = considerDownWhenAnyPartitionHasNoLeader;
 	}
 
-	public String getCertificateLocationOnFilesystem() {
-		return this.certificateLocationOnFilesystem;
+	public String getCertificateStoreDirectory() {
+		return this.certificateStoreDirectory;
 	}
 
-	public void setCertificateLocationOnFilesystem(String certificateLocationOnFilesystem) {
-		this.certificateLocationOnFilesystem = certificateLocationOnFilesystem;
+	public void setCertificateStoreDirectory(String certificateStoreDirectory) {
+		this.certificateStoreDirectory = certificateStoreDirectory;
 	}
 
 	/**
