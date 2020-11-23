@@ -15,7 +15,7 @@
 		<spring-kafka.version>2.5.6.RELEASE</spring-kafka.version>
 		<spring-integration-kafka.version>3.3.1.RELEASE</spring-integration-kafka.version>
 		<kafka.version>2.5.1</kafka.version>
-		<spring-cloud-schema-registry.version>1.0.11.SNAPSHOT</spring-cloud-schema-registry.version>
+		<spring-cloud-schema-registry.version>1.0.11.BUILD-SNAPSHOT</spring-cloud-schema-registry.version>
 		<spring-cloud-stream.version>3.0.11.BUILD-SNAPSHOT</spring-cloud-stream.version>
 		<maven-checkstyle-plugin.failsOnError>true</maven-checkstyle-plugin.failsOnError>
 		<maven-checkstyle-plugin.failsOnViolation>true</maven-checkstyle-plugin.failsOnViolation>
