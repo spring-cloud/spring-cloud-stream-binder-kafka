@@ -106,7 +106,7 @@ public class KafkaBinderMetricsTest {
 
 	@Test
 	public void shouldNotContainAnyMetricsWhenUsingNoopGauge() {
-		// Adding NoopGague for the offset metric.
+		// Adding NoopGauge for the offset metric.
 		meterRegistry.config().meterFilter(
 				MeterFilter.denyNameStartsWith("spring.cloud.stream.binder.kafka.offset"));
 
@@ -121,7 +121,7 @@ public class KafkaBinderMetricsTest {
 				.willReturn(partitions);
 		metrics.bindTo(meterRegistry);
 
-		// Because of the NoopGause, the meterRegistry should contain no metric.
+		// Because of the NoopGauge, the meterRegistry should contain no metric.
 		assertThat(meterRegistry.getMeters()).hasSize(0);
 	}
 
