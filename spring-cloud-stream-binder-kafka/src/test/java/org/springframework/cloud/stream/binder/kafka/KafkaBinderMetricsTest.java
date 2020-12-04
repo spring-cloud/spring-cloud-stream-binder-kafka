@@ -74,7 +74,7 @@ public class KafkaBinderMetricsTest {
 
 	@Before
 	public void setup() {
-		MockitoAnnotations.initMocks(this);
+		MockitoAnnotations.openMocks(this);
 		org.mockito.BDDMockito.given(consumerFactory
 				.createConsumer(ArgumentMatchers.any(), ArgumentMatchers.any()))
 				.willReturn(consumer);
@@ -123,9 +123,6 @@ public class KafkaBinderMetricsTest {
 
 		// Because of the NoopGause, the meterRegistry should contain no metric.
 		assertThat(meterRegistry.getMeters()).hasSize(0);
-
-		// Reset the MeterRegistry to accept all metrics.
-		meterRegistry.config().meterFilter(MeterFilter.accept());
 	}
 
 	@Test
