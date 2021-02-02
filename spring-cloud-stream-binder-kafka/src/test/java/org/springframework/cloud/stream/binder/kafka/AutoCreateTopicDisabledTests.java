@@ -32,6 +32,7 @@ import org.springframework.cloud.stream.binder.ExtendedProducerProperties;
 import org.springframework.cloud.stream.binder.kafka.properties.KafkaBinderConfigurationProperties;
 import org.springframework.cloud.stream.binder.kafka.properties.KafkaConsumerProperties;
 import org.springframework.cloud.stream.binder.kafka.properties.KafkaProducerProperties;
+import org.springframework.cloud.stream.binder.kafka.provisioning.AdminClientConfigCustomizer;
 import org.springframework.cloud.stream.binder.kafka.provisioning.KafkaTopicProvisioner;
 import org.springframework.integration.channel.DirectChannel;
 import org.springframework.kafka.test.rule.EmbeddedKafkaRule;
@@ -52,6 +53,8 @@ public class AutoCreateTopicDisabledTests {
 	public static EmbeddedKafkaRule embeddedKafka = new EmbeddedKafkaRule(1, true, 1)
 			.brokerProperty(KafkaConfig.AutoCreateTopicsEnableProp(), "false");
 
+	AdminClientConfigCustomizer adminClientConfigCustomizer = adminClientProperties -> adminClientProperties.put("foo", "bar");
+
 	@Test
 	public void testAutoCreateTopicDisabledFailsOnConsumerIfTopicNonExistentOnBroker()
 			throws Throwable {
@@ -65,7 +68,7 @@ public class AutoCreateTopicDisabledTests {
 		configurationProperties.setAutoCreateTopics(false);
 
 		KafkaTopicProvisioner provisioningProvider = new KafkaTopicProvisioner(
-				configurationProperties, kafkaProperties);
+				configurationProperties, kafkaProperties, adminClientConfigCustomizer);
 		provisioningProvider.setMetadataRetryOperations(new RetryTemplate());
 
 		KafkaMessageChannelBinder binder = new KafkaMessageChannelBinder(
@@ -97,7 +100,7 @@ public class AutoCreateTopicDisabledTests {
 		configurationProperties.getConfiguration().put("max.block.ms", "3000");
 
 		KafkaTopicProvisioner provisioningProvider = new KafkaTopicProvisioner(
-				configurationProperties, kafkaProperties);
+				configurationProperties, kafkaProperties, adminClientConfigCustomizer);
 		SimpleRetryPolicy simpleRetryPolicy = new SimpleRetryPolicy(1);
 		final RetryTemplate metadataRetryOperations = new RetryTemplate();
 		metadataRetryOperations.setRetryPolicy(simpleRetryPolicy);

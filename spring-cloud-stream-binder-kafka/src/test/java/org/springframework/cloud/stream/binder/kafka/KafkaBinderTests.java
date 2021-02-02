@@ -92,6 +92,7 @@ import org.springframework.cloud.stream.binder.kafka.KafkaMessageChannelBinder.T
 import org.springframework.cloud.stream.binder.kafka.properties.KafkaBinderConfigurationProperties;
 import org.springframework.cloud.stream.binder.kafka.properties.KafkaConsumerProperties;
 import org.springframework.cloud.stream.binder.kafka.properties.KafkaProducerProperties;
+import org.springframework.cloud.stream.binder.kafka.provisioning.AdminClientConfigCustomizer;
 import org.springframework.cloud.stream.binder.kafka.provisioning.KafkaTopicProvisioner;
 import org.springframework.cloud.stream.binder.kafka.utils.DlqDestinationResolver;
 import org.springframework.cloud.stream.binder.kafka.utils.DlqPartitionFunction;
@@ -181,6 +182,8 @@ public class KafkaBinderTests extends
 
 	private AdminClient adminClient;
 
+	AdminClientConfigCustomizer adminClientConfigCustomizer = adminClientProperties -> adminClientProperties.put("foo", "bar");
+
 	@Override
 	protected ExtendedConsumerProperties<KafkaConsumerProperties> createConsumerProperties() {
 		final ExtendedConsumerProperties<KafkaConsumerProperties> kafkaConsumerProperties = new ExtendedConsumerProperties<>(
@@ -209,7 +212,7 @@ public class KafkaBinderTests extends
 		if (binder == null) {
 			KafkaBinderConfigurationProperties binderConfiguration = createConfigurationProperties();
 			KafkaTopicProvisioner kafkaTopicProvisioner = new KafkaTopicProvisioner(
-					binderConfiguration, new TestKafkaProperties());
+					binderConfiguration, new TestKafkaProperties(), adminClientConfigCustomizer);
 			try {
 				kafkaTopicProvisioner.afterPropertiesSet();
 			}
@@ -232,7 +235,7 @@ public class KafkaBinderTests extends
 			DlqPartitionFunction dlqPartitionFunction, DlqDestinationResolver dlqDestinationResolver) {
 
 		KafkaTopicProvisioner provisioningProvider = new KafkaTopicProvisioner(
-				kafkaBinderConfigurationProperties, new TestKafkaProperties());
+				kafkaBinderConfigurationProperties, new TestKafkaProperties(), adminClientConfigCustomizer);
 		try {
 			provisioningProvider.afterPropertiesSet();
 		}
@@ -401,7 +404,7 @@ public class KafkaBinderTests extends
 		binderConfiguration.setHeaderMapperBeanName("headerMapper");
 
 		KafkaTopicProvisioner kafkaTopicProvisioner = new KafkaTopicProvisioner(
-				binderConfiguration, new TestKafkaProperties());
+				binderConfiguration, new TestKafkaProperties(), adminClientConfigCustomizer);
 		try {
 			kafkaTopicProvisioner.afterPropertiesSet();
 		}
@@ -478,7 +481,7 @@ public class KafkaBinderTests extends
 		KafkaBinderConfigurationProperties binderConfiguration = createConfigurationProperties();
 
 		KafkaTopicProvisioner kafkaTopicProvisioner = new KafkaTopicProvisioner(
-				binderConfiguration, new TestKafkaProperties());
+				binderConfiguration, new TestKafkaProperties(), adminClientConfigCustomizer);
 		try {
 			kafkaTopicProvisioner.afterPropertiesSet();
 		}
@@ -3656,7 +3659,7 @@ public class KafkaBinderTests extends
 			binderConfiguration.setHeaderMapperBeanName("headerMapper");
 
 			KafkaTopicProvisioner kafkaTopicProvisioner = new KafkaTopicProvisioner(
-					binderConfiguration, new TestKafkaProperties());
+					binderConfiguration, new TestKafkaProperties(), adminClientConfigCustomizer);
 			try {
 				kafkaTopicProvisioner.afterPropertiesSet();
 			}

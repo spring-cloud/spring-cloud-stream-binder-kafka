@@ -44,6 +44,7 @@ import org.springframework.cloud.stream.binder.Binding;
 import org.springframework.cloud.stream.binder.ExtendedConsumerProperties;
 import org.springframework.cloud.stream.binder.kafka.properties.KafkaBinderConfigurationProperties;
 import org.springframework.cloud.stream.binder.kafka.properties.KafkaConsumerProperties;
+import org.springframework.cloud.stream.binder.kafka.provisioning.AdminClientConfigCustomizer;
 import org.springframework.cloud.stream.binder.kafka.provisioning.KafkaTopicProvisioner;
 import org.springframework.cloud.stream.config.ListenerContainerCustomizer;
 import org.springframework.cloud.stream.provisioning.ConsumerDestination;
@@ -72,13 +73,15 @@ import static org.mockito.Mockito.verify;
  */
 public class KafkaBinderUnitTests {
 
+	AdminClientConfigCustomizer adminClientConfigCustomizer = adminClientProperties -> adminClientProperties.put("foo", "bar");
+
 	@Test
 	public void testPropertyOverrides() throws Exception {
 		KafkaProperties kafkaProperties = new TestKafkaProperties();
 		KafkaBinderConfigurationProperties binderConfigurationProperties = new KafkaBinderConfigurationProperties(
 				kafkaProperties);
 		KafkaTopicProvisioner provisioningProvider = new KafkaTopicProvisioner(
-				binderConfigurationProperties, kafkaProperties);
+				binderConfigurationProperties, kafkaProperties, adminClientConfigCustomizer);
 		KafkaMessageChannelBinder binder = new KafkaMessageChannelBinder(
 				binderConfigurationProperties, provisioningProvider);
 		KafkaConsumerProperties consumerProps = new KafkaConsumerProperties();
