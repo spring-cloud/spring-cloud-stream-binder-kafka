@@ -31,7 +31,6 @@ import org.springframework.boot.autoconfigure.kafka.KafkaProperties;
 import org.springframework.cloud.stream.binder.ExtendedProducerProperties;
 import org.springframework.cloud.stream.binder.kafka.properties.KafkaBinderConfigurationProperties;
 import org.springframework.cloud.stream.binder.kafka.properties.KafkaProducerProperties;
-import org.springframework.cloud.stream.binder.kafka.provisioning.AdminClientConfigCustomizer;
 import org.springframework.cloud.stream.binder.kafka.provisioning.KafkaTopicProvisioner;
 import org.springframework.context.support.GenericApplicationContext;
 import org.springframework.integration.channel.DirectChannel;
@@ -63,8 +62,6 @@ public class KafkaTransactionTests {
 			.brokerProperty("transaction.state.log.replication.factor", "1")
 			.brokerProperty("transaction.state.log.min.isr", "1");
 
-	AdminClientConfigCustomizer adminClientConfigCustomizer = adminClientProperties -> adminClientProperties.put("foo", "bar");
-
 	@SuppressWarnings({ "rawtypes", "unchecked" })
 	@Test
 	public void testProducerRunsInTx() {
@@ -76,7 +73,7 @@ public class KafkaTransactionTests {
 		configurationProperties.getTransaction().setTransactionIdPrefix("foo-");
 		configurationProperties.getTransaction().getProducer().setUseNativeEncoding(true);
 		KafkaTopicProvisioner provisioningProvider = new KafkaTopicProvisioner(
-				configurationProperties, kafkaProperties, adminClientConfigCustomizer);
+				configurationProperties, kafkaProperties, null);
 		provisioningProvider.setMetadataRetryOperations(new RetryTemplate());
 		final Producer mockProducer = mock(Producer.class);
 		given(mockProducer.send(any(), any())).willReturn(new SettableListenableFuture<>());
