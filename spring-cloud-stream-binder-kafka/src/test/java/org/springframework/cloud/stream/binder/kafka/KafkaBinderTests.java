@@ -204,7 +204,7 @@ public class KafkaBinderTests extends
 		if (binder == null) {
 			KafkaBinderConfigurationProperties binderConfiguration = createConfigurationProperties();
 			KafkaTopicProvisioner kafkaTopicProvisioner = new KafkaTopicProvisioner(
-					binderConfiguration, new TestKafkaProperties());
+					binderConfiguration, new TestKafkaProperties(), null);
 			try {
 				kafkaTopicProvisioner.afterPropertiesSet();
 			}
@@ -227,7 +227,7 @@ public class KafkaBinderTests extends
 			DlqPartitionFunction dlqPartitionFunction, DlqDestinationResolver dlqDestinationResolver) {
 
 		KafkaTopicProvisioner provisioningProvider = new KafkaTopicProvisioner(
-				kafkaBinderConfigurationProperties, new TestKafkaProperties());
+				kafkaBinderConfigurationProperties, new TestKafkaProperties(), null);
 		try {
 			provisioningProvider.afterPropertiesSet();
 		}
@@ -396,7 +396,7 @@ public class KafkaBinderTests extends
 		binderConfiguration.setHeaderMapperBeanName("headerMapper");
 
 		KafkaTopicProvisioner kafkaTopicProvisioner = new KafkaTopicProvisioner(
-				binderConfiguration, new TestKafkaProperties());
+				binderConfiguration, new TestKafkaProperties(), null);
 		try {
 			kafkaTopicProvisioner.afterPropertiesSet();
 		}
@@ -473,7 +473,7 @@ public class KafkaBinderTests extends
 		KafkaBinderConfigurationProperties binderConfiguration = createConfigurationProperties();
 
 		KafkaTopicProvisioner kafkaTopicProvisioner = new KafkaTopicProvisioner(
-				binderConfiguration, new TestKafkaProperties());
+				binderConfiguration, new TestKafkaProperties(), null);
 		try {
 			kafkaTopicProvisioner.afterPropertiesSet();
 		}
