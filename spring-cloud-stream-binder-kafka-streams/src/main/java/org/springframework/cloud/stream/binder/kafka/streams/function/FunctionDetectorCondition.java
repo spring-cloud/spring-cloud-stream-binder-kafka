@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2019 the original author or authors.
+ * Copyright 2019-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -81,11 +81,11 @@ public class FunctionDetectorCondition extends SpringBootCondition {
 		return ConditionOutcome.noMatch("No match. No Function/BiFunction/Consumer beans found");
 	}
 
-	private static List<String> pruneFunctionBeansForKafkaStreams(List<String> strings,
+	private static List<String> pruneFunctionBeansForKafkaStreams(List<String> functionComponents,
 																		ConditionContext context) {
 		final List<String> prunedList = new ArrayList<>();
 
-		for (String key : strings) {
+		for (String key : functionComponents) {
 			final Class<?> classObj = ClassUtils.resolveClassName(((AnnotatedBeanDefinition)
 							context.getBeanFactory().getBeanDefinition(key))
 							.getMetadata().getClassName(),
@@ -101,11 +101,31 @@ public class FunctionDetectorCondition extends SpringBootCondition {
 						prunedList.add(key);
 					}
 				}
+				else {
+					//check if its a @Component bean.
+					Optional<Method> componentBeanMethod = Arrays.stream(methods).filter(
+							m -> m.getName().equals("apply") && isKafkaStreamsTypeFound(m) ||
+									m.getName().equals("accept") && isKafkaStreamsTypeFound(m)).findFirst();
+					if (componentBeanMethod.isPresent()) {
+						Method method = componentBeanMethod.get();
+						final ResolvableType resolvableType1 = ResolvableType.forMethodParameter(method, 0);
+						final Class<?> rawClass = resolvableType1.getRawClass();
+						if (rawClass == KStream.class || rawClass == KTable.class || rawClass == GlobalKTable.class) {
+							prunedList.add(key);
+						}
+					}
+				}
 			}
 			catch (Exception e) {
 				LOG.error("Function not found: " + key, e);
 			}
 		}
 		return prunedList;
+	}
+
+	private static boolean isKafkaStreamsTypeFound(Method method) {
+		return KStream.class.isAssignableFrom(method.getParameters()[0].getType()) ||
+				KTable.class.isAssignableFrom(method.getParameters()[0].getType()) ||
+				GlobalKTable.class.isAssignableFrom(method.getParameters()[0].getType());
 	}
 }
