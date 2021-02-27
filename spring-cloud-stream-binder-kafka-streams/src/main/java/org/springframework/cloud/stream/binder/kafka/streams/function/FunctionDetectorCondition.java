@@ -34,6 +34,7 @@ import org.apache.kafka.streams.kstream.KTable;
 
 import org.springframework.beans.factory.BeanFactoryUtils;
 import org.springframework.beans.factory.annotation.AnnotatedBeanDefinition;
+import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.boot.autoconfigure.condition.ConditionOutcome;
 import org.springframework.boot.autoconfigure.condition.SpringBootCondition;
 import org.springframework.context.annotation.ConditionContext;
@@ -91,8 +92,16 @@ public class FunctionDetectorCondition extends SpringBootCondition {
 							.getMetadata().getClassName(),
 					ClassUtils.getDefaultClassLoader());
 			try {
+
 				Method[] methods = classObj.getMethods();
 				Optional<Method> kafkaStreamMethod = Arrays.stream(methods).filter(m -> m.getName().equals(key)).findFirst();
+				// check if the bean name is overridden.
+				if (!kafkaStreamMethod.isPresent()) {
+					final BeanDefinition beanDefinition = context.getBeanFactory().getBeanDefinition(key);
+					final String factoryMethodName = beanDefinition.getFactoryMethodName();
+					kafkaStreamMethod = Arrays.stream(methods).filter(m -> m.getName().equals(factoryMethodName)).findFirst();
+				}
+
 				if (kafkaStreamMethod.isPresent()) {
 					Method method = kafkaStreamMethod.get();
 					ResolvableType resolvableType = ResolvableType.forMethodReturnType(method, classObj);
