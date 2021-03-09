@@ -187,8 +187,9 @@ public class KafkaStreamsBindableProxyFactory extends AbstractBindableProxyFacto
 		// For @Component style beans.
 		if (method != null) {
 			final ResolvableType returnType = ResolvableType.forMethodReturnType(method);
-			final Object bean = beanFactory.getBean(functionName);
-			if (BiFunction.class.isAssignableFrom(bean.getClass()) || BiConsumer.class.isAssignableFrom(bean.getClass())) {
+			Object bean = beanFactory.containsBean(functionName) ? beanFactory.getBean(functionName) : null;
+
+			if (bean != null && (BiFunction.class.isAssignableFrom(bean.getClass()) || BiConsumer.class.isAssignableFrom(bean.getClass()))) {
 				numberOfInputs = 2;
 			}
 			else if (returnType.getRawClass().isAssignableFrom(Function.class) || returnType.getRawClass().isAssignableFrom(Consumer.class)) {

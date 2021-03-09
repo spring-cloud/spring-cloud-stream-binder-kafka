@@ -116,28 +116,11 @@ public class KafkaStreamsFunctionProcessor extends AbstractKafkaStreamsBinderPro
 			ResolvableType currentOutputGeneric = ResolvableType.forMethodReturnType(method);
 
 			final Set<String> inputs = new LinkedHashSet<>(kafkaStreamsBindableProxyFactory.getInputs());
-
 			final Iterator<String> iterator = inputs.iterator();
-
-			popuateResolvableTypeMap(firstMethodParameter, resolvableTypeMap, iterator, method, functionName);
+			populateResolvableTypeMap(firstMethodParameter, resolvableTypeMap, iterator, method, functionName);
 
 			final Class<?> outputRawclass = currentOutputGeneric.getRawClass();
-			if (outputRawclass != null && !outputRawclass.equals(Void.TYPE)) {
-				ResolvableType iterableResType = currentOutputGeneric;
-				int i = 1;
-				while (i < inputs.size() && iterator.hasNext()) {
-
-					if (iterableResType.getRawClass() != null &&
-							functionOrConsumerFound(iterableResType)) {
-						popuateResolvableTypeMap(iterableResType, resolvableTypeMap, iterator);
-					}
-					iterableResType = iterableResType.getGeneric(1);
-					i++;
-				}
-				if (iterableResType.getRawClass() != null && KStream.class.isAssignableFrom(iterableResType.getRawClass())) {
-					resolvableTypeMap.put(OUTBOUND, iterableResType);
-				}
-			}
+			traverseReturnTypeForComponentBeans(resolvableTypeMap, currentOutputGeneric, inputs, iterator, outputRawclass);
 		}
 		else if (resolvableType != null && resolvableType.getRawClass() != null) {
 			int inputCount = 1;
@@ -159,7 +142,7 @@ public class KafkaStreamsFunctionProcessor extends AbstractKafkaStreamsBinderPro
 
 			final Iterator<String> iterator = inputs.iterator();
 
-			popuateResolvableTypeMap(resolvableType, resolvableTypeMap, iterator);
+			populateResolvableTypeMap(resolvableType, resolvableTypeMap, iterator);
 
 			ResolvableType iterableResType = resolvableType;
 			int i = resolvableType.getRawClass().isAssignableFrom(BiFunction.class) ||
@@ -173,7 +156,7 @@ public class KafkaStreamsFunctionProcessor extends AbstractKafkaStreamsBinderPro
 					iterableResType = iterableResType.getGeneric(1);
 					if (iterableResType.getRawClass() != null &&
 							functionOrConsumerFound(iterableResType)) {
-						popuateResolvableTypeMap(iterableResType, resolvableTypeMap, iterator);
+						populateResolvableTypeMap(iterableResType, resolvableTypeMap, iterator);
 					}
 					i++;
 				}
@@ -184,12 +167,32 @@ public class KafkaStreamsFunctionProcessor extends AbstractKafkaStreamsBinderPro
 		return resolvableTypeMap;
 	}
 
+	private void traverseReturnTypeForComponentBeans(Map<String, ResolvableType> resolvableTypeMap, ResolvableType currentOutputGeneric,
+													 Set<String> inputs, Iterator<String> iterator, Class<?> outputRawclass) {
+		if (outputRawclass != null && !outputRawclass.equals(Void.TYPE)) {
+			ResolvableType iterableResType = currentOutputGeneric;
+			int i = 1;
+			// Traverse through the return signature.
+			while (i < inputs.size() && iterator.hasNext()) {
+				if (iterableResType.getRawClass() != null &&
+						functionOrConsumerFound(iterableResType)) {
+					populateResolvableTypeMap(iterableResType, resolvableTypeMap, iterator);
+				}
+				iterableResType = iterableResType.getGeneric(1);
+				i++;
+			}
+			if (iterableResType.getRawClass() != null && KStream.class.isAssignableFrom(iterableResType.getRawClass())) {
+				resolvableTypeMap.put(OUTBOUND, iterableResType);
+			}
+		}
+	}
+
 	private boolean functionOrConsumerFound(ResolvableType iterableResType) {
 		return iterableResType.getRawClass().equals(Function.class) ||
 				iterableResType.getRawClass().equals(Consumer.class);
 	}
 
-	private void popuateResolvableTypeMap(ResolvableType resolvableType, Map<String, ResolvableType> resolvableTypeMap,
+	private void populateResolvableTypeMap(ResolvableType resolvableType, Map<String, ResolvableType> resolvableTypeMap,
 										Iterator<String> iterator) {
 		final String next = iterator.next();
 		resolvableTypeMap.put(next, resolvableType.getGeneric(0));
@@ -201,7 +204,7 @@ public class KafkaStreamsFunctionProcessor extends AbstractKafkaStreamsBinderPro
 		}
 	}
 
-	private void popuateResolvableTypeMap(ResolvableType resolvableType, Map<String, ResolvableType> resolvableTypeMap,
+	private void populateResolvableTypeMap(ResolvableType resolvableType, Map<String, ResolvableType> resolvableTypeMap,
 										Iterator<String> iterator, Method method, String functionName) {
 		final String next = iterator.next();
 		resolvableTypeMap.put(next, resolvableType);
@@ -210,12 +213,6 @@ public class KafkaStreamsFunctionProcessor extends AbstractKafkaStreamsBinderPro
 			if (BiFunction.class.isAssignableFrom(bean.getClass()) || BiConsumer.class.isAssignableFrom(bean.getClass())) {
 				resolvableTypeMap.put(iterator.next(), ResolvableType.forMethodParameter(method, 1));
 			}
-		}
-		else if (resolvableType.getRawClass() != null &&
-				(resolvableType.getRawClass().isAssignableFrom(BiFunction.class) ||
-						resolvableType.getRawClass().isAssignableFrom(BiConsumer.class))
-				&& iterator.hasNext()) {
-			resolvableTypeMap.put(iterator.next(), resolvableType.getGeneric(1));
 		}
 	}
 

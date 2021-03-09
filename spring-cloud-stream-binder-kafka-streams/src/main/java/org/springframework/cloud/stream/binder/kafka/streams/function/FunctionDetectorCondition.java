@@ -111,10 +111,10 @@ public class FunctionDetectorCondition extends SpringBootCondition {
 					}
 				}
 				else {
-					//check if its a @Component bean.
+					//check if it is a @Component bean.
 					Optional<Method> componentBeanMethod = Arrays.stream(methods).filter(
-							m -> m.getName().equals("apply") && isKafkaStreamsTypeFound(m) ||
-									m.getName().equals("accept") && isKafkaStreamsTypeFound(m)).findFirst();
+							m -> (m.getName().equals("apply") || m.getName().equals("accept"))
+									&& isKafkaStreamsTypeFound(m)).findFirst();
 					if (componentBeanMethod.isPresent()) {
 						Method method = componentBeanMethod.get();
 						final ResolvableType resolvableType1 = ResolvableType.forMethodParameter(method, 0);
