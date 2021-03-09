@@ -50,7 +50,7 @@ public class KafkaStreamsBindingInformationCatalogue {
 
 	private final Map<KStream<?, ?>, KafkaStreamsConsumerProperties> consumerProperties = new ConcurrentHashMap<>();
 
-	private final Set<StreamsBuilderFactoryBean> streamsBuilderFactoryBeans = new HashSet<>();
+	private final Map<String, StreamsBuilderFactoryBean> streamsBuilderFactoryBeanPerBinding = new HashMap<>();
 
 	private final Map<Object, ResolvableType> outboundKStreamResolvables = new HashMap<>();
 
@@ -127,18 +127,18 @@ public class KafkaStreamsBindingInformationCatalogue {
 		}
 	}
 
-	/**
-	 * Adds a mapping for KStream -> {@link StreamsBuilderFactoryBean}.
-	 * @param streamsBuilderFactoryBean provides the {@link StreamsBuilderFactoryBean}
-	 * mapped to the KStream
-	 */
-	void addStreamBuilderFactory(StreamsBuilderFactoryBean streamsBuilderFactoryBean) {
-		this.streamsBuilderFactoryBeans.add(streamsBuilderFactoryBean);
+	Set<StreamsBuilderFactoryBean> getStreamsBuilderFactoryBeans() {
+		return new HashSet<>(this.streamsBuilderFactoryBeanPerBinding.values());
 	}
 
-	Set<StreamsBuilderFactoryBean> getStreamsBuilderFactoryBeans() {
-		return this.streamsBuilderFactoryBeans;
+	void addStreamBuilderFactoryPerBinding(String binding, StreamsBuilderFactoryBean streamsBuilderFactoryBean) {
+		this.streamsBuilderFactoryBeanPerBinding.put(binding, streamsBuilderFactoryBean);
 	}
+
+	Map<String, StreamsBuilderFactoryBean> getStreamsBuilderFactoryBeanPerBinding() {
+		return this.streamsBuilderFactoryBeanPerBinding;
+	}
+
 
 	void addOutboundKStreamResolvable(Object key, ResolvableType outboundResolvable) {
 		this.outboundKStreamResolvables.put(key, outboundResolvable);
