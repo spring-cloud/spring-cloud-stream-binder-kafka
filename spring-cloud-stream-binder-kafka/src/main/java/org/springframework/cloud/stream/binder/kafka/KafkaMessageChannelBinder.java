@@ -1426,8 +1426,7 @@ public class KafkaMessageChannelBinder extends
 				super.onInit();
 			}
 			catch (Exception ex) {
-				this.logger.error("Initialization errors: ", ex);
-				throw new RuntimeException(ex);
+				throw new RuntimeException("Initialization errors: ", ex);
 			}
 		}
 
@@ -1438,8 +1437,7 @@ public class KafkaMessageChannelBinder extends
 					((DisposableBean) producerFactory).destroy();
 				}
 				catch (Exception ex) {
-					this.logger.error(ex, "Error destroying the producer factory bean: ");
-					throw new RuntimeException(ex);
+					throw new RuntimeException("Error destroying the producer factory bean: ", ex);
 				}
 			}
 			this.running = false;
