@@ -74,7 +74,7 @@ public class KafkaBinderMetricsTest {
 
 	@Before
 	public void setup() {
-		MockitoAnnotations.openMocks(this);
+		MockitoAnnotations.initMocks(this);
 		org.mockito.BDDMockito.given(consumerFactory
 				.createConsumer(ArgumentMatchers.any(), ArgumentMatchers.any()))
 				.willReturn(consumer);
