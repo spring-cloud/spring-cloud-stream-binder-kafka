@@ -1692,9 +1692,9 @@ public class KafkaStreamsApplication {
 
 As we can see, the application has two Kafka Streams functions - one, a consumer and another a function.
 The consumer binding is named by default as `consumer-in-0`.
-Similarly, for the function, the input binding is `function-in-0` and `function-out-0`.
+Similarly, for the function, the input binding is `function-in-0` and the output binding is `function-out-0`.
 
-Once the application started, we can find details about the bindings using the following bindings endpoint.
+Once the application is started, we can find details about the bindings using the following bindings endpoint.
 
 ```
  curl http://localhost:8080/actuator/bindings | jq .
