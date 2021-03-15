@@ -207,8 +207,12 @@ final class KafkaStreamsBinderUtils {
 				&& KStream.class.isAssignableFrom(methodParameter.getParameterType());
 	}
 
-	static void closeDlqProducerFactories(StreamsBuilderFactoryBean streamsBuilderFactoryBean,
-												List<ProducerFactory<byte[], byte[]>> dlqProducerFactories) {
+	static void closeDlqProducerFactories(KafkaStreamsBindingInformationCatalogue kafkaStreamsBindingInformationCatalogue,
+										StreamsBuilderFactoryBean streamsBuilderFactoryBean) {
+
+		final List<ProducerFactory<byte[], byte[]>> dlqProducerFactories =
+				kafkaStreamsBindingInformationCatalogue.getDlqProducerFactory(streamsBuilderFactoryBean);
+
 		if (!CollectionUtils.isEmpty(dlqProducerFactories)) {
 			for (ProducerFactory<byte[], byte[]> producerFactory : dlqProducerFactories) {
 				try {

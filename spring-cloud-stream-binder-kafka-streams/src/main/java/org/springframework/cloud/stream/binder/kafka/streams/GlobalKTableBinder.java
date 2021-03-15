@@ -106,7 +106,7 @@ public class GlobalKTableBinder extends
 
 				final List<ProducerFactory<byte[], byte[]>> dlqProducerFactories =
 						kafkaStreamsBindingInformationCatalogue.getDlqProducerFactory(streamsBuilderFactoryBean);
-				KafkaStreamsBinderUtils.closeDlqProducerFactories(streamsBuilderFactoryBean, dlqProducerFactories);
+				KafkaStreamsBinderUtils.closeDlqProducerFactories(kafkaStreamsBindingInformationCatalogue, streamsBuilderFactoryBean);
 			}
 		};
 	}

@@ -16,8 +16,6 @@
 
 package org.springframework.cloud.stream.binder.kafka.streams;
 
-import java.util.List;
-
 import org.apache.kafka.streams.kstream.KTable;
 
 import org.springframework.cloud.stream.binder.AbstractBinder;
@@ -33,7 +31,6 @@ import org.springframework.cloud.stream.binder.kafka.streams.properties.KafkaStr
 import org.springframework.cloud.stream.binder.kafka.streams.properties.KafkaStreamsExtendedBindingProperties;
 import org.springframework.cloud.stream.binder.kafka.streams.properties.KafkaStreamsProducerProperties;
 import org.springframework.kafka.config.StreamsBuilderFactoryBean;
-import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.retry.support.RetryTemplate;
 import org.springframework.util.StringUtils;
 
@@ -106,10 +103,7 @@ class KTableBinder extends
 			@Override
 			public synchronized void stop() {
 				super.stop();
-
-				final List<ProducerFactory<byte[], byte[]>> dlqProducerFactories =
-						kafkaStreamsBindingInformationCatalogue.getDlqProducerFactory(streamsBuilderFactoryBean);
-				KafkaStreamsBinderUtils.closeDlqProducerFactories(streamsBuilderFactoryBean, dlqProducerFactories);
+				KafkaStreamsBinderUtils.closeDlqProducerFactories(kafkaStreamsBindingInformationCatalogue, streamsBuilderFactoryBean);
 			}
 		};
 	}
