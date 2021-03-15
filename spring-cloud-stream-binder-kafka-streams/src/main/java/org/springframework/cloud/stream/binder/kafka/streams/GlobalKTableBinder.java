@@ -103,9 +103,6 @@ public class GlobalKTableBinder extends
 			@Override
 			public synchronized void stop() {
 				super.stop();
-
-				final List<ProducerFactory<byte[], byte[]>> dlqProducerFactories =
-						kafkaStreamsBindingInformationCatalogue.getDlqProducerFactory(streamsBuilderFactoryBean);
 				KafkaStreamsBinderUtils.closeDlqProducerFactories(kafkaStreamsBindingInformationCatalogue, streamsBuilderFactoryBean);
 			}
 		};
