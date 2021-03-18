@@ -338,9 +338,9 @@ Following are two use cases when this might be used.
 Set `resetOffsets` to `true` and `startOffset` to `earliest`; the binding will perform a `seekToBeginning` on all newly assigned partitions.
 
 2. Consuming from a topic containing events, where you are only interested in events that occur while this binding is running.
-Set `resetOffsets` to `true` and `startOffset` to `latest`; the binding will perform a `seekToEnd` on akll newly assigned partitions.
+Set `resetOffsets` to `true` and `startOffset` to `latest`; the binding will perform a `seekToEnd` on all newly assigned partitions.
 
-IMPORTANT: If a rebalance occurs after the initial assignment, the seeks will only be performed on any newly assigned topics that were not assigned during the initial assignment.
+IMPORTANT: If a rebalance occurs after the initial assignment, the seeks will only be performed on any newly assigned partitions that were not assigned during the initial assignment.
 
 For more control over topic offsets, see <<rebalance-listener>>; when a listener is provided, `resetOffsets: true` is ignored.
 
