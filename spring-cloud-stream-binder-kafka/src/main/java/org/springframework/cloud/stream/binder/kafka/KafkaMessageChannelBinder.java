@@ -1148,7 +1148,7 @@ public class KafkaMessageChannelBinder extends
 				sendTimeout = ((Number) timeout).longValue() + 2000L;
 			}
 			else if (timeout instanceof String) {
-				sendTimeout = Long.parseLong((String) timeout);
+				sendTimeout = Long.parseLong((String) timeout) + 2000L;
 			}
 			if (timeout == null) {
 				sendTimeout = ((Integer) ProducerConfig.configDef()
