@@ -12,7 +12,7 @@
 	</parent>
 	<properties>
 		<java.version>1.8</java.version>
-		<spring-kafka.version>2.5.11.RELEASE</spring-kafka.version>
+		<spring-kafka.version>2.5.12.RELEASE</spring-kafka.version>
 		<spring-integration-kafka.version>3.3.1.RELEASE</spring-integration-kafka.version>
 		<kafka.version>2.5.1</kafka.version>
 		<spring-cloud-schema-registry.version>1.0.12.BUILD-SNAPSHOT</spring-cloud-schema-registry.version>
