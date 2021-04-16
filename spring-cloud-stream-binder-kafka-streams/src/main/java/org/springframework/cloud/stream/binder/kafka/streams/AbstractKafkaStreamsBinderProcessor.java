@@ -390,16 +390,11 @@ public abstract class AbstractKafkaStreamsBinderProcessor implements Application
 		if (firstBuild) {
 			addStateStoreBeans(streamsBuilder);
 		}
-
 		KStream<?, ?> stream;
-		final Serde<?> valueSerdeToUse = StringUtils.hasText(kafkaStreamsConsumerProperties.getEventTypes()) ?
-				new Serdes.BytesSerde() : valueSerde;
-		final Consumed<?, ?> consumed = getConsumed(kafkaStreamsConsumerProperties, keySerde, valueSerdeToUse, autoOffsetReset);
-
+		final Consumed<?, ?> consumed = getConsumed(kafkaStreamsConsumerProperties, keySerde, valueSerde, autoOffsetReset);
 		if (this.kafkaStreamsExtendedBindingProperties
 				.getExtendedConsumerProperties(inboundName).isDestinationIsPattern()) {
 			final Pattern pattern = Pattern.compile(this.bindingServiceProperties.getBindingDestination(inboundName));
-
 			stream = streamsBuilder.stream(pattern, consumed);
 		}
 		else {
@@ -418,7 +413,6 @@ public abstract class AbstractKafkaStreamsBinderProcessor implements Application
 			LOG.info("Native decoding is disabled for " + inboundName
 					+ ". Inbound message conversion done by Spring Cloud Stream.");
 		}
-
 		return getkStream(bindingProperties, stream, nativeDecoding);
 	}
 
