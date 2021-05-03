@@ -233,6 +233,8 @@ public class KafkaMessageChannelBinder extends
 
 	private ConsumerConfigCustomizer consumerConfigCustomizer;
 
+	private final List<AbstractMessageListenerContainer<?,?>> kafkaMessageListenerContainers = new ArrayList<>();
+
 	public KafkaMessageChannelBinder(
 			KafkaBinderConfigurationProperties configurationProperties,
 			KafkaTopicProvisioner provisioningProvider) {
@@ -681,6 +683,8 @@ public class KafkaMessageChannelBinder extends
 			}
 
 		};
+
+		this.kafkaMessageListenerContainers.add(messageListenerContainer);
 		messageListenerContainer.setConcurrency(concurrency);
 		// these won't be needed if the container is made a bean
 		AbstractApplicationContext applicationContext = getApplicationContext();
@@ -1477,6 +1481,10 @@ public class KafkaMessageChannelBinder extends
 
 	public void setProducerConfigCustomizer(ProducerConfigCustomizer producerConfigCustomizer) {
 		this.producerConfigCustomizer = producerConfigCustomizer;
+	}
+
+	public List<AbstractMessageListenerContainer<?, ?>> getKafkaMessageListenerContainers() {
+		return kafkaMessageListenerContainers;
 	}
 
 	private final class ProducerConfigurationMessageHandler
