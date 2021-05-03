@@ -190,10 +190,15 @@ public class KafkaBinderHealthIndicator implements HealthIndicator, DisposableBe
 	}
 
 	private Health buildListenerContainersHealth() {
+		List<AbstractMessageListenerContainer<?, ?>> listenerContainers = binder.getKafkaMessageListenerContainers();
+		if (listenerContainers.isEmpty()) {
+			return Health.unknown().build();
+		}
+
 		Status status = Status.UP;
 		List<Map<String, Object>> containersDetails = new ArrayList<>();
 
-		for (AbstractMessageListenerContainer<?, ?> container : binder.getKafkaMessageListenerContainers()) {
+		for (AbstractMessageListenerContainer<?, ?> container : listenerContainers) {
 			Map<String, Object> containerDetails = new HashMap<>();
 			boolean isRunning = container.isRunning();
 			if (!isRunning) {
@@ -207,7 +212,7 @@ public class KafkaBinderHealthIndicator implements HealthIndicator, DisposableBe
 			containersDetails.add(containerDetails);
 		}
 		return Health.status(status)
-				.withDetail("containers", containersDetails)
+				.withDetail("listenerContainers", containersDetails)
 				.build();
 	}
 
