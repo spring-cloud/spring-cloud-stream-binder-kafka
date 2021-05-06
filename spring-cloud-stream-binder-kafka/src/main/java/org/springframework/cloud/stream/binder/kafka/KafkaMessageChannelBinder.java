@@ -1483,8 +1483,8 @@ public class KafkaMessageChannelBinder extends
 		this.producerConfigCustomizer = producerConfigCustomizer;
 	}
 
-	public List<AbstractMessageListenerContainer<?, ?>> getKafkaMessageListenerContainers() {
-		return kafkaMessageListenerContainers;
+	List<AbstractMessageListenerContainer<?, ?>> getKafkaMessageListenerContainers() {
+		return Collections.unmodifiableList(kafkaMessageListenerContainers);
 	}
 
 	private final class ProducerConfigurationMessageHandler
