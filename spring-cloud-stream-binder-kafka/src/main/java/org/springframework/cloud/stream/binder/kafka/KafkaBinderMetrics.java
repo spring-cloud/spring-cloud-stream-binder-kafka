@@ -26,6 +26,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
@@ -62,17 +63,19 @@ import org.springframework.util.ObjectUtils;
  * @author Gary Russell
  */
 public class KafkaBinderMetrics
-		implements MeterBinder, ApplicationListener<BindingCreatedEvent> {
+        implements MeterBinder, ApplicationListener<BindingCreatedEvent> {
 
-	private static final int DEFAULT_TIMEOUT = 5;
+    private static final int SCHEDULER_SHUTDOWN_TIMEOUT_SEC = 1;
 
-	private static final int DELAY_BETWEEN_TASK_EXECUTION = 60;
+    private static final int DEFAULT_TIMEOUT = 5;
 
-	private static final Log LOG = LogFactory.getLog(KafkaBinderMetrics.class);
+    private static final int DELAY_BETWEEN_TASK_EXECUTION = 60;
 
-	/**
-	 * Offset lag micrometer metric name. This can be used for meter filtering.
-	 */
+    private static final Log LOG = LogFactory.getLog(KafkaBinderMetrics.class);
+
+    /**
+     * Offset lag micrometer metric name. This can be used for meter filtering.
+     */
 	public static final String OFFSET_LAG_METRIC_NAME = "spring.cloud.stream.binder.kafka.offset";
 
 	private final KafkaMessageChannelBinder binder;
@@ -114,33 +117,51 @@ public class KafkaBinderMetrics
 	}
 
 	@Override
-	public void bindTo(MeterRegistry registry) {
+    public void bindTo(MeterRegistry registry) {
+        /**
+         * We can't just replace one scheduler with another.
+         * Before and even after the old one is gathered by GC, it's threads still exist, consume memory and CPU resources to switch contexts.
+         * Theoretically, as a result of processing n topics, there will be about (1+n)*n/2 threads simultaneously at the same time.
+         */
+        if (this.scheduler != null) {
+            LOG.info("Try to shutdown the old scheduler with " + ((ScheduledThreadPoolExecutor) scheduler).getPoolSize() + " threads");
+            this.scheduler.shutdown();
+            boolean terminationResult;
+            try {
+                terminationResult = this.scheduler.awaitTermination(SCHEDULER_SHUTDOWN_TIMEOUT_SEC, TimeUnit.SECONDS);
+            } catch (Exception ex) {
+                throw new IllegalStateException("The previous scheduler can't be terminated properly", ex);
+            }
+            if (!terminationResult) {
+                throw new IllegalStateException("The previous scheduler can't be terminated in " + SCHEDULER_SHUTDOWN_TIMEOUT_SEC + " seconds");
+            }
+        }
 
-		this.scheduler = Executors.newScheduledThreadPool(this.binder.getTopicsInUse().size());
+        this.scheduler = Executors.newScheduledThreadPool(this.binder.getTopicsInUse().size());
 
-		for (Map.Entry<String, KafkaMessageChannelBinder.TopicInformation> topicInfo : this.binder
-				.getTopicsInUse().entrySet()) {
+        for (Map.Entry<String, KafkaMessageChannelBinder.TopicInformation> topicInfo : this.binder
+                .getTopicsInUse().entrySet()) {
 
-			if (!topicInfo.getValue().isConsumerTopic()) {
-				continue;
-			}
+            if (!topicInfo.getValue().isConsumerTopic()) {
+                continue;
+            }
 
-			String topic = topicInfo.getKey();
-			String group = topicInfo.getValue().getConsumerGroup();
+            String topic = topicInfo.getKey();
+            String group = topicInfo.getValue().getConsumerGroup();
 
-			final Gauge register = Gauge.builder(OFFSET_LAG_METRIC_NAME, this,
-					(o) -> computeAndGetUnconsumedMessages(topic, group)).tag("group", group)
-					.tag("topic", topic)
-					.description("Unconsumed messages for a particular group and topic")
-					.register(registry);
+            final Gauge register = Gauge.builder(OFFSET_LAG_METRIC_NAME, this,
+                    (o) -> computeAndGetUnconsumedMessages(topic, group)).tag("group", group)
+                    .tag("topic", topic)
+                    .description("Unconsumed messages for a particular group and topic")
+                    .register(registry);
 
-			if (!(register instanceof NoopGauge)) {
-				//Schedule a task to compute the unconsumed messages for this group/topic every minute.
-				this.scheduler.scheduleWithFixedDelay(computeUnconsumedMessagesRunnable(topic, group, this.metadataConsumers),
-						10, DELAY_BETWEEN_TASK_EXECUTION, TimeUnit.SECONDS);
-			}
-		}
-	}
+            if (!(register instanceof NoopGauge)) {
+                //Schedule a task to compute the unconsumed messages for this group/topic every minute.
+                this.scheduler.scheduleWithFixedDelay(computeUnconsumedMessagesRunnable(topic, group, this.metadataConsumers),
+                        10, DELAY_BETWEEN_TASK_EXECUTION, TimeUnit.SECONDS);
+            }
+        }
+    }
 
 	private Runnable computeUnconsumedMessagesRunnable(String topic, String group, Map<String, Consumer<?, ?>> metadataConsumers) {
 		return () -> {
