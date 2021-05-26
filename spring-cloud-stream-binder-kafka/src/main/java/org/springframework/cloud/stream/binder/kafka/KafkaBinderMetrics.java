@@ -65,8 +65,6 @@ import org.springframework.util.ObjectUtils;
 public class KafkaBinderMetrics
         implements MeterBinder, ApplicationListener<BindingCreatedEvent> {
 
-    private static final int SCHEDULER_SHUTDOWN_TIMEOUT_SEC = 1;
-
     private static final int DEFAULT_TIMEOUT = 5;
 
     private static final int DELAY_BETWEEN_TASK_EXECUTION = 60;
@@ -126,15 +124,6 @@ public class KafkaBinderMetrics
         if (this.scheduler != null) {
             LOG.info("Try to shutdown the old scheduler with " + ((ScheduledThreadPoolExecutor) scheduler).getPoolSize() + " threads");
             this.scheduler.shutdown();
-            boolean terminationResult;
-            try {
-                terminationResult = this.scheduler.awaitTermination(SCHEDULER_SHUTDOWN_TIMEOUT_SEC, TimeUnit.SECONDS);
-            } catch (Exception ex) {
-                throw new IllegalStateException("The previous scheduler can't be terminated properly", ex);
-            }
-            if (!terminationResult) {
-                throw new IllegalStateException("The previous scheduler can't be terminated in " + SCHEDULER_SHUTDOWN_TIMEOUT_SEC + " seconds");
-            }
         }
 
         this.scheduler = Executors.newScheduledThreadPool(this.binder.getTopicsInUse().size());
