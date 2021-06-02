@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2019 the original author or authors.
+ * Copyright 2016-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -193,6 +193,16 @@ public class KafkaConsumerProperties {
 	 * Timeout used for polling in pollable consumers.
 	 */
 	private long pollTimeout = org.springframework.kafka.listener.ConsumerProperties.DEFAULT_POLL_TIMEOUT;
+
+	/**
+	 * Transaction manager bean name - overrides the binder's transaction configuration.
+	 */
+	private String transactionManager;
+
+	/**
+	 * Set to false to NOT commit the offset of a successfully recovered recovered in the after rollback processor.
+	 */
+	private boolean txCommitRecovered = true;
 
 	/**
 	 * @return if each record needs to be acknowledged.
@@ -462,4 +472,26 @@ public class KafkaConsumerProperties {
 	public void setPollTimeout(long pollTimeout) {
 		this.pollTimeout = pollTimeout;
 	}
+
+	/**
+	 * @return the transaction manager bean name.
+	 *
+	 * Transaction manager bean name (must be {@code KafkaAwareTransactionManager}.
+	 */
+	public String getTransactionManager() {
+		return this.transactionManager;
+	}
+
+	public void setTransactionManager(String transactionManager) {
+		this.transactionManager = transactionManager;
+	}
+
+	public boolean isTxCommitRecovered() {
+		return this.txCommitRecovered;
+	}
+
+	public void setTxCommitRecovered(boolean txCommitRecovered) {
+		this.txCommitRecovered = txCommitRecovered;
+	}
+
 }
