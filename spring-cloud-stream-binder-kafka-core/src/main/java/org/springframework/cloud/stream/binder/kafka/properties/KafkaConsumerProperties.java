@@ -206,6 +206,11 @@ public class KafkaConsumerProperties {
 	private String transactionManager;
 
 	/**
+	 * Set to false to NOT commit the offset of a successfully recovered recovered in the after rollback processor.
+	 */
+	private boolean txCommitRecovered = true;
+
+	/**
 	 * @return if each record needs to be acknowledged.
 	 *
 	 * When true the offset is committed after each record, otherwise the offsets for the complete set of records
@@ -514,6 +519,14 @@ public class KafkaConsumerProperties {
 
 	public void setTransactionManager(String transactionManager) {
 		this.transactionManager = transactionManager;
+	}
+
+	public boolean isTxCommitRecovered() {
+		return this.txCommitRecovered;
+	}
+
+	public void setTxCommitRecovered(boolean txCommitRecovered) {
+		this.txCommitRecovered = txCommitRecovered;
 	}
 
 }
