@@ -18,9 +18,12 @@ package org.springframework.cloud.stream.binder.kafka.streams.bootstrap;
 
 import javax.security.auth.login.AppConfigurationEntry;
 
+import org.apache.kafka.common.security.JaasUtils;
 import org.apache.kafka.streams.kstream.GlobalKTable;
 import org.apache.kafka.streams.kstream.KStream;
 import org.apache.kafka.streams.kstream.KTable;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.Test;
 
@@ -42,6 +45,21 @@ public class KafkaStreamsBinderBootstrapTest {
 
 	@ClassRule
 	public static EmbeddedKafkaRule embeddedKafka = new EmbeddedKafkaRule(1, true, 10);
+
+	private static String JAVA_LOGIN_CONFIG_PARAM_VALUE;
+
+	@BeforeClass
+	public static void beforeAll() {
+		JAVA_LOGIN_CONFIG_PARAM_VALUE = System.getProperty(JaasUtils.JAVA_LOGIN_CONFIG_PARAM);
+		System.clearProperty(JaasUtils.JAVA_LOGIN_CONFIG_PARAM);
+	}
+
+	@AfterClass
+	public static void afterAll() {
+		if (JAVA_LOGIN_CONFIG_PARAM_VALUE != null) {
+			System.setProperty(JaasUtils.JAVA_LOGIN_CONFIG_PARAM, JAVA_LOGIN_CONFIG_PARAM_VALUE);
+		}
+	}
 
 	@Test
 	public void testKStreamBinderWithCustomEnvironmentCanStart() {
