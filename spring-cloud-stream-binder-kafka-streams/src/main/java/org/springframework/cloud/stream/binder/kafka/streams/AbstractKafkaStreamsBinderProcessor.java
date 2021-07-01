@@ -512,6 +512,9 @@ public abstract class AbstractKafkaStreamsBinderProcessor implements Application
 		if (timestampExtractor != null) {
 			consumed.withTimestampExtractor(timestampExtractor);
 		}
+		if (StringUtils.hasText(kafkaStreamsConsumerProperties.getConsumedAs())) {
+			consumed.withName(kafkaStreamsConsumerProperties.getConsumedAs());
+		}
 		return consumed;
 	}
 }

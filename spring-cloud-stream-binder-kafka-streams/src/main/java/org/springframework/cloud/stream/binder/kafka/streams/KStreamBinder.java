@@ -146,6 +146,9 @@ class KStreamBinder extends
 					KStream<Object, Object> outboundBindTarget, Serde<Object> keySerde,
 					Serde<Object> valueSerde, KafkaStreamsProducerProperties properties) {
 		final Produced<Object, Object> produced = Produced.with(keySerde, valueSerde);
+		if (StringUtils.hasText(properties.getProducedAs())) {
+			produced.withName(properties.getProducedAs());
+		}
 		StreamPartitioner streamPartitioner = null;
 		if (!StringUtils.isEmpty(properties.getStreamPartitionerBeanName())) {
 			streamPartitioner = getApplicationContext().getBean(properties.getStreamPartitionerBeanName(),
