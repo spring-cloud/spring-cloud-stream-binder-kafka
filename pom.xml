@@ -12,8 +12,8 @@
 	</parent>
 	<properties>
 		<java.version>1.8</java.version>
-		<spring-kafka.version>2.6.8</spring-kafka.version>
-		<spring-integration-kafka.version>5.4.7</spring-integration-kafka.version>
+		<spring-kafka.version>2.6.10</spring-kafka.version>
+		<spring-integration-kafka.version>5.4.8</spring-integration-kafka.version>
 		<kafka.version>2.6.2</kafka.version>
 		<spring-cloud-schema-registry.version>1.1.4-SNAPSHOT</spring-cloud-schema-registry.version>
 		<spring-cloud-stream.version>3.1.4-SNAPSHOT</spring-cloud-stream.version>
