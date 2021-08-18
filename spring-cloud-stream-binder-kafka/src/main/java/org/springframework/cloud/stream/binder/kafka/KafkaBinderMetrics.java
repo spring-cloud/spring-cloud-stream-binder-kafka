@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2020 the original author or authors.
+ * Copyright 2016-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,10 +16,12 @@
 
 package org.springframework.cloud.stream.binder.kafka;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -210,11 +212,16 @@ public class KafkaBinderMetrics
 
 		for (Map.Entry<TopicPartition, Long> endOffset : endOffsets
 				.entrySet()) {
-			OffsetAndMetadata current = metadataConsumer
-					.committed(endOffset.getKey());
-			lag += endOffset.getValue();
-			if (current != null) {
-				lag -= current.offset();
+			// We will retrieve the last committed offset info, only if the endOffset is greater than 0 for this partition.
+			// Otherwise, the partition is empty and there is no lag. Lag will be zero by default in this case.
+			if (endOffset.getValue() > 0) {
+				Set<TopicPartition> tps = Collections.singleton(endOffset.getKey());
+				final Map<TopicPartition, OffsetAndMetadata> committed = metadataConsumer.committed(tps);
+				final OffsetAndMetadata current = committed.get(endOffset.getKey());
+				lag += endOffset.getValue();
+				if (current != null) {
+					lag -= current.offset();
+				}
 			}
 		}
 		return lag;
