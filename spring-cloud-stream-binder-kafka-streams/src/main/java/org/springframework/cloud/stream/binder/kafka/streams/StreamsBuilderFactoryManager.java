@@ -21,6 +21,7 @@ import java.util.Set;
 import org.apache.kafka.streams.errors.StreamsUncaughtExceptionHandler;
 
 import org.springframework.beans.factory.DisposableBean;
+import org.springframework.boot.autoconfigure.kafka.KafkaProperties;
 import org.springframework.context.SmartLifecycle;
 import org.springframework.kafka.KafkaException;
 import org.springframework.kafka.config.StreamsBuilderFactoryBean;
@@ -40,7 +41,7 @@ import org.springframework.kafka.streams.KafkaStreamsMicrometerListener;
  *
  * @author Soby Chacko
  */
-class StreamsBuilderFactoryManager implements SmartLifecycle {
+public class StreamsBuilderFactoryManager implements SmartLifecycle {
 
 	private final KafkaStreamsBindingInformationCatalogue kafkaStreamsBindingInformationCatalogue;
 
@@ -52,19 +53,23 @@ class StreamsBuilderFactoryManager implements SmartLifecycle {
 
 	private volatile boolean running;
 
+	private final KafkaProperties kafkaProperties;
+
 	StreamsBuilderFactoryManager(KafkaStreamsBindingInformationCatalogue kafkaStreamsBindingInformationCatalogue,
-										KafkaStreamsRegistry kafkaStreamsRegistry,
-										KafkaStreamsBinderMetrics kafkaStreamsBinderMetrics,
-										KafkaStreamsMicrometerListener listener) {
+								KafkaStreamsRegistry kafkaStreamsRegistry,
+								KafkaStreamsBinderMetrics kafkaStreamsBinderMetrics,
+								KafkaStreamsMicrometerListener listener,
+								KafkaProperties kafkaProperties) {
 		this.kafkaStreamsBindingInformationCatalogue = kafkaStreamsBindingInformationCatalogue;
 		this.kafkaStreamsRegistry = kafkaStreamsRegistry;
 		this.kafkaStreamsBinderMetrics = kafkaStreamsBinderMetrics;
 		this.listener = listener;
+		this.kafkaProperties = kafkaProperties;
 	}
 
 	@Override
 	public boolean isAutoStartup() {
-		return true;
+		return this.kafkaProperties == null || this.kafkaProperties.getStreams().isAutoStartup();
 	}
 
 	@Override
@@ -81,12 +86,11 @@ class StreamsBuilderFactoryManager implements SmartLifecycle {
 			try {
 				Set<StreamsBuilderFactoryBean> streamsBuilderFactoryBeans = this.kafkaStreamsBindingInformationCatalogue
 						.getStreamsBuilderFactoryBeans();
-				int n = 0;
 				for (StreamsBuilderFactoryBean streamsBuilderFactoryBean : streamsBuilderFactoryBeans) {
 					if (this.listener != null) {
 						streamsBuilderFactoryBean.addListener(this.listener);
 					}
-					// By default, we shutdown the client if there is an uncaught exception in the application.
+					// By default, we shut down the client if there is an uncaught exception in the application.
 					// Users can override this by customizing SBFB. See this issue for more details:
 					// https://github.com/spring-cloud/spring-cloud-stream-binder-kafka/issues/1110
 					streamsBuilderFactoryBean.setStreamsUncaughtExceptionHandler(exception ->
