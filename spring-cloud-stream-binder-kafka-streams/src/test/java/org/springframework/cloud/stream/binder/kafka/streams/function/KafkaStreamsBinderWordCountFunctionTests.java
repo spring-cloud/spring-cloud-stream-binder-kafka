@@ -252,7 +252,29 @@ public class KafkaStreamsBinderWordCountFunctionTests {
 			final StreamsBuilderFactoryManager streamsBuilderFactoryManager = context.getBean(StreamsBuilderFactoryManager.class);
 			assertThat(streamsBuilderFactoryManager.isAutoStartup()).isFalse();
 			assertThat(streamsBuilderFactoryManager.isRunning()).isFalse();
+		}
+	}
 
+	@Test
+	public void testKstreamIndividualBindingAutoStartup() throws Exception {
+		SpringApplication app = new SpringApplication(WordCountProcessorApplication.class);
+		app.setWebApplicationType(WebApplicationType.NONE);
+
+		try (ConfigurableApplicationContext context = app.run(
+				"--server.port=0",
+				"--spring.jmx.enabled=false",
+				"--spring.cloud.stream.bindings.process-in-0.destination=words-4",
+				"--spring.cloud.stream.bindings.process-in-0.consumer.auto-startup=false",
+				"--spring.cloud.stream.bindings.process-out-0.destination=counts-4",
+				"--spring.cloud.stream.kafka.streams.binder.configuration.default.key.serde" +
+						"=org.apache.kafka.common.serialization.Serdes$StringSerde",
+				"--spring.cloud.stream.kafka.streams.binder.configuration.default.value.serde" +
+						"=org.apache.kafka.common.serialization.Serdes$StringSerde",
+				"--spring.cloud.stream.kafka.streams.binder.brokers=" + embeddedKafka.getBrokersAsString())) {
+			final StreamsBuilderFactoryBean streamsBuilderFactoryBean = context.getBean(StreamsBuilderFactoryBean.class);
+			assertThat(streamsBuilderFactoryBean.isRunning()).isFalse();
+			streamsBuilderFactoryBean.start();
+			assertThat(streamsBuilderFactoryBean.isRunning()).isTrue();
 		}
 	}
 
