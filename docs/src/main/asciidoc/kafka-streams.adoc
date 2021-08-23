@@ -1922,11 +1922,11 @@ public BiFunction<KStream<?, ?>, KTable<?, ?>, KStream<?, ?>> process3() {
 In this scenario above, if you set `spring.kafka.streams.auto-startup` to `false`, then none of the processors will auto start during the application startup.
 In that case, you have to programmatically start them as described above by calling `start()` on the underlying `StreamsBuilderFactoryManager`.
 However, if we have a use case to selectively disable only one processor, then you have to set `auto-startup` on the individual binding for that processor.
-Let us assume that we don't want our `process3` function to not auto start.
+Let us assume that we don't want our `process3` function to auto start.
 This is a `BiFunction` with two input bindings - `process3-in-0` and `process3-in-1`.
 In order to avoid auto start for this processor, you can pick any of these input bindings and set `auto-startup` on them.
 It does not matter which binding you pick; if you wish, you can set `auto-startup` to `false` on both of them, but one will be sufficient.
-This is because, both of these bindings share the same `StreamsBuilderFactoryBean` behind the scenes by the binder.
+Because they share the same factory bean, you don't have to set autoStartup to false on both bindings, but it probably makes sense to do so, for clarity.
 
 Here is the Spring Cloud Stream property that you can use to disable auto startup for this processor.
 
@@ -1959,8 +1959,9 @@ public ApplicationRunner runner() {
         endpoint.changeState("process3-in-0", State.STARTED);
     };
 }
-
 ```
+
+See https://docs.spring.io/spring-cloud-stream/docs/current/reference/html/spring-cloud-stream.html#binding_visualization_control[this section] from the reference docs for more details on this mechanism.
 
 NOTE: When controlling the bindings by disabling `auto-startup` as described in this section, please note that this is only available for consumer bindings.
 In other words, if you use the producer binding, `process3-out-0`, that does not have any effect in terms of disabling the auto starting of the processor, although this producer binding uses the same `StreamsBuilderFactoryBean` as the consumer bindings.
