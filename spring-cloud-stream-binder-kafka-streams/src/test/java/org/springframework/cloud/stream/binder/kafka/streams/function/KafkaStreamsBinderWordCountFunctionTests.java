@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2019 the original author or authors.
+ * Copyright 2019-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -144,8 +144,8 @@ public class KafkaStreamsBinderWordCountFunctionTests {
 
 			//verify that ...binder.consumerProperties and ...binder.producerProperties work.
 			Map<String, Object> streamConfigGlobalProperties = (Map<String, Object>) context.getBean("streamConfigGlobalProperties");
-			assertThat(streamConfigGlobalProperties.get("request.timeout.ms")).isEqualTo("29000");
-			assertThat(streamConfigGlobalProperties.get("max.block.ms")).isEqualTo("90000");
+			assertThat(streamConfigGlobalProperties.get("consumer.request.timeout.ms")).isEqualTo("29000");
+			assertThat(streamConfigGlobalProperties.get("producer.max.block.ms")).isEqualTo("90000");
 
 			InputBindingLifecycle inputBindingLifecycle = context.getBean(InputBindingLifecycle.class);
 			final Collection<Binding<Object>> inputBindings = (Collection<Binding<Object>>) new DirectFieldAccessor(inputBindingLifecycle)
