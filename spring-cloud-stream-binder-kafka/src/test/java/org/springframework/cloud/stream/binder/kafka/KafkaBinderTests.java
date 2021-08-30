@@ -1298,6 +1298,55 @@ public class KafkaBinderTests extends
 		producerBinding.unbind();
 	}
 
+	@Test
+	@SuppressWarnings("unchecked")
+	public void testRetriesWithoutDlq() throws Exception {
+		Binder binder = getBinder();
+		ExtendedProducerProperties<KafkaProducerProperties> producerProperties = createProducerProperties();
+		BindingProperties producerBindingProperties = createProducerBindingProperties(
+				producerProperties);
+
+		DirectChannel moduleOutputChannel = createBindableChannel("output",
+				producerBindingProperties);
+
+		ExtendedConsumerProperties<KafkaConsumerProperties> consumerProperties = createConsumerProperties();
+		consumerProperties.setMaxAttempts(2);
+		consumerProperties.setBackOffInitialInterval(100);
+		consumerProperties.setBackOffMaxInterval(150);
+
+		DirectChannel moduleInputChannel = createBindableChannel("input",
+				createConsumerBindingProperties(consumerProperties));
+
+		FailingInvocationCountingMessageHandler handler = new FailingInvocationCountingMessageHandler();
+		moduleInputChannel.subscribe(handler);
+		long uniqueBindingId = System.currentTimeMillis();
+		Binding<MessageChannel> producerBinding = binder.bindProducer(
+				"retryTest." + uniqueBindingId + ".0", moduleOutputChannel,
+				producerProperties);
+		Binding<MessageChannel> consumerBinding = binder.bindConsumer(
+				"retryTest." + uniqueBindingId + ".0", "testGroup", moduleInputChannel,
+				consumerProperties);
+
+		String testMessagePayload = "test." + UUID.randomUUID();
+		Message<byte[]> testMessage = MessageBuilder
+				.withPayload(testMessagePayload.getBytes()).build();
+		moduleOutputChannel.send(testMessage);
+
+		Thread.sleep(3000);
+		assertThat(handler.getReceivedMessages().entrySet()).hasSize(1);
+		Message<?> handledMessage = handler.getReceivedMessages().entrySet().iterator()
+				.next().getValue();
+		assertThat(handledMessage).isNotNull();
+		assertThat(
+				new String((byte[]) handledMessage.getPayload(), StandardCharsets.UTF_8))
+				.isEqualTo(testMessagePayload);
+		assertThat(handler.getInvocationCount())
+				.isEqualTo(consumerProperties.getMaxAttempts());
+		binderBindUnbindLatency();
+		consumerBinding.unbind();
+		producerBinding.unbind();
+	}
+
 	//See https://github.com/spring-cloud/spring-cloud-stream-binder-kafka/issues/870 for motivation for this test.
 	@Test
 	@SuppressWarnings("unchecked")
