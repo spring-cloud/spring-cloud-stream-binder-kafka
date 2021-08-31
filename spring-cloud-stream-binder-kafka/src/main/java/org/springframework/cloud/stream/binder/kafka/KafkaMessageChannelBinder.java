@@ -748,11 +748,11 @@ public class KafkaMessageChannelBinder extends
 		else if (!extendedConsumerProperties.isBatchMode()
 				&& extendedConsumerProperties.getMaxAttempts() > 1
 				&& transMan == null) {
-
 			kafkaMessageDrivenChannelAdapter
 					.setRetryTemplate(buildRetryTemplate(extendedConsumerProperties));
 			kafkaMessageDrivenChannelAdapter
 					.setRecoveryCallback(errorInfrastructure.getRecoverer());
+			messageListenerContainer.setCommonErrorHandler(new DefaultErrorHandler(new FixedBackOff(0L, 0L)));
 		}
 		else if (!extendedConsumerProperties.isBatchMode() && transMan != null) {
 			messageListenerContainer.setAfterRollbackProcessor(new DefaultAfterRollbackProcessor<>(

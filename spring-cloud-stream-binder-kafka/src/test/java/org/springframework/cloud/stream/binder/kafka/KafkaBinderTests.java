@@ -1333,13 +1333,9 @@ public class KafkaBinderTests extends
 		moduleOutputChannel.send(testMessage);
 
 		Thread.sleep(3000);
-		assertThat(handler.getReceivedMessages().entrySet()).hasSize(1);
-		Message<?> handledMessage = handler.getReceivedMessages().entrySet().iterator()
-				.next().getValue();
-		assertThat(handledMessage).isNotNull();
-		assertThat(
-				new String((byte[]) handledMessage.getPayload(), StandardCharsets.UTF_8))
-				.isEqualTo(testMessagePayload);
+
+		// Since we don't have a DLQ, assert that we are invoking the handler exactly the same number of times
+		// as set in consumerProperties.maxAttempt and not the default set by Spring Kafka (10 times).
 		assertThat(handler.getInvocationCount())
 				.isEqualTo(consumerProperties.getMaxAttempts());
 		binderBindUnbindLatency();
