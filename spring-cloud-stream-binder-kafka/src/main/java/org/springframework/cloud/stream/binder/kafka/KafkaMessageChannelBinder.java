@@ -735,24 +735,16 @@ public class KafkaMessageChannelBinder extends
 		ErrorInfrastructure errorInfrastructure = registerErrorInfrastructure(destination,
 				consumerGroup, extendedConsumerProperties);
 
-		if (extendedConsumerProperties.getMaxAttempts() > 1 && !extendedConsumerProperties.getExtension().isEnableDlq()) {
-			if (transMan != null) {
-				messageListenerContainer.setAfterRollbackProcessor(new DefaultAfterRollbackProcessor<>(new FixedBackOff(extendedConsumerProperties.getBackOffInitialInterval(),
-						extendedConsumerProperties.getMaxAttempts() - 1)));
-			}
-			else {
-				messageListenerContainer.setCommonErrorHandler(new DefaultErrorHandler(new FixedBackOff(extendedConsumerProperties.getBackOffInitialInterval(),
-						extendedConsumerProperties.getMaxAttempts() - 1)));
-			}
-		}
-		else if (!extendedConsumerProperties.isBatchMode()
+		if (!extendedConsumerProperties.isBatchMode()
 				&& extendedConsumerProperties.getMaxAttempts() > 1
 				&& transMan == null) {
 			kafkaMessageDrivenChannelAdapter
 					.setRetryTemplate(buildRetryTemplate(extendedConsumerProperties));
 			kafkaMessageDrivenChannelAdapter
 					.setRecoveryCallback(errorInfrastructure.getRecoverer());
-			messageListenerContainer.setCommonErrorHandler(new DefaultErrorHandler(new FixedBackOff(0L, 0L)));
+			if (!extendedConsumerProperties.getExtension().isEnableDlq()) {
+				messageListenerContainer.setCommonErrorHandler(new DefaultErrorHandler(new FixedBackOff(0L, 0L)));
+			}
 		}
 		else if (!extendedConsumerProperties.isBatchMode() && transMan != null) {
 			messageListenerContainer.setAfterRollbackProcessor(new DefaultAfterRollbackProcessor<>(
