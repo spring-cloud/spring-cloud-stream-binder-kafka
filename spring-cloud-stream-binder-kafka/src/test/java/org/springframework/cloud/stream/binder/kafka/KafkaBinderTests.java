@@ -1399,8 +1399,8 @@ public class KafkaBinderTests extends
 		Thread.sleep(3000);
 
 		//Assertions for the CommonErrorHandler configured on the consumer binding (commonErrorHandlerBeanName).
-		assertThat(handler.getInvocationCount())
-				.isEqualTo(consumerProperties.getMaxAttempts());
+		assertThat(KafkaTestUtils.getPropertyValue(consumerBinding,
+				"lifecycle.messageListenerContainer.commonErrorHandler")).isSameAs(commonErrorHandler);
 		latch.await(10, TimeUnit.SECONDS);
 
 		binderBindUnbindLatency();
