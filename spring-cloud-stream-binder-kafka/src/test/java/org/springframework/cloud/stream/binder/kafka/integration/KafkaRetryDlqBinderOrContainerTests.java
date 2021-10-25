@@ -55,7 +55,7 @@ import static org.mockito.Mockito.mock;
 		"spring.cloud.stream.bindings.retryInContainer-in-0.group=bar",
 		"spring.cloud.stream.kafka.bindings.retryInBinder-in-0.consumer.enable-dlq=true",
 		"spring.cloud.stream.kafka.bindings.retryInContainer-in-0.consumer.enable-dlq=true"})
-@EmbeddedKafka
+@EmbeddedKafka(bootstrapServersProperty = "spring.kafka.bootstrap-servers")
 @DirtiesContext
 public class KafkaRetryDlqBinderOrContainerTests {
 

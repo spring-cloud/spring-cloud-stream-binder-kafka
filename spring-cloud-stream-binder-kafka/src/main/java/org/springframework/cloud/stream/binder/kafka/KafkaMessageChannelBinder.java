@@ -813,11 +813,9 @@ public class KafkaMessageChannelBinder extends
 
 		Integer dlqPartitions = extension.getDlqPartitions();
 		if (extension.isEnableDlq()) {
-			return (rec, ex) -> {
-				return dlqPartitions == null || dlqPartitions > 1
+			return (rec, ex) -> dlqPartitions == null || dlqPartitions > 1
 						? new TopicPartition(extension.getDlqName(), rec.partition())
 						: new TopicPartition(extension.getDlqName(), 0);
-			};
 		}
 		else {
 			return null;
@@ -839,7 +837,6 @@ public class KafkaMessageChannelBinder extends
 			return new FixedBackOff(0L, 0L);
 		}
 		int initialInterval = extendedConsumerProperties.getBackOffInitialInterval();
-		double multiplier = extendedConsumerProperties.getBackOffMultiplier();
 		int maxInterval = extendedConsumerProperties.getBackOffMaxInterval();
 		ExponentialBackOff backOff = new ExponentialBackOffWithMaxRetries(maxAttempts - 1);
 		backOff.setInitialInterval(initialInterval);
