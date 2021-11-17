@@ -18,6 +18,7 @@ package org.springframework.cloud.stream.binder.kafka.streams;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -28,6 +29,7 @@ import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.KeyQueryMetadata;
 import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.StoreQueryParameters;
+import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.kstream.Grouped;
 import org.apache.kafka.streams.kstream.KStream;
 import org.apache.kafka.streams.kstream.Materialized;
@@ -106,6 +108,9 @@ public class KafkaStreamsInteractiveQueryIntegrationTests {
 		KafkaStreamsRegistry kafkaStreamsRegistry = new KafkaStreamsRegistry();
 		kafkaStreamsRegistry.registerKafkaStreams(mock);
 		Mockito.when(mock.isRunning()).thenReturn(true);
+		Properties mockProperties = new Properties();
+		mockProperties.put(StreamsConfig.APPLICATION_ID_CONFIG, "fooApp");
+		Mockito.when(mock.getStreamsConfiguration()).thenReturn(mockProperties);
 		KafkaStreamsBinderConfigurationProperties binderConfigurationProperties =
 				new KafkaStreamsBinderConfigurationProperties(new KafkaProperties());
 		binderConfigurationProperties.getStateStoreRetry().setMaxAttempts(3);
