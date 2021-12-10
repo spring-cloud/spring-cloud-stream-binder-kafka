@@ -32,8 +32,8 @@ import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.ListTopicsResult;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.StreamsConfig;
-import org.apache.kafka.streams.TaskMetadata;
-import org.apache.kafka.streams.ThreadMetadata;
+import org.apache.kafka.streams.processor.TaskMetadata;
+import org.apache.kafka.streams.processor.ThreadMetadata;
 
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.boot.actuate.health.AbstractHealthIndicator;
@@ -162,7 +162,7 @@ public class KafkaStreamsBinderHealthIndicator extends AbstractHealthIndicator i
 		}
 
 		if (isRunningResult) {
-			final Set<ThreadMetadata> threadMetadata = kafkaStreams.metadataForLocalThreads();
+			final Set<ThreadMetadata> threadMetadata = kafkaStreams.localThreadsMetadata();
 			for (ThreadMetadata metadata : threadMetadata) {
 				perAppdIdDetails.put("threadName", metadata.threadName());
 				perAppdIdDetails.put("threadState", metadata.threadState());
