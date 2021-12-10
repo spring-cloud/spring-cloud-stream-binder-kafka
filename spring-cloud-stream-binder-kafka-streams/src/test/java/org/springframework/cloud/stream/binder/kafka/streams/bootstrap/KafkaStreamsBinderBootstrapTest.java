@@ -45,6 +45,7 @@ import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 
 /**
  * @author Soby Chacko
+ * @author Eduard Domínguez
  */
 public class KafkaStreamsBinderBootstrapTest {
 
