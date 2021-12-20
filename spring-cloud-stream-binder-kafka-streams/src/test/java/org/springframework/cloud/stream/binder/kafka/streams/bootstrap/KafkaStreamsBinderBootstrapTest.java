@@ -148,11 +148,11 @@ public class KafkaStreamsBinderBootstrapTest {
 
 		assertThat(this.getClass().getName() + ".determineType").isEqualTo(configuredSerdeTypeResolver);
 
-		String configuredKeyDeserializerFieldName = ((String)new DirectFieldAccessor(input2SBFB.getKafkaStreams())
+		String configuredKeyDeserializerFieldName = ((String) new DirectFieldAccessor(input2SBFB.getKafkaStreams())
 				.getPropertyValue("taskTopology.processorNodes[0].keyDeserializer.typeMapper.classIdFieldName"));
 		assertThat(DefaultJackson2JavaTypeMapper.KEY_DEFAULT_CLASSID_FIELD_NAME).isEqualTo(configuredKeyDeserializerFieldName);
 
-		String configuredValueDeserializerFieldName = ((String)new DirectFieldAccessor(input2SBFB.getKafkaStreams())
+		String configuredValueDeserializerFieldName = ((String) new DirectFieldAccessor(input2SBFB.getKafkaStreams())
 				.getPropertyValue("taskTopology.processorNodes[0].valDeserializer.typeMapper.classIdFieldName"));
 		assertThat(DefaultJackson2JavaTypeMapper.DEFAULT_CLASSID_FIELD_NAME).isEqualTo(configuredValueDeserializerFieldName);
 
