@@ -26,6 +26,10 @@ It contains information about its design, usage, and configuration options, as w
 In addition, this guide explains the Kafka Streams binding capabilities of Spring Cloud Stream.
 --
 
+ANNOUNCEMENT: This repository is now migrated as part of core Spring Cloud Stream - https://github.com/spring-cloud/spring-cloud-stream.
+Please create new issues over at the core repository. 
+
+
 == Apache Kafka Binder
 
 === Usage
