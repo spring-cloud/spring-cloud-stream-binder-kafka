@@ -262,4 +262,10 @@ public class KafkaBinderMetricsTest {
 		return partitions;
 	}
 
+	@Test
+	public void shouldShutdownSchedulerOnClose() throws Exception {
+		metrics.bindTo(meterRegistry);
+		metrics.close();
+		assertThat(metrics.scheduler.isShutdown()).isTrue();
+	}
 }
