@@ -7,4 +7,4 @@ assignees: ''
 
 ---
 
-Please create all new issues in https://github.com/spring-cloud/spring-cloud-stream/issues. Kafka repository has been relocated to the core Spring Cloud Stream repo
+Please create all new issues in https://github.com/spring-cloud/spring-cloud-stream/issues. The Kafka binder repository has been relocated to the core Spring Cloud Stream repo.
