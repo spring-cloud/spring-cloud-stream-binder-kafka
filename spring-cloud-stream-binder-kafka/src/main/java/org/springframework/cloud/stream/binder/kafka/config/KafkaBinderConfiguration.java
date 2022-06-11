@@ -78,6 +78,7 @@ import org.springframework.messaging.converter.MessageConverter;
  * @author Oleg Zhurakousky
  * @author Artem Bilan
  * @author Aldo Sinanaj
+ * @author Yi Liu
  */
 @Configuration(proxyBeanMethods = false)
 @ConditionalOnMissingBean(Binder.class)
@@ -94,9 +95,9 @@ public class KafkaBinderConfiguration {
 	@Bean
 	KafkaTopicProvisioner provisioningProvider(
 			KafkaBinderConfigurationProperties configurationProperties,
-			ObjectProvider<AdminClientConfigCustomizer> adminClientConfigCustomizer, KafkaProperties kafkaProperties) {
+			ObjectProvider<AdminClientConfigCustomizer> adminClientConfigCustomizers, KafkaProperties kafkaProperties) {
 		return new KafkaTopicProvisioner(configurationProperties,
-				kafkaProperties, adminClientConfigCustomizer.getIfUnique());
+				kafkaProperties, adminClientConfigCustomizers);
 	}
 
 	@SuppressWarnings({"rawtypes", "unchecked"})
@@ -111,9 +112,9 @@ public class KafkaBinderConfiguration {
 			ObjectProvider<KafkaBindingRebalanceListener> rebalanceListener,
 			ObjectProvider<DlqPartitionFunction> dlqPartitionFunction,
 			ObjectProvider<DlqDestinationResolver> dlqDestinationResolver,
-			ObjectProvider<ClientFactoryCustomizer> clientFactoryCustomizer,
-			ObjectProvider<ConsumerConfigCustomizer> consumerConfigCustomizer,
-			ObjectProvider<ProducerConfigCustomizer> producerConfigCustomizer,
+			ObjectProvider<ClientFactoryCustomizer> clientFactoryCustomizers,
+			ObjectProvider<ConsumerConfigCustomizer> consumerConfigCustomizers,
+			ObjectProvider<ProducerConfigCustomizer> producerConfigCustomizers,
 			ProducerListener producerListener, KafkaExtendedBindingProperties kafkaExtendedBindingProperties
 			) {
 
@@ -126,9 +127,9 @@ public class KafkaBinderConfiguration {
 				.setExtendedBindingProperties(kafkaExtendedBindingProperties);
 		kafkaMessageChannelBinder.setProducerMessageHandlerCustomizer(messageHandlerCustomizer);
 		kafkaMessageChannelBinder.setConsumerEndpointCustomizer(consumerCustomizer);
-		kafkaMessageChannelBinder.setClientFactoryCustomizer(clientFactoryCustomizer.getIfUnique());
-		kafkaMessageChannelBinder.setConsumerConfigCustomizer(consumerConfigCustomizer.getIfUnique());
-		kafkaMessageChannelBinder.setProducerConfigCustomizer(producerConfigCustomizer.getIfUnique());
+		clientFactoryCustomizers.orderedStream().forEach(kafkaMessageChannelBinder::addClientFactoryCustomizer);
+		consumerConfigCustomizers.orderedStream().forEach(kafkaMessageChannelBinder::addConsumerConfigCustomizer);
+		producerConfigCustomizers.orderedStream().forEach(kafkaMessageChannelBinder::addProducerConfigCustomizer);
 		return kafkaMessageChannelBinder;
 	}
 
