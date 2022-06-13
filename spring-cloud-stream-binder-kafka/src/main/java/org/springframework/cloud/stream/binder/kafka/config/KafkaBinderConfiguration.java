@@ -17,6 +17,7 @@
 package org.springframework.cloud.stream.binder.kafka.config;
 
 import java.io.IOException;
+import java.util.stream.Collectors;
 
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.binder.MeterBinder;
@@ -96,8 +97,8 @@ public class KafkaBinderConfiguration {
 	KafkaTopicProvisioner provisioningProvider(
 			KafkaBinderConfigurationProperties configurationProperties,
 			ObjectProvider<AdminClientConfigCustomizer> adminClientConfigCustomizers, KafkaProperties kafkaProperties) {
-		return new KafkaTopicProvisioner(configurationProperties,
-				kafkaProperties, adminClientConfigCustomizers);
+        return new KafkaTopicProvisioner(configurationProperties,
+				kafkaProperties, adminClientConfigCustomizers.orderedStream().collect(Collectors.toList()));
 	}
 
 	@SuppressWarnings({"rawtypes", "unchecked"})

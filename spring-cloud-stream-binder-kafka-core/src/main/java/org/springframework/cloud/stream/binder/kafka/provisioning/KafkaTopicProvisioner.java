@@ -51,7 +51,6 @@ import org.apache.kafka.common.errors.TopicExistsException;
 import org.apache.kafka.common.errors.UnknownTopicOrPartitionException;
 
 import org.springframework.beans.factory.InitializingBean;
-import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.kafka.KafkaProperties;
 import org.springframework.cloud.stream.binder.BinderException;
 import org.springframework.cloud.stream.binder.ExtendedConsumerProperties;
@@ -136,7 +135,7 @@ public class KafkaTopicProvisioner implements
 	public KafkaTopicProvisioner(
 		KafkaBinderConfigurationProperties kafkaBinderConfigurationProperties,
 		KafkaProperties kafkaProperties,
-		ObjectProvider<AdminClientConfigCustomizer> adminClientConfigCustomizers) {
+        List<AdminClientConfigCustomizer> adminClientConfigCustomizers) {
 		Assert.isTrue(kafkaProperties != null, "KafkaProperties cannot be null");
 		this.configurationProperties = kafkaBinderConfigurationProperties;
 		this.adminClientProperties = kafkaProperties.buildAdminProperties();
@@ -144,8 +143,7 @@ public class KafkaTopicProvisioner implements
 			kafkaBinderConfigurationProperties);
 		// If the application provides AdminConfig customizers
 		// and overrides properties, those take precedence.
-		adminClientConfigCustomizers.orderedStream()
-									.forEach(customizer -> customizer.configure(this.adminClientProperties));
+		adminClientConfigCustomizers.forEach(customizer -> customizer.configure(this.adminClientProperties));
 	}
 
 	/**
